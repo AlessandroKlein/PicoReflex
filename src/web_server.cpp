@@ -313,8 +313,10 @@ err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
         return ERR_OK;
     }
 
-    // Copia la petición a un buffer local (solo interesa la primera línea).
-    char request[512];
+    // Copia la petición a un buffer estático (solo interesa la primera línea).
+    // Estático (no en stack) para no presionar el stack del Core 1, y de 1024 B
+    // para admitir SSID + contraseña largas URL-encoded (~300 B) sin truncar.
+    static char request[1024];
     size_t len = p->tot_len < sizeof(request) - 1u ? p->tot_len : sizeof(request) - 1u;
     pbuf_copy_partial(p, request, (u16_t)len, 0);
     request[len] = '\0';
@@ -325,7 +327,7 @@ err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
     // concurrencia real entre conexiones en este servidor de un solo hilo.
 
     // Extrae la ruta (entre "GET " y el siguiente espacio).
-    char path[128] = "/";
+    static char path[1024] = "/";
     const char* query = nullptr;
     if (std::strncmp(request, "GET ", 4) == 0) {
         const char* start = request + 4;

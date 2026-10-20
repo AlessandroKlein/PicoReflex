@@ -4,6 +4,16 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.4.2] - 2026-10-20
+
+### Corregido (causa raíz del reinicio al guardar/escanear)
+- **Stack del Core 1 insuficiente**: el servidor web corría con 2 KB de stack
+  (`PICO_CORE1_STACK_SIZE` = 0x800 por defecto) y desbordaba al reconectar o
+  escanear. Se amplió a 4 KB (`0x1000`).
+- **Truncado de SSID/contraseña largos**: el buffer `path[128]` recortaba la query
+  (SSID + contraseña URL-encoded ~300 B). Se amplió a `1024` B y los buffers de
+  petición ahora son estáticos (no consumen stack).
+
 ## [0.4.1] - 2026-10-20
 
 ### Corregido

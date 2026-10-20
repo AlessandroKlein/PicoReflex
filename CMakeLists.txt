@@ -42,6 +42,11 @@ include(pico_sdk_import.cmake)
 
 project(PicoReflex C CXX ASM)
 
+# El Core 1 aloja el servidor web (cyw43_arch + lwIP + HTTP + escaneo). El stack
+# por defecto es de 2 KB (0x800), insuficiente: desbordaba y crasheaba al reconectar
+# o escanear. Se amplía a 4 KB (máximo que cabe en SCRATCH_X junto al stack del Core 0).
+add_compile_definitions(PICO_CORE1_STACK_SIZE=0x1000)
+
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
@@ -63,7 +68,7 @@ add_executable(PicoReflex
 )
 
 pico_set_program_name(PicoReflex "PicoReflex")
-pico_set_program_version(PicoReflex "0.4.1")
+pico_set_program_version(PicoReflex "0.4.2")
 
 # Salida de depuración (printf): USB (CDC) y UART0 (GPIO0=TX, GPIO1=RX, 115200).
 # El USB es el más cómodo (conectar la Pico y abrir el puerto COM a 115200).
