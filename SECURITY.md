@@ -26,7 +26,10 @@ Incluí:
 
 ## Buenas prácticas de despliegue
 
-- Cambiá los secretos por defecto (`JWT_SECRET`, `JWT_REFRESH_SECRET`) en producción.
-- Usá contraseñas largas y aleatorias para el superadmin.
-- Habilitá HTTPS y ajustá `CORS_ORIGIN` al dominio real.
-- Revisá las cabeceras de seguridad (helmet) y el CSP según tu hosting.
+- Cambiá la contraseña del Access Point (`AP_PASSWORD` en `src/web_server.cpp`) y
+  las credenciales Wi-Fi (`WIFI_SSID` / `WIFI_PASSWORD` en `include/web_server.hpp`)
+  antes de usar el dispositivo fuera del aula.
+- No expongas el dispositivo directamente a internet: está pensado para redes
+  locales (SoftAP propio o Wi-Fi de confianza).
+- Para entornos con terceros en la red, habilitá autenticación del panel web y
+  TLS (ver `docs/SEGURIDAD.md` y `docs/MEJORAS.md`).

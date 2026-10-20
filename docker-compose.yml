@@ -1,0 +1,18 @@
+# PicoReflex — Compilación con Docker Compose
+#
+# Uso:
+#   docker compose run --rm build            # compila el firmware (build/*.uf2)
+#
+# El proyecto se monta en /project; el resultado queda en ./build/ (host).
+
+services:
+  build:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PICO_SDK_TAG: "2.3.0"
+    volumes:
+      - .:/project
+    working_dir: /project
+    command: sh -c "cmake -B build -S . && cmake --build build -j"

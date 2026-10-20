@@ -4,6 +4,19 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.1.2] - 2026-10-20
+
+### Añadido
+- **Docker** (`Dockerfile` + `docker-compose.yml`): entorno de compilación
+  reproducible (toolchain ARM, CMake, Ninja y Pico SDK 2.3.0 con submódulos).
+- **CI** (`.github/workflows/build.yml`): compila el firmware en cada push/PR y
+  publica `build/*.uf2` como artefacto (provee el "Check status" para releases).
+
+### Arreglado
+- **`SECURITY.md`**: se reemplazó el contenido heredado de un proyecto web
+  (`JWT_SECRET`, `CORS_ORIGIN`, `helmet`, superadmin) por prácticas de despliegue
+  específicas de la Pico W (contraseña del AP, credenciales Wi-Fi, red local).
+
 ## [0.1.1] - 2026-10-20
 
 ### Arreglado
