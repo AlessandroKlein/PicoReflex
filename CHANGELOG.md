@@ -4,12 +4,31 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.1.3] - 2026-10-20
+
+### Arreglado (seguridad)
+- **XSS almacenado en el campo `name`** (`src/web_server.cpp`): el nombre del
+  jugador se insertaba en el HTML sin escapar (`value='%s'`). Ahora se escapa con
+  `html_escape()`. Ver `docs/SEGURIDAD.md`.
+- **Wrap en `smin`/`smax`** (`src/web_server.cpp`): se acotan los valores a
+  50..60000 ms y se garantiza `smin <= smax` (y `round` a 1..3600 s), evitando el
+  *wrap* de `span = smax - smin + 1` en `game_logic.cpp`.
+
+### Cambiado
+- **CI unificado en `.github/workflows/ci.yml`**: compila en cada push/PR y,
+  en tags `v*`, crea la release de GitHub con el firmware adjunto (reemplaza al
+  anterior `build.yml`).
+
+### Añadido
+- `docs/ROADMAP.md`: hoja de ruta de mejoras (P0–P3) con referencias oficiales
+  (reemplaza a `docs/MEJORAS.md`).
+
 ## [0.1.2] - 2026-10-20
 
 ### Añadido
 - **Docker** (`Dockerfile` + `docker-compose.yml`): entorno de compilación
   reproducible (toolchain ARM, CMake, Ninja y Pico SDK 2.3.0 con submódulos).
-- **CI** (`.github/workflows/build.yml`): compila el firmware en cada push/PR y
+- **CI** (`.github/workflows/ci.yml`): compila el firmware en cada push/PR y
   publica `build/*.uf2` como artefacto (provee el "Check status" para releases).
 
 ### Arreglado
@@ -26,7 +45,7 @@ sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
 ### Añadido
 - `docs/SEGURIDAD.md`: auditoría de seguridad (hallazgos, estado y hardening).
-- `docs/MEJORAS.md`: hoja de ruta de mejoras futuras.
+- `docs/ROADMAP.md`: hoja de ruta de mejoras futuras.
 - `docs/API.md`: referencia de los endpoints HTTP y sus parámetros.
 
 ## [0.1.0] - 2026-10-20

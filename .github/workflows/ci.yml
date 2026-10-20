@@ -1,0 +1,88 @@
+name: Build & Release
+
+# ---------------------------------------------------------------------------
+# Flujo de CI/CD de PicoReflex (Raspberry Pi Pico W, Pico SDK 2.3.0).
+#
+#  - En cada push a `main` y en cada Pull Request: compila el firmware y sube
+#    el .uf2/.elf/.hex como artefacto (verificación de que compila).
+#  - En cada push de un TAG `v*` (p. ej. v0.1.2): además crea un Release de
+#    GitHub con el firmware adjunto y notas auto-generadas.
+#
+# Para publicar una release: actualizar CHANGELOG.md, subir la versión en
+# CMakeLists.txt (pico_set_program_version) y ejecutar:
+#     git tag vX.Y.Z && git push origin vX.Y.Z
+# ---------------------------------------------------------------------------
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:   # Permite dispararlo manualmente desde la pestaña Actions.
+
+permissions:
+  contents: write     # Necesario para crear releases y subir artefactos.
+
+jobs:
+  build:
+    name: Compilar firmware (Pico W)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Instalar toolchain ARM (arm-none-eabi-gcc) + CMake + Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build \
+            gcc-arm-none-eabi libnewlib-arm-none-eabi libstdc++-arm-none-eabi-newlib \
+            git python3
+
+      - name: Verificar versión del compilador
+        run: arm-none-eabi-gcc --version | head -n 1
+
+      - name: Cache del pico-sdk (2.3.0)
+        id: cache-sdk
+        uses: actions/cache@v4
+        with:
+          path: pico-sdk
+          key: pico-sdk-2.3.0-v1
+
+      - name: Clonar pico-sdk (con submódulos)
+        if: steps.cache-sdk.outputs.cache-hit != 'true'
+        run: |
+          git clone --depth 1 --branch 2.3.0 \
+            --recurse-submodules --shallow-submodules \
+            https://github.com/raspberrypi/pico-sdk.git pico-sdk
+
+      - name: Configurar CMake
+        env:
+          PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+        run: |
+          cmake -B build -G Ninja \
+            -DPICO_SDK_PATH="$PICO_SDK_PATH" \
+            -DPICO_BOARD=pico_w \
+            -DCMAKE_BUILD_TYPE=Release
+
+      - name: Compilar
+        run: cmake --build build
+
+      - name: Subir artefacto (firmware)
+        uses: actions/upload-artifact@v4
+        with:
+          name: picoreflex-firmware
+          path: |
+            build/*.uf2
+            build/*.elf
+            build/*.hex
+
+      - name: Crear Release (solo en tags v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/*.uf2
+            build/*.elf
+          generate_release_notes: true

@@ -147,6 +147,30 @@ struct Builder {
 
 // =============================================================================
 // Aplicación de configuración desde la query string
+// Escapa los caracteres especiales de HTML para evitar XSS al insertar datos
+// controlados por el usuario (el nombre del jugador) dentro del HTML de respuesta.
+static void html_escape(const char* src, char* dst, size_t n) {
+    size_t i = 0;
+    while (*src && i + 1u < n) {
+        const char* rep = nullptr;
+        switch (*src) {
+            case '<':  rep = "&lt;";    break;
+            case '>':  rep = "&gt;";    break;
+            case '&':  rep = "&amp;";   break;
+            case '"':  rep = "&quot;";  break;
+            case '\'': rep = "&#39;";   break;
+            default:   break;
+        }
+        if (rep) {
+            while (*rep && i + 1u < n) dst[i++] = *rep++;
+        } else {
+            dst[i++] = *src;
+        }
+        src++;
+    }
+    dst[i] = '\0';
+}
+
 // =============================================================================
 static void apply_config(const char* query) {
     GameConfig cfg = config_get();
@@ -162,13 +186,25 @@ static void apply_config(const char* query) {
         cfg.mode = (GameMode)mode;
     }
 
-    int smin = get_int_param(query, "smin", (int)cfg.stimulus_min_ms);
-    int smax = get_int_param(query, "smax", (int)cfg.stimulus_max_ms);
-    if (smin > 0) cfg.stimulus_min_ms = (uint32_t)smin;
-    if (smax > 0 && smax >= cfg.stimulus_min_ms) cfg.stimulus_max_ms = (uint32_t)smax;
+    // Velocidad entre estímulos: se acota a un rango sano (50..60000 ms) y se
+    // garantiza smin <= smax, para que en game_logic el cálculo
+    // `span = smax - smin + 1` (sin signo) no haga wrap con valores inválidos.
+    uint32_t smin = (uint32_t)get_int_param(query, "smin", (int)cfg.stimulus_min_ms);
+    uint32_t smax = (uint32_t)get_int_param(query, "smax", (int)cfg.stimulus_max_ms);
+    if (smin == 0) smin = cfg.stimulus_min_ms;   // 0 = conservar valor actual.
+    if (smax == 0) smax = cfg.stimulus_max_ms;
+    if (smin < 50u)  smin = 50u;
+    if (smin > 60000u) smin = 60000u;
+    if (smax < smin) smax = smin;
+    if (smax > 60000u) smax = 60000u;
+    cfg.stimulus_min_ms = smin;
+    cfg.stimulus_max_ms = smax;
 
-    int rsec = get_int_param(query, "round", (int)cfg.round_seconds);
-    if (rsec > 0) cfg.round_seconds = (uint32_t)rsec;
+    uint32_t rsec = (uint32_t)get_int_param(query, "round", (int)cfg.round_seconds);
+    if (rsec == 0) rsec = cfg.round_seconds;
+    if (rsec < 1u)      rsec = 1u;
+    if (rsec > 3600u)   rsec = 3600u;
+    cfg.round_seconds = rsec;
 
     const char* name = find_param(query, "name");
     if (name) url_decode(name, cfg.user_name, sizeof(cfg.user_name));
@@ -265,8 +301,11 @@ static void build_page(const char* query, char* out, size_t out_len) {
              cfg.stimulus_max_ms);
     b.printf("<label>Ronda (s):</label><input name='round' value='%u'><br>",
              cfg.round_seconds);
+    // Escapa el nombre antes de insertarlo en el HTML (evita XSS almacenado).
+    char name_esc[96];
+    html_escape(cfg.user_name, name_esc, sizeof(name_esc));
     b.printf("<label>Nombre:</label><input name='name' value='%s' maxlength='15'><br>",
-             cfg.user_name);
+             name_esc);
 
     b.append("<button type='submit'>Guardar</button></form>");
     b.append("</div>");

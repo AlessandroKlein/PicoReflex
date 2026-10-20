@@ -32,4 +32,4 @@ Incluí:
 - No expongas el dispositivo directamente a internet: está pensado para redes
   locales (SoftAP propio o Wi-Fi de confianza).
 - Para entornos con terceros en la red, habilitá autenticación del panel web y
-  TLS (ver `docs/SEGURIDAD.md` y `docs/MEJORAS.md`).
+  TLS (ver `docs/SEGURIDAD.md` y `docs/ROADMAP.md`).
