@@ -50,7 +50,8 @@ cmake --build build
 
 1. Conectar a la red `PicoW-ReactionGame` (si quedó en AP) o a la IP que se
    muestre en el display (modo STA).
-2. Abrir `http://192.168.4.1` (AP) o la IP del dispositivo (STA).
+2. Abrir `http://192.168.4.1` (AP) o la IP del dispositivo (STA). En modo AP,
+   cualquier URL que abras redirige automáticamente a la página (captive portal).
 3. Desde la web: configurar semilla/dificultad/modo/velocidad/nombre, iniciar,
    detener y reiniciar estadísticas.
 4. Físicamente: presionar un botón para iniciar una ronda.

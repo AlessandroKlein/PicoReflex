@@ -37,6 +37,7 @@
 #include "display_driver.hpp"
 #include "game_logic.hpp"
 #include "battery_monitor.hpp"
+#include "captive_portal.hpp"
 #include "pin_defs.hpp"
 
 namespace web {
@@ -381,11 +382,12 @@ void init() {
 
 // Apaga la pila de red (llamado antes de que el Core 0 entre en DORMANT).
 static void network_down() {
+    captive::stop();        // Libera el servidor DNS (captive portal) si estaba.
     cyw43_arch_deinit();
 }
 
-// Levanta la pila de red (STA -> SoftAP) y el servidor HTTP. Se llama al
-// arrancar y de nuevo tras cada despertar de DORMANT.
+// Levanta la pila de red (STA -> SoftAP), el captive portal (si AP) y el
+// servidor HTTP. Se llama al arrancar y de nuevo tras cada despertar de DORMANT.
 static void network_up() {
     if (cyw43_arch_init()) {
         return;   // En hardware real no debería fallar.
@@ -405,11 +407,12 @@ static void network_up() {
                       a & 0xffu, (a >> 8) & 0xffu, (a >> 16) & 0xffu, (a >> 24) & 0xffu);
         system_status_update_network(true, false, ip);
     } else {
-        // Falló STA -> conmuta a Access Point (SoftAP).
+        // Falló STA -> conmuta a Access Point (SoftAP) + captive portal.
         g_is_ap = true;
         cyw43_arch_disable_sta_mode();
         cyw43_arch_enable_ap_mode(AP_SSID, AP_PASSWORD, CYW43_AUTH_WPA2_AES_PSK);
         system_status_update_network(false, true, AP_IP);
+        captive::init();    // DNS en puerto 53 -> 192.168.4.1 (redirección).
     }
 
     http_server_init();

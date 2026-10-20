@@ -30,7 +30,8 @@ las siguientes características concretas:
   modo, velocidad entre estímulos, duración de ronda y nombre, además de ver
   estadísticas (promedio, mejor tiempo, tasa de acierto) y el nivel de batería.
 - **Conectividad redundante:** Station (STA) con *timeout* de 10 s y respaldo en
-  Access Point (`PicoW-ReactionGame`, IP `192.168.4.1`).
+  Access Point (`PicoW-ReactionGame`, IP `192.168.4.1`) con **captive portal**
+  (servidor DNS en puerto 53 que redirige toda consulta a `192.168.4.1`).
 - **Medición de batería** por ADC (VSYS/3) con estimación de porcentaje y alerta
   de batería baja (< 15 %).
 - **Almacenamiento no volátil** en Flash (récords/ranking, nombre y última

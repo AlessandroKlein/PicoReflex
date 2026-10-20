@@ -49,6 +49,7 @@ PicoReflex/
 │   ├── battery_monitor.hpp   # ADC batería
 │   ├── flash_storage.hpp     # Persistencia en Flash
 │   ├── web_server.hpp        # Servidor HTTP + Wi-Fi
+│   ├── captive_portal.hpp    # Servidor DNS (captive portal, modo AP)
 │   └── font5x7.hpp           # Fuente 5x7 (generada por tools/gen_font.py)
 ├── src/
 │   ├── main.cpp              # Arranque de ambos núcleos
@@ -58,7 +59,8 @@ PicoReflex/
 │   ├── display_driver.cpp
 │   ├── battery_monitor.cpp
 │   ├── flash_storage.cpp
-│   └── web_server.cpp        # HTTP + Wi-Fi + display (Core 1)
+│   ├── web_server.cpp        # HTTP + Wi-Fi + display (Core 1)
+│   └── captive_portal.cpp    # DNS 53 -> 192.168.4.1 (captive portal)
 ├── tools/
 │   └── gen_font.py           # Generador de la fuente 5x7
 └── docs/
@@ -107,6 +109,7 @@ cyw43_arch_init()
             |-- SÍ -> STA (LED fijo) + DHCP -> IP
             |-- NO -> disable_sta + enable_ap_mode("PicoW-ReactionGame")
             |         IP 192.168.4.1 (LED parpadea)
+            |         captive::init()  -> DNS puerto 53 -> 192.168.4.1
       |
       v
 http_server_init()  (lwIP raw API, puerto 80)

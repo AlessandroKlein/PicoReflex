@@ -57,6 +57,7 @@ add_executable(PicoReflex
     src/battery_monitor.cpp
     src/flash_storage.cpp
     src/web_server.cpp
+    src/captive_portal.cpp
 )
 
 pico_set_program_name(PicoReflex "PicoReflex")

@@ -235,3 +235,19 @@ Documentación oficial de referencia (carpeta raíz):
   `printf()` sobre el puerto USB; UART deshabilitado.
 - **Referencia:**
   - [pico_stdio](https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#pico_stdio)
+
+---
+
+## 15. Captive portal (DNS en modo Access Point)
+
+- **Decisión:** En modo SoftAP se levanta un **servidor DNS mínimo** (API raw UDP
+  de lwIP, puerto 53) que responde a toda consulta con la IP `192.168.4.1`
+  (registro A). Así el navegador del usuario es redirigido a la página de
+  configuración sin importar la URL que escriba.
+- **Por qué:** los dispositivos modernos validan la conexión con un "captive
+  portal check" (resuelven un dominio de prueba). Responder el DNS con la IP
+  local captura ese chequeo y muestra la web embebida. Es el complemento natural
+  del DHCP que el CYW43 ya provee en modo AP.
+- **Referencia:**
+  - [lwIP raw UDP API](https://www.nongnu.org/lwip/2_1_x/group__udp__raw.html)
+  - Formato DNS: RFC 1035.
