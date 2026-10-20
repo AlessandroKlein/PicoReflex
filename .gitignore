@@ -1,2 +1,5 @@
 build
 !.vscode/*
+# Artefactos del test del frontend (tools/web_preview)
+web_preview.exe
+web_preview_*.html

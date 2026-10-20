@@ -306,8 +306,8 @@ void http_server_init() {
 // Inicialización y bucle del Core 1
 // =============================================================================
 void init() {
-    // Medición de batería (ADC). Se hace en el Core 1 porque requiere el lock
-    // del CYW43 (GPIO29 = VSYS/3 y WL_CLK compartidos); ver battery_monitor.cpp.
+    // Medición de batería (ADC, divisor externo en GPIO26). Se hace en el Core 1
+    // porque es quien publica el estado (batería) para la web y el display.
     battery::init();
 }
 

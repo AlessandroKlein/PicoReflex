@@ -1,16 +1,16 @@
 /**
  * @file   battery_monitor.hpp
- * @brief  Medición de tensión de batería (VSYS) y estimación de porcentaje.
+ * @brief  Medición de tensión de batería (ADC) y estimación de porcentaje.
  *
- * En la Pico W, el pin GPIO29 (ADC3) mide VSYS a través de un divisor resistivo
- * interno de 3:1 (VSYS/3), y ADEMÁS es el reloj SPI (WL_CLK) del chip CYW43439.
- * Por eso toda lectura del ADC debe hacerse mientras el CYW43 NO esté usando el
- * bus SPI (ver board header boards/pico_w.h: CYW43_USES_VSYS_PIN).
+ * La batería se mide con un divisor resistivo EXTERNO en GPIO26 (ADC0):
+ *   R1 = 10 kΩ (batería -> pin ADC), R2 = 22 kΩ (pin ADC -> GND).
+ *   Vbat = Vpin * (R1 + R2) / R2 = Vpin * 32 / 22.
+ *
+ * Se usa GPIO26 porque está libre en la Pico W; GPIO29 (ADC3) está ocupado por
+ * el SPI del Wi-Fi y por el divisor interno VSYS/3.
  *
  * Referencias:
  *  - hardware_adc: https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_adc
- *  - pico_cyw43_arch (cyw43_arch_lwip_begin/end):
- *    https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#pico_cyw43_arch
  */
 
 #ifndef PICO_REFLEX_BATTERY_MONITOR_HPP

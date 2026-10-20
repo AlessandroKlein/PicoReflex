@@ -36,7 +36,7 @@ Documentación oficial de referencia (carpeta raíz):
   | Pulsadores (x5) | GPIO 7..11 | Entradas con pull-up + IRQ |
   | Display I2C | GPIO 14/15 (I2C1) | SSD1306 |
   | Buzzer pasivo | GPIO 16 | PWM |
-  | Batería (ADC) | GPIO 29 (ADC3) | VSYS/3 |
+  | Batería (ADC) | GPIO 26 (ADC0) | Divisor externo 10k/22k |
   | LED onboard | CYW43 | Indicador Wi-Fi |
 
 - **Por qué:** En la RP2040, `GPIO14/15` pertenecen a **I2C1** (no I2C0), por lo
@@ -147,21 +147,21 @@ Documentación oficial de referencia (carpeta raíz):
 
 ---
 
-## 9. Medición de batería (ADC + VSYS) y conflicto con el Wi-Fi
+## 9. Medición de batería (ADC + divisor resistivo externo)
 
-- **Decisión:** Se lee `ADC3` (GPIO29) que en la Pico W mide **VSYS/3** (divisor
-  resistivo interno 3:1). La lectura se envuelve entre
-  `cyw43_arch_lwip_begin()` / `cyw43_arch_lwip_end()`.
-- **Por qué:** En la Pico W, `GPIO29` es **también** el reloj SPI (`WL_CLK`) del
-  chip CYW43439. El header de la placa `boards/pico_w.h` define
-  `CYW43_USES_VSYS_PIN 1` y recomienda proteger el uso del GPIO con
-  `cyw43_thread_enter/exit` (equivalentes a `cyw43_arch_lwip_begin/end`).
-- **Conversión:** `VSYS = 3 · (adc/4095) · 3.3 V`. Porcentaje por curva LiPo 1S
-  (4.2 V = 100 %, 3.7 V = 50 %, 3.0 V = 0 %).
+- **Decisión:** Se mide la batería con un **divisor resistivo EXTERNO** en
+  **GPIO26 (ADC0)** — libre en la Pico W — con `R1 = 10 kΩ` (batería → pin ADC) y
+  `R2 = 22 kΩ` (pin ADC → GND).
+- **Por qué:** usar GPIO29 (ADC3) en la Pico W no es viable para un divisor
+  externo: ese pin está ocupado por el SPI del Wi-Fi (`WL_CLK`) y por el divisor
+  interno VSYS/3. GPIO26 evita ese conflicto por completo (no se necesita el lock
+  del CYW43).
+- **Conversión:** `Vpin = adc/4095 · 3.3 V`, y
+  `Vbat = Vpin · (R1 + R2) / R2 = Vpin · 32 / 22`. Porcentaje por curva LiPo 1S
+  (4.2 V = 100 %, 3.7 V = 50 %, 3.0 V = 0 %). Con 4.2 V en batería, el pin recibe
+  2.89 V (< 3.3 V de referencia, sin recorte).
 - **Referencia:**
   - [hardware_adc](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_adc)
-  - [pico_cyw43_arch](https://www.raspberrypi.com/documentation/pico-sdk/networking.html#pico_cyw43_arch)
-  - Board header `boards/pico_w.h` (comentarios sobre `CYW43_USES_VSYS_PIN`)
 
 ---
 

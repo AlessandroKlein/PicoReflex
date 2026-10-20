@@ -1,24 +1,22 @@
 /**
  * @file   battery_monitor.cpp
- * @brief  Implementación de la medición de batería por ADC (VSYS).
+ * @brief  Implementación de la medición de batería por ADC (divisor externo).
  *
  * Detalles técnicos:
  *  - ADC de la RP2040: 12 bits (0..4095), tensión de referencia = 3.3 V.
- *  - En la Pico W, GPIO29 (ADC3) está conectado a VSYS/3 (divisor 3:1 interno).
- *    Por lo tanto:  VSYS = 3 * (adc / 4095) * 3.3 V.
- *  - GPIO29 también es WL_CLK (SPI del CYW43439): la lectura se protege con
- *    cyw43_arch_lwip_begin()/end() (== cyw43_thread_enter/exit), tal como indica
- *    el board header boards/pico_w.h.
+ *  - Divisor resistivo EXTERNO: R1 = 10 kΩ (batería -> pin ADC) y
+ *    R2 = 22 kΩ (pin ADC -> GND). Por lo tanto:
+ *        Vbat = Vpin * (R1 + R2) / R2 = Vpin * 32 / 22.
+ *  - Se usa GPIO26 (ADC0), libre en la Pico W (GPIO29 está ocupado por el Wi-Fi
+ *    y el divisor interno VSYS/3).
  *
  * Referencias:
- *  - adc_read()/adc_select_input(): hardware_adc
- *  - cyw43_arch_lwip_begin/end: pico_cyw43_arch
+ *  - adc_read()/adc_select_input()/adc_gpio_init(): hardware_adc
  */
 
 #include "battery_monitor.hpp"
 
 #include "hardware/adc.h"
-#include "pico/cyw43_arch.h"
 
 #include "pin_defs.hpp"
 
@@ -31,10 +29,9 @@ namespace battery {
 // Inicialización
 // -----------------------------------------------------------------------------
 void init() {
-    // Inicializa el ADC (configura el reloj del ADC, ~500 kS/s).
-    // NOTA: NO se llama adc_gpio_init(29): en la Pico W ese pin lo administra el
-    // driver del CYW43 (es el SPI CLK). El ADC3 puede leerlo igualmente.
+    // Inicializa el ADC y prepara GPIO26 (ADC0) como entrada analógica.
     adc_init();
+    adc_gpio_init(VSYS_PIN);
 }
 
 // -----------------------------------------------------------------------------
@@ -43,21 +40,18 @@ void init() {
 uint32_t read_voltage_mv() {
     uint32_t accum = 0;
 
-    // Protege la lectura: el GPIO29 es compartido con el SPI del Wi-Fi.
-    cyw43_arch_lwip_begin();
     adc_select_input(VSYS_ADC_CHANNEL);
     for (uint i = 0; i < BATTERY_SAMPLES; i++) {
         accum += adc_read();
     }
-    cyw43_arch_lwip_end();
 
     uint32_t avg = accum / BATTERY_SAMPLES;
 
-    // VSYS = 3 * (avg / 4095) * 3300 mV. Se usa aritmética entera (mV).
-    //   Vpin = avg * 3300 / 4095
-    //   VSYS = 3 * Vpin
+    // Tensión en el pin ADC: Vpin = avg * 3300 / 4095 (mV).
     uint32_t vpin_mv = (avg * 3300u) / 4095u;
-    return vpin_mv * 3u;
+
+    // Tensión de batería: Vbat = Vpin * (R1 + R2) / R2 = Vpin * 32 / 22.
+    return (vpin_mv * (VSYS_R1_OHM + VSYS_R2_OHM)) / VSYS_R2_OHM;
 }
 
 // -----------------------------------------------------------------------------

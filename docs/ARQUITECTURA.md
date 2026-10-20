@@ -32,7 +32,7 @@ batería, almacenamiento no volátil y doble núcleo.
     GPIO 2..6    GPIO 7..11    GPIO 16   GPIO 14/15
      (LEDs)     (pulsadores)   (buzzer)   (I2C1 SSD1306)
                           \      /
-                           ADC3 (GPIO29) -> VSYS/3 (batería)
+                           ADC0 (GPIO26) -> divisor externo 10k/22k (batería)
 ```
 
 ## 3. Estructura de archivos
@@ -161,11 +161,10 @@ Rutas HTTP:
 | Botón 0..4 | 7..11 | Pull-up interno, cierra a GND al pulsar |
 | SSD1306 SDA/SCL | 14/15 | I2C1, 400 kHz, dirección 0x3C |
 | Buzzer pasivo | 16 | PWM (onda cuadrada) |
-| Batería | 29 (ADC3) | VSYS/3, divisor 3:1 interno |
+| Batería | 26 (ADC0) | Divisor externo 10 kΩ/22 kΩ |
 | LED onboard | CYW43 | Estado de red (fijo=STA, blink=AP) |
 
-> La medición de VSYS en la Pico W comparte GPIO29 con el SPI del Wi-Fi; ver
-> DECISIONES.md §9 y DUDAS.md §1.
+> La batería se mide con un divisor externo en GPIO26; ver DECISIONES.md §9.
 
 ## 8. Estimación de consumo
 

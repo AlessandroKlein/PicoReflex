@@ -70,17 +70,18 @@
 #define BUZZER_PIN       16u         ///< GPIO del buzzer pasivo.
 
 // -----------------------------------------------------------------------------
-// Medición de batería (ADC)
+// Medición de batería (ADC + divisor resistivo EXTERNO)
 // -----------------------------------------------------------------------------
-// GPIO29 = ADC3. En la Pico W mide VSYS/3 mediante un divisor resistivo interno
-// 3:1, y ADEMÁS es el reloj SPI (WL_CLK) del chip CYW43439. Por eso la lectura
-// debe envolverse entre cyw43_thread_enter()/exit() (ver battery_monitor.cpp y
-// docs/DUDAS.md punto 1).
-#define VSYS_PIN         29u         ///< GPIO de medición de VSYS (ADC3).
-#define VSYS_ADC_CHANNEL 3u          ///< Canal ADC correspondiente a GPIO29.
-
-// Divisor resistivo interno de la Pico W: la tensión en el pin es VSYS/3.
-#define VSYS_DIVIDER     3.0f
+// Se usa un divisor externo: R1 entre la batería y el pin ADC, R2 entre el pin
+// ADC y GND. Por lo tanto:  Vbat = Vpin * (R1 + R2) / R2.
+// Con R1 = 10 kΩ y R2 = 22 kΩ  ->  Vbat = Vpin * 32 / 22.
+//
+// Se usa GPIO26 (ADC0), que está LIBRE en la Pico W. (GPIO29/ADC3 está ocupado
+// por el SPI del Wi-Fi y por el divisor interno VSYS/3, por eso NO se usa).
+#define VSYS_PIN         26u         ///< GPIO del ADC de batería (ADC0, libre).
+#define VSYS_ADC_CHANNEL 0u          ///< Canal ADC correspondiente a GPIO26.
+#define VSYS_R1_OHM      10000u      ///< Resistencia R1 (batería -> pin ADC).
+#define VSYS_R2_OHM      22000u      ///< Resistencia R2 (pin ADC -> GND).
 
 // -----------------------------------------------------------------------------
 // LED onboard de la Pico W (chip CYW43)

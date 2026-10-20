@@ -40,8 +40,8 @@ las siguientes características concretas:
 - **Conectividad redundante:** Station (STA) con *timeout* de 10 s y respaldo en
   Access Point (`PicoW-ReactionGame`, IP `192.168.4.1`) con **captive portal**
   (servidor DNS en puerto 53 que redirige toda consulta a `192.168.4.1`).
-- **Medición de batería** por ADC (VSYS/3) con estimación de porcentaje y alerta
-  de batería baja (< 15 %).
+- **Medición de batería** por ADC con divisor resistivo externo (10 kΩ/22 kΩ) en
+  GPIO26, con estimación de porcentaje y alerta de batería baja (< 15 %).
 - **Almacenamiento no volátil** en Flash (récords/ranking, nombre y última
   semilla).
 - **Doble núcleo:** Core 0 (juego) y Core 1 (red + display).
@@ -63,7 +63,8 @@ verificación de consumo en hardware (ver `docs/DECISIONES.md` §13).
 - Pulsadores entre GPIO 7–11 y GND (pull-up interno de la RP2040).
 - Display SSD1306 a I2C1 (SDA=GPIO14, SCL=GPIO15) con pull-ups de 4.7 kΩ.
 - Buzzer pasivo a GPIO16 (PWM).
-- Medición de batería en GPIO29 (ADC3), que en la Pico W mide VSYS/3.
+- Medición de batería en GPIO26 (ADC0) mediante divisor externo 10 kΩ/22 kΩ
+  (R1 entre batería y pin, R2 entre pin y GND).
 - LED onboard controlado por el CYW43 (estado de red).
 
 #### Software
@@ -79,8 +80,8 @@ y el Pico SDK. Los puntos clave son:
 - `web_server.cpp` (Core 1) gestiona `cyw43_arch` (STA/AP, reconexión) y es el
   **backend** HTTP (ruteo/parseo) con la API raw de lwIP; `web_ui.cpp` es el
   **frontend** que genera las páginas HTML (`web_ui::render`).
-- `battery_monitor.cpp` lee el ADC protegiendo la lectura con
-  `cyw43_arch_lwip_begin/end()` (GPIO29 compartido con el SPI del Wi-Fi).
+- `battery_monitor.cpp` lee el ADC (GPIO26/ADC0) y aplica el factor del divisor
+  externo `×32/22`.
 - `flash_storage.cpp` persiste récords y configuración (Wi-Fi, OLED, cuenta
   regresiva) con `flash_safe_execute()` (estructura `PersistentData` v2).
 - `display_driver.cpp` dibuja texto 5×7 en el SSD1306 y permite apagarlo
@@ -100,9 +101,9 @@ Wi-Fi/lwIP) en un dispositivo funcional y reproducible.
 
 **Dificultades encontradas:**
 
-1. **GPIO29 compartido** entre el ADC (VSYS/3) y el SPI del CYW43 en la Pico W:
-   obligó a proteger cada lectura del ADC con el *lock* del CYW43, y a mover la
-   medición de batería al Core 1 (que es quien inicializa el Wi-Fi).
+1. **GPIO29 ocupado en la Pico W** por el SPI del Wi-Fi y el divisor interno VSYS/3:
+   se resolvió midiendo la batería con un divisor externo en GPIO26 (ADC0), que
+   evita el conflicto por completo.
 2. **PRNG determinista:** `pico_rand` no permite fijar semilla, por lo que se
    implementó un `xorshift32` propio para el modo determinista.
 3. **Escritura segura en Flash con dos núcleos:** se resolvió con
@@ -124,38 +125,40 @@ La RP2040 dispone de un **ADC SAR** (aproximaciones sucesivas) de **12 bits**
 (0–4095) con 5 entradas multiplexadas: 4 en los pines GPIO 26–29 (ADC0–ADC3) y
 una interna para el sensor de temperatura. Su tensión de referencia es de 3.3 V.
 
-En la **Pico W**, el pin **GPIO29 (ADC3)** está conectado a **VSYS a través de un
-divisor resistivo interno 3:1**, de modo que la tensión medida en el pin es
-`VSYS/3`. Esto permite monitorizar una batería LiPo/Li-Ion de 1 celda
-(3.0–4.2 V) conectada a VSYS.
+En la **Pico W**, la batería se mide con un **divisor resistivo externo** en
+**GPIO26 (ADC0)**: `R1 = 10 kΩ` (batería → pin ADC) y `R2 = 22 kΩ` (pin ADC → GND).
+Se eligió GPIO26 porque está libre; GPIO29 (ADC3) está ocupado por el SPI del
+Wi-Fi y por el divisor interno VSYS/3.
 
 ### Configuración (SDK)
 
 - `adc_init()`: habilita el ADC y configura su reloj (~500 kS/s con reloj
   independiente de 48 MHz).
-- `adc_select_input(3)`: selecciona la entrada ADC3 (GPIO29).
+- `adc_gpio_init(26)`: configura GPIO26 como entrada analógica (función NULL,
+  pulls y receptor digital deshabilitados).
+- `adc_select_input(0)`: selecciona la entrada ADC0 (GPIO26).
 - `adc_read()`: inicia una conversión y devuelve el valor (0–4095).
-- **Particularidad Pico W:** GPIO29 también es `WL_CLK` (SPI del CYW43439). Para
-  no chocar con la radio, la lectura se envuelve entre `cyw43_arch_lwip_begin()` y
-  `cyw43_arch_lwip_end()` (ver `battery_monitor.cpp`).
 
 ### Conversión tensión → porcentaje
 
 ```
-Vpin = adc · 3300 / 4095        (mV)
-VSYS = 3 · Vpin                 (divisor 3:1)
+Vpin = adc · 3300 / 4095              (mV)
+Vbat = Vpin · (R1 + R2) / R2
+     = Vpin · 32 / 22                 (divisor 10k/22k)
 ```
 
-El porcentaje se obtiene por interpolación lineal de la curva de descarga de una
-celda LiPo: 4200 mV → 100 %, 3700 mV → 50 %, 3000 mV → 0 %. Se promedian 16
-muestras para reducir ruido. Se genera alerta por batería baja (< 15 %).
+Con una batería a 4.2 V, el pin recibe `4.2 · 22/32 ≈ 2.89 V`, por debajo de la
+referencia de 3.3 V (sin recorte). El porcentaje se obtiene por interpolación
+lineal de la curva de descarga de una celda LiPo: 4200 mV → 100 %, 3700 mV →
+50 %, 3000 mV → 0 %. Se promedian 16 muestras para reducir ruido. Se genera alerta
+por batería baja (< 15 %).
 
 ### Características relevantes
 
-- Resolución: 12 bits (1 LSB ≈ 0.8 mV; sobre VSYS ≈ 2.4 mV por LSB tras el ×3).
-- Entradas compartidas con GPIO; en Pico W, ADC3 compartido con el Wi-Fi.
+- Resolución: 12 bits (1 LSB ≈ 0.8 mV en el pin; ≈ 1.17 mV sobre Vbat tras ×32/22).
+- Entradas compartidas con GPIO; se usa ADC0 (GPIO26), libre en la Pico W.
 - Posibilidad de muestreo por *round-robin* y DMA (no usado en la medición, que
-  es por *polling* protegido).
+  es por *polling* simple).
 
 ---
 

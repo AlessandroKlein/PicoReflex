@@ -4,6 +4,18 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.2.1] - 2026-10-20
+
+### Corregido
+- **Medición de batería**: se reemplazó el divisor interno VSYS/3 por un
+  **divisor externo** (R1 = 10 kΩ batería→ADC, R2 = 22 kΩ ADC→GND) en **GPIO26
+  (ADC0)**. Conversión `Vbat = Vpin · 32/22`. GPIO26 está libre en la Pico W
+  (evita el conflicto de GPIO29 con el Wi-Fi).
+
+### Añadido
+- **Test del frontend en el host** (`tools/web_preview/`): compila `web_ui.cpp`
+  con mocks y genera el HTML de las 6 rutas + prueba de escape anti-XSS.
+
 ## [0.2.0] - 2026-10-20
 
 ### Añadido
