@@ -52,11 +52,14 @@ void refresh_display();
 // -----------------------------------------------------------------------------
 // Credenciales del AP (modo respaldo cuando falla la conexión STA):
 //   SSID:     PicoW-ReactionGame
-//   Clave:    12345678
 //   IP:       192.168.4.1
+//   Seguridad: AP_OPEN 1 = abierto (sin clave); 0 = WPA2 con AP_PASSWORD.
+//     Por defecto se usa ABIERTO: el AP WPA2 del CYW43 da problemas de
+//     compatibilidad con varios teléfonos ("No fue posible conectarse a la red").
 #define HTTP_PORT     80u
 #define AP_SSID       "PicoW-ReactionGame"
-#define AP_PASSWORD   "12345678"   // WPA2 exige al menos 8 caracteres.
+#define AP_PASSWORD   "12345678"   // Clave WPA2 (solo si AP_OPEN = 0).
+#define AP_OPEN       1            // 1 = AP abierto (recomendado), 0 = WPA2.
 #define AP_IP         "192.168.4.1"
 #define STA_TIMEOUT_MS 10000u      // Tiempo máximo intentando STA (10 s).
 
@@ -358,10 +361,15 @@ static void network_up() {
         // Falló STA -> conmuta a Access Point (SoftAP) + captive portal.
         g_is_ap = true;
         cyw43_arch_disable_sta_mode();
+#if AP_OPEN
+        cyw43_arch_enable_ap_mode(AP_SSID, nullptr, CYW43_AUTH_OPEN);
+        printf("[web] Modo AP (ABIERTO): %s / IP %s\n", AP_SSID, AP_IP);
+#else
         cyw43_arch_enable_ap_mode(AP_SSID, AP_PASSWORD, CYW43_AUTH_WPA2_MIXED_PSK);
+        printf("[web] Modo AP: %s / clave %s / IP %s\n", AP_SSID, AP_PASSWORD, AP_IP);
+#endif
         system_status_update_network(false, true, AP_IP);
         captive::init();    // DNS en puerto 53 -> 192.168.4.1 (redirección).
-        printf("[web] Modo AP: %s / clave %s / IP %s\n", AP_SSID, AP_PASSWORD, AP_IP);
     }
 
     http_server_init();

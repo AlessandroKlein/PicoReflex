@@ -56,16 +56,15 @@ Cuando la Pico W no logra conectarse a la red STA, levanta su propio Access Poin
 | Campo | Valor |
 |---|---|
 | **Red (SSID)** | `PicoW-ReactionGame` |
-| **Clave** | `12345678` |
+| **Seguridad** | **Abierto** (sin clave) |
 | **IP del panel** | `192.168.4.1` |
 
-> Si tu dispositivo no puede conectarse a la red con la clave `12345678`, probá
-> "olvidar" la red en el teléfono y volver a conectarte (el AP usa WPA2 mixto).
-> Verificá también que la Pico no se haya conectado a una red STA guardada en
-> Flash (en ese caso el AP no aparece).
+> Por defecto el AP es **ABIERTO** (sin clave): el AP WPA2 del CYW43 da problemas
+> de compatibilidad con varios teléfonos ("No fue posible conectarse a la red").
+> Para habilitar WPA2, poné `AP_OPEN 0` en `src/web_server.cpp` (clave `12345678`).
 
-1. Conectar a la red `PicoW-ReactionGame` con la clave `12345678` (si quedó en
-   AP) o a la IP que se muestre en el display (modo STA).
+1. Conectar a la red `PicoW-ReactionGame` (si quedó en AP) o a la IP que se
+   muestre en el display (modo STA).
 2. Abrir `http://192.168.4.1` (AP) o la IP del dispositivo (STA). En modo AP,
    cualquier URL que abras redirige automáticamente a la página (captive portal).
 3. Desde la web (páginas separadas): semilla (`/seed`), juego (`/game`), OLED

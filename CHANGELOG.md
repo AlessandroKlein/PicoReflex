@@ -4,6 +4,13 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.2.5] - 2026-10-20
+
+### Corregido
+- **AP abierto por defecto**: el Access Point ahora es **abierto (sin clave)**.
+  El AP WPA2 del CYW43 daba "No fue posible conectarse a la red" en varios
+  teléfonos. Se puede volver a WPA2 con `AP_OPEN 0` en `src/web_server.cpp`.
+
 ## [0.2.4] - 2026-10-20
 
 ### Añadido
