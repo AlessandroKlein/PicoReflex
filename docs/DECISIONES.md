@@ -335,3 +335,38 @@ Documentación oficial de referencia (carpeta raíz):
 - **Referencia:**
   - [pico_sync (critical_section)](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_sync)
     para proteger el acceso al historial entre núcleos.
+
+## 21. Servidor DHCP en modo Access Point (fix de "conecta y se desconecta")
+
+- **Decisión:** se integró un **servidor DHCP** (`src/dhcpserver.c`, código MIT de
+  MicroPython vía [pico-examples](https://github.com/raspberrypi/pico-examples/tree/master/pico_w/wifi/access_point))
+  que asigna IPs `192.168.4.16`–`192.168.4.23` a los clientes del AP.
+- **Por qué (causa raíz):** el CYW43 **no trae servidor DHCP en modo AP** (la opción
+  `CYW43_NETUTILS` está desactivada por defecto). Sin DHCP, el teléfono se asociaba
+  a `PicoW-ReactionGame` pero **nunca recibía IP**, por eso "conectaba y se
+  desconectaba". El ejemplo oficial lo deja explícito: `dhcp_server_init(...)`.
+- **Nota:** el AP se dejó **abierto** (sin clave) porque el WPA2 del CYW43 da
+  problemas de compatibilidad con varios teléfonos; se puede volver a WPA2 con
+  `AP_OPEN 0` en `src/web_server.cpp`.
+
+## 22. DORMANT condicionado al estado del Wi-Fi
+
+- **Decisión:** el modo DORMANT (bajo consumo, < 2 mA) **solo se activa si el Wi-Fi
+  está apagado** (sin STA ni AP). Si la red está activa, el dispositivo permanece
+  despierto.
+- **Por qué:** el DORMANT apaga el Wi-Fi (handshake `g_sleep_request`/`g_sleep_ready`
+  → `cyw43_arch_deinit`), dejando el servidor web inaccesible ("tardó demasiado en
+  responder"). Como la web de configuración necesita la red siempre viva, se evitó
+  el conflicto condicionando el sueño al estado de red.
+
+## 23. FreeRTOS: análisis hecho, integración revertida
+
+- **Decisión:** se analizó e intentó FreeRTOS (SMP, 2 núcleos) en v0.3.0, pero
+  **rompía el arranque del Wi-Fi**, así que se revirtió en v0.3.1 al dual-core
+  manual (`multicore_launch_core1`). El análisis completo queda en
+  [`FREERTOS.md`](FREERTOS.md).
+- **Por qué (causa):** con `pico_cyw43_arch_lwip_sys_freertos`, `cyw43_arch_init()`
+  debe ejecutarse en `main()` **antes** de `vTaskStartScheduler()` (y no dentro de
+  una tarea, como quedó en el primer intento). Pendiente re-integrarlo con esa
+  corrección y verificarlo en hardware.
+
