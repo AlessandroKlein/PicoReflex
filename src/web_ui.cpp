@@ -12,8 +12,7 @@
  *   "/seed"    -> Semilla del PRNG.
  *   "/game"    -> Dificultad, modo, velocidad, duración de ronda y cuenta regresiva.
  *   "/display" -> Habilitar/deshabilitar el OLED.
- *   "/wifi"    -> Credenciales Wi-Fi (SSID/contraseña).
- *   "/player"  -> Nombre del jugador.
+ *   "/wifi"    -> Credenciales Wi-Fi (SSID/contraseña + búsqueda de redes).
  *
  * Seguridad: todo texto controlado por el usuario (nombre, SSID, contraseña) se
  * escapa con html_escape() antes de insertarse en el HTML (prevención de XSS).
@@ -164,7 +163,6 @@ void render_nav(Builder& b, const char* active) {
         {"Juego",   "/game"},
         {"Display", "/display"},
         {"Wi-Fi",   "/wifi"},
-        {"Jugador", "/player"},
     };
 
     b.append("<nav>");
@@ -379,35 +377,44 @@ void render_wifi(Builder& b) {
 
     b.append("<div class='card'><h3>Credenciales (modo Station)</h3>");
     b.append("<form method='get' action='/wifi'>");
-    b.printf("<label>SSID:</label><input name='ssid' value='%s'><br>", ssid_esc);
-    b.printf("<label>Contraseña:</label><input type='password' name='pass' value='%s'><br>",
-             pass_esc);
+    // SSID con datalist para autocompletar; el botón "Buscar redes" lo puebla vía JS.
+    b.printf("<label>SSID:</label><input name='ssid' id='ssid' value='%s' "
+             "list='ssid-list' autocomplete='off'><br>", ssid_esc);
+    b.append("<datalist id='ssid-list'></datalist>");
+    b.append("<button type='button' id='scan-btn' onclick='scanWifi()'>Buscar redes</button>");
+    b.append("<span class='muted' id='scan-msg'></span><br>");
+    b.printf("<label>Contraseña:</label><input type='password' id='pass' name='pass' "
+             "value='%s'><br>", pass_esc);
+    b.append("<label class='muted'><input type='checkbox' id='show-pass' "
+             "onchange='togglePass()'> Mostrar contraseña</label><br>");
     b.append("<button type='submit'>Guardar</button></form>");
     b.append("</div>");
+
+    // JavaScript: búsqueda de redes (poll de /scan) + toggle de contraseña.
+    b.append("<script>");
+    b.append("function togglePass(){var p=document.getElementById('pass');"
+             "p.type=(p.type==='password')?'text':'password';}");
+    b.append("function scanWifi(){var btn=document.getElementById('scan-btn');"
+             "var msg=document.getElementById('scan-msg');"
+             "var dl=document.getElementById('ssid-list');var tries=0;"
+             "btn.disabled=true;msg.textContent='Buscando...';");
+    b.append("function attempt(){fetch('/scan').then(function(r){return r.json();})"
+             ".then(function(list){tries++;"
+             "if(list&&list.length>0){dl.innerHTML='';"
+             "for(var i=0;i<list.length;i++){var o=document.createElement('option');"
+             "o.value=list[i];dl.appendChild(o);}"
+             "msg.textContent='Se encontraron '+list.length+' redes.';btn.disabled=false;}"
+             "else if(tries>=6){dl.innerHTML='';msg.textContent='No se encontraron redes.';"
+             "btn.disabled=false;}else{setTimeout(attempt,700);}})"
+             ".catch(function(){tries++;"
+             "if(tries>=6){msg.textContent='No se encontraron redes.';btn.disabled=false;}"
+             "else{setTimeout(attempt,700);}});}");
+    b.append("attempt();}");
+    b.append("</script>");
 
     render_footer(b);
 }
 
-// --- "/player" --------------------------------------------------------------
-void render_player(Builder& b) {
-    GameConfig cfg = config_get();
-
-    char name_esc[96];
-    html_escape(cfg.user_name, name_esc, sizeof(name_esc));
-
-    render_head(b, "Jugador");
-    b.append("<h1>Jugador</h1>");
-    render_nav(b, "/player");
-
-    b.append("<div class='card'><h3>Nombre</h3>");
-    b.append("<form method='get' action='/player'>");
-    b.printf("<label>Nombre:</label><input name='name' value='%s' maxlength='15'><br>",
-             name_esc);
-    b.append("<button type='submit'>Guardar</button></form>");
-    b.append("</div>");
-
-    render_footer(b);
-}
 
 } // namespace
 
@@ -431,8 +438,6 @@ bool render(const char* path, char* out, size_t out_len) {
         render_display(b);
     } else if (std::strcmp(path, "/wifi") == 0) {
         render_wifi(b);
-    } else if (std::strcmp(path, "/player") == 0) {
-        render_player(b);
     } else {
         return false;   // Ruta desconocida.
     }

@@ -4,6 +4,23 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.4.0] - 2026-10-20
+
+### Añadido
+- **Escaneo de redes Wi-Fi** en `/wifi`: botón "Buscar redes" que llena un
+  autocompletado (datalist) con los SSIDs detectados (`/scan`). Solo queda
+  escribir la contraseña.
+- **Mostrar/ocultar contraseña** en `/wifi` (checkbox).
+
+### Eliminado
+- Página `/player`: no había modo multijugador, así que el nombre de jugador dejó
+  de ser configurable por web (el campo interno `user_name` se mantiene con el
+  valor por defecto "JUGADOR").
+
+### Corregido
+- `/favicon.ico` devuelve 404 rápido (antes el navegador pedía el favicon y
+  demoraba/tildaba la carga de la página).
+
 ## [0.3.3] - 2026-10-20
 
 ### Corregido

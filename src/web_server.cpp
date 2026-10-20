@@ -91,6 +91,46 @@ static void ap_dhcp_stop() {
 }
 
 // -----------------------------------------------------------------------------
+// Escaneo de redes Wi-Fi (para autocompletar el SSID en /wifi)
+// -----------------------------------------------------------------------------
+// El escaneo es asíncrono (los resultados llegan por callback en el contexto de
+// bajo nivel del CYW43). Por eso NO se hace dentro de http_recv (que corre en ese
+// contexto): se pide con un flag y el bucle principal (Core 1) lo ejecuta,
+// bloqueando de forma segura y guardando el resultado en un caché.
+#define SCAN_MAX_SSIDS 20
+static volatile bool g_scan_requested = false;    ///< El bucle principal debe escanear.
+static volatile int  g_scan_count = 0;            ///< SSIDs encontrados en el caché.
+static char  g_scan_ssids[SCAN_MAX_SSIDS][33];    ///< Caché de SSIDs (máx 32+1).
+
+// Callback del escaneo: acumula SSIDs únicos (corre en el contexto del CYW43).
+static int scan_result_cb(void* env, const cyw43_ev_scan_result_t* result) {
+    (void)env;
+    if (result == nullptr || result->ssid_len == 0) return 0;
+    int len = (result->ssid_len < 32) ? result->ssid_len : 32;
+    // Ignora duplicados.
+    for (int i = 0; i < g_scan_count; i++) {
+        if (std::strncmp(g_scan_ssids[i], (const char*)result->ssid, len) == 0 &&
+            g_scan_ssids[i][len] == '\0') return 0;
+    }
+    if (g_scan_count >= SCAN_MAX_SSIDS) return 0;
+    std::memcpy(g_scan_ssids[g_scan_count], result->ssid, len);
+    g_scan_ssids[g_scan_count][len] = '\0';
+    g_scan_count++;
+    return 0;
+}
+
+// Ejecuta un escaneo (SOLO desde el bucle principal del Core 1) y actualiza el caché.
+static void wifi_scan_now() {
+    g_scan_count = 0;
+    cyw43_wifi_scan(&cyw43_state, nullptr, nullptr, scan_result_cb);
+    uint32_t start = to_ms_since_boot(get_absolute_time());
+    while (cyw43_wifi_scan_active(&cyw43_state)) {
+        if (to_ms_since_boot(get_absolute_time()) - start > 5000u) break;  // Timeout 5 s.
+        sleep_ms(20);
+    }
+}
+
+// -----------------------------------------------------------------------------
 // Buffer de respuesta HTTP (una conexión a la vez; ver nota en http_recv)
 // -----------------------------------------------------------------------------
 static char g_body[8192];   // Buffer de respuesta HTTP (HTML). La Home mide ~4.4 KB
@@ -215,12 +255,6 @@ static void handle_config(const char* path, const char* query) {
             wifi_changed = true;
         }
         changed = wifi_changed;
-    } else if (std::strncmp(path, "/player", 7) == 0) {
-        const char* name = find_param(query, "name");
-        if (name) {
-            url_decode(name, cfg.user_name, sizeof(cfg.user_name));
-            changed = true;
-        }
     }
 
     if (changed) {
@@ -313,6 +347,31 @@ err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
     }
     if (std::strstr(path, "connecttest") || std::strstr(path, "ncsi") || std::strstr(path, "redirect")) {
         send_http_response(tpcb, "200 OK", "text/plain", "Microsoft Connect Test"); // Windows.
+        return ERR_OK;
+    }
+    // Favicon y otros recursos estáticos: 404 rápido (evita que el navegador
+    // espere o pida la página completa como si fuera el favicon).
+    if (std::strncmp(path, "/favicon.ico", 12) == 0) {
+        send_http_response(tpcb, "404 Not Found", nullptr, nullptr);
+        return ERR_OK;
+    }
+
+    // --- Escaneo de redes Wi-Fi: devuelve el caché actual como JSON y pide ---
+    // --- un escaneo fresco al bucle principal (no bloquea en este contexto). ---
+    if (std::strncmp(path, "/scan", 5) == 0) {
+        g_scan_requested = true;   // El bucle principal ejecuta wifi_scan_now().
+        int r = 0;
+        r += std::snprintf(g_body + r, sizeof(g_body) - r, "[");
+        for (int i = 0; i < g_scan_count && r < (int)sizeof(g_body) - 8; i++) {
+            r += std::snprintf(g_body + r, sizeof(g_body) - r, "%s\"", (i ? "," : ""));
+            for (const char* s = g_scan_ssids[i]; *s && r < (int)sizeof(g_body) - 8; s++) {
+                if (*s == '"' || *s == '\\') { g_body[r++] = '\\'; }
+                g_body[r++] = *s;
+            }
+            g_body[r++] = '"';
+        }
+        std::snprintf(g_body + r, sizeof(g_body) - r, "]");
+        send_http_response(tpcb, "200 OK", "application/json", g_body);
         return ERR_OK;
     }
 
@@ -478,6 +537,14 @@ void run() {
             net_up = true;
             blink_last = (uint32_t)(time_us_32() / 1000u);
             batt_last  = blink_last;
+        }
+
+        // Escaneo de redes Wi-Fi solicitado desde /scan (autocompletar SSID).
+        if (g_scan_requested) {
+            g_scan_requested = false;
+            if (net_up) {
+                wifi_scan_now();
+            }
         }
 
         uint32_t now_ms = (uint32_t)(time_us_32() / 1000u);
