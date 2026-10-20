@@ -4,6 +4,13 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.4.4] - 2026-10-20
+
+### Cambiado
+- **AP con clave WPA2 de nuevo**: el Access Point vuelve a `WPA2` con clave
+  `12345678` (`AP_OPEN 0`). El fallo histórico del AP era el DHCP (faltaba),
+  no el WPA2; con DHCP ya funciona con clave.
+
 ## [0.4.3] - 2026-10-20
 
 ### Corregido (causa raíz del guardado de Wi-Fi)

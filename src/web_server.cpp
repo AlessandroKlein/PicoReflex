@@ -56,12 +56,12 @@ void refresh_display();
 //   SSID:     PicoW-ReactionGame
 //   IP:       192.168.4.1
 //   Seguridad: AP_OPEN 1 = abierto (sin clave); 0 = WPA2 con AP_PASSWORD.
-//     Por defecto se usa ABIERTO: el AP WPA2 del CYW43 da problemas de
-//     compatibilidad con varios teléfonos ("No fue posible conectarse a la red").
+//     Por defecto se usa WPA2 (clave 12345678). Históricamente el AP "no
+//     conectaba" por falta de servidor DHCP (v0.2.9); con DHCP ya funciona WPA2.
 #define HTTP_PORT     80u
 #define AP_SSID       "PicoW-ReactionGame"
 #define AP_PASSWORD   "12345678"   // Clave WPA2 (solo si AP_OPEN = 0).
-#define AP_OPEN       1            // 1 = AP abierto (recomendado), 0 = WPA2.
+#define AP_OPEN       0            // 0 = WPA2 (clave 12345678), 1 = abierto.
 #define AP_CHANNEL    1            // Canal 2.4 GHz fijo (1, 6 u 11). Estable.
 #define AP_IP         "192.168.4.1"
 #define STA_TIMEOUT_MS 10000u      // Tiempo máximo intentando STA (10 s).
