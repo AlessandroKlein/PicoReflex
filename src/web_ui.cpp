@@ -101,25 +101,48 @@ struct Builder {
 namespace {
 
 const char* kCSS =
-    "body{font-family:system-ui,sans-serif;background:#111;color:#eee;"
-    "max-width:680px;margin:0 auto;padding:16px;}"
-    "h1{color:#0f0;}"
-    "nav{background:#1c1c1c;border:1px solid #333;border-radius:8px;"
-    "padding:10px;margin:8px 0 16px;}"
-    "nav a{color:#0f0;text-decoration:none;margin-right:12px;}"
-    "nav a.active{font-weight:bold;border-bottom:2px solid #0f0;}"
-    ".card{background:#1c1c1c;border:1px solid #333;border-radius:8px;"
-    "padding:12px;margin:10px 0;}"
-    "label{display:inline-block;min-width:140px;margin:4px 0;}"
-    "input,select{background:#222;color:#eee;border:1px solid #444;"
-    "border-radius:4px;padding:4px;margin:2px 0;}"
-    "button{background:#0a0;color:#000;border:0;border-radius:4px;"
-    "padding:6px 12px;margin:4px 4px 4px 0;font-weight:bold;cursor:pointer;}"
-    "button.stop{background:#c00;color:#fff;}"
-    ".ok{color:#0f0;} .bad{color:#f00;}"
-    "table{width:100%;border-collapse:collapse;margin:8px 0;}"
-    "th,td{border:1px solid #333;padding:4px 8px;text-align:left;}"
-    "th{background:#222;}";
+    ":root{--bg:#0f1115;--surface:#1a1d24;--surface2:#22262f;"
+    "--border:#2c313c;--text:#e6e9ef;--muted:#9aa3b2;"
+    "--accent:#34d399;--accent-dim:#0b0f14;--danger:#f87171;--ok:#34d399;}"
+    "*{box-sizing:border-box;}"
+    "body{font-family:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;"
+    "background:var(--bg);color:var(--text);max-width:720px;margin:0 auto;"
+    "padding:16px;line-height:1.5;}"
+    "h1{color:var(--accent);font-size:1.55rem;margin:0 0 12px;}"
+    "h3{margin:0 0 10px;font-size:1rem;}"
+    "nav{display:flex;flex-wrap:wrap;gap:4px;background:var(--surface);"
+    "border:1px solid var(--border);border-radius:10px;padding:6px;margin:8px 0 16px;}"
+    "nav a{color:var(--muted);text-decoration:none;padding:7px 12px;border-radius:7px;"
+    "font-size:.9rem;transition:background .15s,color .15s;}"
+    "nav a:hover{background:var(--surface2);color:var(--text);}"
+    "nav a.active{background:var(--accent);color:var(--accent-dim);font-weight:600;}"
+    ".card{background:var(--surface);border:1px solid var(--border);border-radius:10px;"
+    "padding:14px;margin:10px 0;box-shadow:0 1px 3px rgba(0,0,0,.35);}"
+    "label{display:inline-block;min-width:150px;margin:4px 0;color:var(--muted);"
+    "font-size:.9rem;}"
+    "input,select{background:var(--surface2);color:var(--text);border:1px solid var(--border);"
+    "border-radius:6px;padding:6px 8px;margin:2px 0;font-size:.95rem;}"
+    "input:focus,select:focus{outline:none;border-color:var(--accent);}"
+    "button{background:var(--accent);color:var(--accent-dim);border:0;border-radius:6px;"
+    "padding:8px 14px;margin:4px 4px 4px 0;font-weight:600;cursor:pointer;font-size:.9rem;"
+    "transition:filter .15s,transform .05s;}"
+    "button:hover{filter:brightness(1.12);}"
+    "button:active{transform:translateY(1px);}"
+    "button.stop{background:var(--danger);color:#fff;}"
+    ".ok{color:var(--ok);font-weight:600;}"
+    ".bad{color:var(--danger);font-weight:600;}"
+    ".muted{color:var(--muted);font-size:.9rem;}"
+    "table{width:100%;border-collapse:collapse;margin:8px 0;font-size:.9rem;}"
+    "th,td{border-bottom:1px solid var(--border);padding:8px;text-align:left;}"
+    "thead th{background:var(--surface2);color:var(--muted);font-size:.78rem;"
+    "text-transform:uppercase;letter-spacing:.03em;}"
+    "tbody tr:nth-child(odd){background:rgba(255,255,255,.02);}"
+    "tbody tr:hover{background:rgba(52,211,153,.06);}"
+    "ul{margin:6px 0 6px 18px;padding:0;color:var(--text);}"
+    "li{margin:4px 0;}"
+    ".seed-example{display:inline-block;background:var(--surface2);border:1px solid var(--accent);"
+    "color:var(--accent);font-family:ui-monospace,'Cascadia Mono',Consolas,monospace;"
+    "padding:4px 10px;border-radius:6px;font-size:1.05rem;letter-spacing:.06em;}";
 
 // Escribe el <head> (con CSS) y abre <body>.
 void render_head(Builder& b, const char* title) {
@@ -212,9 +235,10 @@ void render_home(Builder& b) {
     // Tabla de tiempos de reacción (history[0] = más reciente).
     b.append("<div class='card'><h3>Últimos tiempos de reacción</h3>");
     if (st.history_count == 0u) {
-        b.append("<p>Sin datos todavía.</p>");
+        b.append("<p class='muted'>Sin datos todavía.</p>");
     } else {
-        b.append("<table><tr><th>#</th><th>Tiempo (ms)</th><th>Semilla</th><th>Dificultad</th></tr>");
+        b.append("<table><thead><tr><th>#</th><th>Tiempo (ms)</th>"
+                 "<th>Semilla</th><th>Dificultad</th></tr></thead><tbody>");
         for (uint32_t i = 0; i < st.history_count && i < GameStats::HISTORY_SIZE; i++) {
             b.printf("<tr><td>%u</td><td>%u ms</td><td>%u</td><td>%s</td></tr>",
                      (unsigned)(i + 1u),
@@ -222,7 +246,7 @@ void render_home(Builder& b) {
                      (unsigned)st.history[i].seed,
                      difficulty_name(st.history[i].difficulty));
         }
-        b.append("</table>");
+        b.append("</tbody></table>");
     }
     b.append("</div>");
 
@@ -244,13 +268,29 @@ void render_seed(Builder& b) {
     b.append("<h1>Semilla</h1>");
     render_nav(b, "/seed");
 
+    // Formulario.
     b.append("<div class='card'><h3>Semilla del PRNG</h3>");
+    b.append("<p class='muted'>La semilla define la secuencia de LEDs. Con el mismo "
+             "valor, la secuencia se repite exactamente (ideal para competencias "
+             "justas y pruebas repetibles).</p>");
     b.append("<form method='get' action='/seed'>");
-    b.printf("<label>Semilla (0 = aleatoria):</label><input name='seed' value='%u'>",
-             (unsigned)cfg.seed);
+    b.printf("<label>Semilla:</label><input name='seed' value='%u' inputmode='numeric' "
+             "pattern='[0-9]*' maxlength='10'>", (unsigned)cfg.seed);
     b.append("<br><button type='submit'>Guardar</button></form>");
-    b.append("<p>Con semilla 0 se usa entropía del hardware; con un valor fijo la "
-             "secuencia de LEDs es reproducible (ideal para competencias).</p>");
+    b.append("</div>");
+
+    // Explicación de rango y comportamiento.
+    b.append("<div class='card'><h3>¿Cómo funciona?</h3><ul>");
+    b.append("<li><b>Rango:</b> de <b>0</b> a <b>4294967295</b> (hasta 10 dígitos).</li>");
+    b.append("<li><b>0</b> = semilla <b>aleatoria</b> (usa entropía del hardware).</li>");
+    b.append("<li><b>Cualquier otro valor</b> = secuencia <b>determinista</b> y repetible.</li>");
+    b.append("</ul></div>");
+
+    // Ejemplo visual de una semilla válida.
+    b.append("<div class='card'><h3>Ejemplo</h3>");
+    b.append("<p>Una semilla válida de 5 dígitos:</p>");
+    b.append("<p><span class='seed-example'>12345</span> &nbsp;"
+             "<span class='muted'>(5 dígitos)</span></p>");
     b.append("</div>");
 
     render_footer(b);

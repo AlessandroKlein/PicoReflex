@@ -57,13 +57,20 @@ jobs:
             --recurse-submodules --shallow-submodules \
             https://github.com/raspberrypi/pico-sdk.git pico-sdk
 
+      - name: Clonar FreeRTOS-Kernel (V11.1.0)
+        run: |
+          git clone --depth 1 --branch V11.1.0 \
+            https://github.com/FreeRTOS/FreeRTOS-Kernel.git FreeRTOS-Kernel
+
       - name: Configurar CMake
         env:
           PICO_SDK_PATH: ${{ github.workspace }}/pico-sdk
+          FREERTOS_KERNEL_PATH: ${{ github.workspace }}/FreeRTOS-Kernel
         run: |
           cmake -B build -G Ninja \
             -DPICO_SDK_PATH="$PICO_SDK_PATH" \
             -DPICO_BOARD=pico_w \
+            -DFREERTOS_KERNEL_PATH="$FREERTOS_KERNEL_PATH" \
             -DCMAKE_BUILD_TYPE=Release
 
       - name: Compilar

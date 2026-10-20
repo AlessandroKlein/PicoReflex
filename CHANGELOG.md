@@ -4,6 +4,21 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.3.0] - 2026-10-20
+
+### Añadido
+- **FreeRTOS (SMP, 2 núcleos)**: reemplaza el arranque por `multicore_launch_core1`
+  con tareas `game_task` y `network_task` y `vTaskStartScheduler()`. Ver
+  `docs/FREERTOS.md` para el análisis completo.
+- **Frontend mejorado**: CSS moderno (variables, paleta oscura, navegación por
+  pestañas, tabla con filas alternadas) y página `/seed` con ejemplo de semilla
+  (rango 0–4294967295, 0 = aleatoria).
+
+### Cambiado
+- Wi-Fi/lwIP: `pico_cyw43_arch_lwip_threadsafe_background` →
+  `pico_cyw43_arch_lwip_sys_freertos` (`NO_SYS=0`, tarea `tcpip`).
+- `sleep_ms` → `vTaskDelay` en los bucles de tarea.
+
 ## [0.2.9] - 2026-10-20
 
 ### Corregido (raíz del problema del AP)
