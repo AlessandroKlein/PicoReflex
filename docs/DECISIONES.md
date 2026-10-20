@@ -1,0 +1,224 @@
+# Decisiones de Diseño — PicoReflex
+
+> Cada decisión técnica se justifica y se vincula a la documentación oficial del
+> Raspberry Pi Pico SDK. Los enlaces apuntan a la documentación generada por
+> Doxygen (índice) y a las páginas temáticas oficiales.
+
+Documentación oficial de referencia (carpeta raíz):
+
+- [Índice Doxygen del Pico SDK](https://www.raspberrypi.com/documentation/pico-sdk/index_doxygen.html)
+- [Hardware APIs](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html)
+- [High Level APIs](https://www.raspberrypi.com/documentation/pico-sdk/high_level.html)
+- [Third-party libraries](https://www.raspberrypi.com/documentation/pico-sdk/third_party.html)
+- [Networking](https://www.raspberrypi.com/documentation/pico-sdk/networking.html)
+- [Runtime Infrastructure](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html)
+- [Misc](https://www.raspberrypi.com/documentation/pico-sdk/misc.html)
+
+---
+
+## 1. Lenguaje y estándar: C++17
+
+- **Decisión:** Código en C++17 (`.cpp`/`.hpp`), compilado con `arm-none-eabi-g++`.
+- **Por qué:** La consigna (Idea.md) pide "C/C++" y estructura el proyecto en
+  `main.cpp` + módulos `.cpp`/`.hpp`. C++17 permite `enum class`, `static_assert`
+  y estructuras limpias sin costo de runtime adicional.
+- **Referencia:** [CMakeLists / pico_sdk_init en "Getting started"](https://www.raspberrypi.com/documentation/pico-sdk/index_doxygen.html)
+
+---
+
+## 2. Mapa de pines (GPIO)
+
+- **Decisión:** Se respeta la asignación de Idea.md §4:
+
+  | Periférico | Pin | Detalle |
+  |---|---|---|
+  | LEDs (x5) | GPIO 2..6 | Salidas digitales |
+  | Pulsadores (x5) | GPIO 7..11 | Entradas con pull-up + IRQ |
+  | Display I2C | GPIO 14/15 (I2C1) | SSD1306 |
+  | Buzzer pasivo | GPIO 16 | PWM |
+  | Batería (ADC) | GPIO 29 (ADC3) | VSYS/3 |
+  | LED onboard | CYW43 | Indicador Wi-Fi |
+
+- **Por qué:** En la RP2040, `GPIO14/15` pertenecen a **I2C1** (no I2C0), por lo
+  que se usa `i2c1`. No hay conflicto entre LEDs (2–6), botones (7–11), buzzer
+  (16) ni I2C (14/15).
+- **Referencia:**
+  - [hardware_gpio](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_gpio)
+  - [hardware_i2c](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_i2c)
+  - [hardware_pwm](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_pwm)
+  - [hardware_adc](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_adc)
+
+---
+
+## 3. PRNG: determinista por semilla con `xorshift32` + `pico_rand`
+
+- **Decisión:** El motor determinista es un `xorshift32` propio; el modo aleatorio
+  siembra con `get_rand_32()` de `pico_rand`.
+- **Por qué:** La API `pico_rand` ([pico/rand.h](https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#pico_rand))
+  **no expone una función para fijar la semilla** (se auto-siembra con ROSC,
+  timer, RAM hash, etc.). Para lograr una secuencia **idéntica en cada reinicio**
+  con `SEED = 12345`, se implementa un generador software trivial y sin estado
+  oculto (Marsaglia, "Xorshift RNGs", 2003). La propia Idea.md acepta
+  "pico_rand **o** xorshift/LCG en C++".
+- **Referencia:**
+  - [pico_rand](https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#pico_rand)
+  - `get_rand_32()` en `src/rp2_common/pico_rand/include/pico/rand.h`
+
+---
+
+## 4. Temporización de reacción en microsegundos
+
+- **Decisión:** El timestamp se captura con `time_us_32()` **dentro de la
+  interrupción GPIO** (flanco de bajada del pulsador). La resta
+  `t_final - t_inicial` en aritmética sin signo de 32 bits maneja el "wrap"
+  (~71.6 min) sin código especial.
+- **Por qué:** Capturar el contador en la propia IRQ minimiza la latencia y el
+  jitter; `time_us_32()` lee directamente el registro `TIMELR` del temporizador
+  hardware, con resolución de 1 µs.
+- **Referencia:**
+  - [hardware_timer / time_us_32](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_timer)
+  - [hardware_gpio / gpio_set_irq_enabled_with_callback](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_gpio)
+
+---
+
+## 5. DMA: "trace" hardware de los pulsadores
+
+- **Decisión:** Se usa **DMA con buffer en anillo** (`channel_config_set_ring`),
+  rítmado por un **slice PWM** como fuente de DREQ (`channel_config_set_dreq`),
+  para muestrear continuamente el registro `sio_hw->gpio_in` (estado crudo de los
+  5 pulsadores) **sin intervención de la CPU**.
+- **Por qué / aclaración técnica:** DMA *mueve* datos, no "mide" tiempo. La
+  medición de reacción en µs la aporta `time_us_32()` (punto §4). El DMA cumple
+  aquí el rol de *registrador ultrasensible por hardware*: captura el estado de
+  los botones a ~2 kHz de forma automática, liberando a la CPU (ver también
+  docs/DUDAS.md §5).
+- **Referencia:**
+  - [hardware_dma](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_dma)
+  - `channel_config_set_ring` / `channel_config_set_dreq` en
+    `src/rp2_common/hardware_dma/include/hardware/dma.h`
+
+---
+
+## 6. Dual-core (`pico_multicore`)
+
+- **Decisión:** `multicore_launch_core1()` arranca el Core 1.
+  - **Core 0:** juego, IRQ de botones, PWM (buzzer), DMA, Flash.
+  - **Core 1:** Wi-Fi (`cyw43_arch`), servidor HTTP (lwIP), display OLED, ADC de
+    batería.
+- **Comunicación inter-núcleo:** `critical_section_t` (pico/sync.h) para el
+  estado compartido y `queue_t` (pico/util/queue.h) para los eventos de control
+  Core1→Core0. **No** se usan los FIFOs crudos: la propia documentación de
+  `pico_multicore` recomienda usar una cola en lugar de los FIFOs.
+- **Referencia:**
+  - [pico_multicore](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_multicore)
+  - [queue (pico/util/queue.h)](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#group_queue)
+  - [pico_sync](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_sync)
+
+---
+
+## 7. Wi-Fi: `cyw43_arch` en modo *threadsafe background*
+
+- **Decisión:** Se enlaza `pico_cyw43_arch_lwip_threadsafe_background`, que permite
+  usar el driver CYW43 y lwIP desde **ambos núcleos** con servicio en segundo
+  plano automático.
+- **Conectividad:** STA (10 s de timeout) → si falla, SoftAP
+  (`PicoW-ReactionGame`, IP `192.168.4.1`). El LED onboard queda fijo en STA y
+  parpadea en AP.
+- **Referencia:**
+  - [pico_cyw43_arch](https://www.raspberrypi.com/documentation/pico-sdk/networking.html#pico_cyw43_arch)
+  - `cyw43_arch_wifi_connect_timeout_ms`, `cyw43_arch_enable_ap_mode` en
+    `pico/cyw43_arch.h`
+
+---
+
+## 8. Servidor web: lwIP (API raw) + NO_SYS=1
+
+- **Decisión:** Servidor HTTP con la **API raw de lwIP** (`tcp_new`, `tcp_bind`,
+  `tcp_listen`, `tcp_accept`, `tcp_recv`, `tcp_write`, `tcp_output`) en modo
+  `NO_SYS=1` (sin sistema operativo).
+- **Por qué:** Es el enfoque de los ejemplos oficiales `pico_w` y evita depender
+  de un RTOS. Las callbacks corren en contexto de IRQ de baja prioridad que
+  `pico_cyw43_arch_lwip_threadsafe_background` atiende automáticamente.
+- **Configuración lwIP:** `lwipopts.h` con `MEM_SIZE=16000`, `PBUF_POOL_SIZE=32`
+  y `TCP_SND_BUF=(8*TCP_MSS)` para acomodar la página HTML (~2 KB).
+- **Referencia:**
+  - [lwIP raw TCP API](https://www.nongnu.org/lwip/2_1_x/group__tcp__raw.html)
+  - [Networking (pico-sdk)](https://www.raspberrypi.com/documentation/pico-sdk/networking.html)
+
+---
+
+## 9. Medición de batería (ADC + VSYS) y conflicto con el Wi-Fi
+
+- **Decisión:** Se lee `ADC3` (GPIO29) que en la Pico W mide **VSYS/3** (divisor
+  resistivo interno 3:1). La lectura se envuelve entre
+  `cyw43_arch_lwip_begin()` / `cyw43_arch_lwip_end()`.
+- **Por qué:** En la Pico W, `GPIO29` es **también** el reloj SPI (`WL_CLK`) del
+  chip CYW43439. El header de la placa `boards/pico_w.h` define
+  `CYW43_USES_VSYS_PIN 1` y recomienda proteger el uso del GPIO con
+  `cyw43_thread_enter/exit` (equivalentes a `cyw43_arch_lwip_begin/end`).
+- **Conversión:** `VSYS = 3 · (adc/4095) · 3.3 V`. Porcentaje por curva LiPo 1S
+  (4.2 V = 100 %, 3.7 V = 50 %, 3.0 V = 0 %).
+- **Referencia:**
+  - [hardware_adc](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_adc)
+  - [pico_cyw43_arch](https://www.raspberrypi.com/documentation/pico-sdk/networking.html#pico_cyw43_arch)
+  - Board header `boards/pico_w.h` (comentarios sobre `CYW43_USES_VSYS_PIN`)
+
+---
+
+## 10. Almacenamiento no volátil (Flash)
+
+- **Decisión:** Se reserva el **último sector** de la Flash (2 MB → `0x1FF000`).
+  Escritura con `flash_range_erase()` (4096 B) + `flash_range_program()` (256 B)
+  dentro de `flash_safe_execute()`.
+- **Por qué:** `flash_safe_execute()` (pico_flash) deshabilita IRQs y bloquea al
+  otro núcleo (`multicore_lockout`) para garantizar que no se ejecute código
+  desde Flash durante el borrado/programación. Ambos núcleos llaman
+  `flash_safe_execute_core_init()` al arrancar.
+- **Referencia:**
+  - [hardware_flash](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash)
+  - [pico_flash / flash_safe_execute](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_flash)
+
+---
+
+## 11. Display OLED SSD1306 (I2C1)
+
+- **Decisión:** Driver SSD1306 (128×64) con framebuffer de 1024 bytes y texto
+  5×7. Se usa **modo de direccionamiento horizontal** y un solo volcado del
+  framebuffer.
+- **Por qué:** El SSD1306 muestra más información (tiempo, semilla, modo, batería,
+  IP) que un LCD1602. I2C1 en 400 kHz.
+- **Referencia:**
+  - [hardware_i2c](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_i2c)
+  - Datasheet SSD1306 (Solomon Systech) — secuencia de inicialización.
+
+---
+
+## 12. Buzzer PWM
+
+- **Decisión:** Tonos generando una onda cuadrada con un slice PWM: `wrap` fija la
+  frecuencia (`f = clk_sys / (clkdiv · (wrap+1))`) y el nivel del canal fija el
+  duty (50 %). Divisor fijo `AUDIO_CLKDIV = 100`.
+- **Referencia:**
+  - [hardware_pwm](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_pwm)
+  - [hardware_clocks / clock_get_hz](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_clocks)
+
+---
+
+## 13. Bajo consumo (idle)
+
+- **Decisión:** Tras 3 min sin actividad, el Core 0 entra en **WFI** (`__wfi()`),
+  despertando por la IRQ de un pulsador o por un temporizador periódico de 50 ms.
+- **Por qué:** El modo *dormant* (< 1 mA) requiere apagar el Wi-Fi y coordinar
+  ambos núcleos; su API y consumo están documentados en `pico/low_power.h`. Se
+  deja como mejora pendiente de verificación en hardware (docs/DUDAS.md §3).
+- **Referencia:**
+  - [pico_low_power](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_low_power)
+
+---
+
+## 14. Salida estándar (stdio)
+
+- **Decisión:** `stdio` por **USB** (`pico_enable_stdio_usb 1`) para depurar con
+  `printf()` sobre el puerto USB; UART deshabilitado.
+- **Referencia:**
+  - [pico_stdio](https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#pico_stdio)
