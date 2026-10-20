@@ -28,9 +28,6 @@
 #include <cstring>
 #include <cstdlib>
 
-#include "FreeRTOS.h"
-#include "task.h"
-
 #include "pico/cyw43_arch.h"
 #include "pico/time.h"
 #include "lwip/init.h"
@@ -501,7 +498,7 @@ void run() {
         }
 
         refresh_display();
-        vTaskDelay(pdMS_TO_TICKS(200));   // Refresco del display ~5 veces por segundo.
+        sleep_ms(200);   // Refresco del display ~5 veces por segundo.
     }
 }
 

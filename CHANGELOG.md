@@ -4,6 +4,19 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.3.1] - 2026-10-20
+
+### Revertido
+- **FreeRTOS** (intento de v0.3.0): rompía el arranque del Wi-Fi (sin LED, sin
+  AP, sin STA). Se vuelve al dual-core manual (`multicore_launch_core1`) y a
+  `pico_cyw43_arch_lwip_threadsafe_background` (`NO_SYS=1`), que funciona.
+  El análisis queda en `docs/FREERTOS.md` para reintentarlo con la corrección
+  (`cyw43_arch_init()` en `main()` antes del scheduler) y verificación en HW.
+
+### Conservado
+- Servidor DHCP del AP (fix de "conecta y desconecta") y frontend mejorado
+  (CSS + ejemplo de semilla) de v0.3.0.
+
 ## [0.3.0] - 2026-10-20
 
 ### Añadido

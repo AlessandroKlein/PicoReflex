@@ -30,9 +30,6 @@
 #include <cstring>
 #include <cstdio>
 
-#include "FreeRTOS.h"
-#include "task.h"
-
 #include "hardware/gpio.h"
 #include "hardware/dma.h"
 #include "hardware/timer.h"
@@ -331,7 +328,7 @@ static void start_with_countdown(const GameConfig& cfg) {
     if (delay > 10u) delay = 10u;   // Límite de seguridad del conteo.
     for (uint i = 0; i < delay; i++) {
         audio::play_tone(440u, 90u);   // Beep de conteo (1 por segundo).
-        vTaskDelay(pdMS_TO_TICKS(910u));
+        sleep_ms(910u);
     }
     audio::play_tone(880u, 200u);      // "Ya".
     start_round(cfg);
@@ -407,7 +404,7 @@ void run() {
                     __wfi();   // Respaldo: sleep ligero si no se pudo dormir.
                 }
             } else {
-                vTaskDelay(pdMS_TO_TICKS(5));   // Pequeña espera para no saturar.
+                sleep_ms(5);       // Pequeña espera para no saturar el núcleo.
             }
             continue;
         }
@@ -417,7 +414,7 @@ void run() {
         leds_off();
         uint32_t span = cfg.stimulus_max_ms - cfg.stimulus_min_ms + 1u;
         uint32_t delay_ms = cfg.stimulus_min_ms + g_rng.next_range(span);
-        vTaskDelay(pdMS_TO_TICKS(delay_ms));
+        sleep_ms(delay_ms);
 
         // Descarta pulsaciones "tempranas" durante el intervalo.
         g_button_pending = false;

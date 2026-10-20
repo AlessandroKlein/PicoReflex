@@ -21,9 +21,6 @@
 
 #include "audio.hpp"
 
-#include "FreeRTOS.h"
-#include "task.h"
-
 #include "hardware/pwm.h"
 #include "hardware/clocks.h"
 #include "pico/time.h"
@@ -93,7 +90,7 @@ void play_tone(uint32_t freq_hz, uint32_t duration_ms) {
     pwm_set_chan_level(g_slice, g_chan, (uint16_t)(wrap / 2u));
 
     // Mantiene el tono el tiempo pedido.
-    vTaskDelay(pdMS_TO_TICKS(duration_ms));
+    sleep_ms(duration_ms);
 
     // Apaga el canal (silencio) sin deshabilitar el slice.
     pwm_set_chan_level(g_slice, g_chan, 0);

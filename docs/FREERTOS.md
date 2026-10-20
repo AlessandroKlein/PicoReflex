@@ -1,5 +1,13 @@
 # Análisis de FreeRTOS — PicoReflex
 
+> **Estado**: ANÁLISIS realizado e integración **REVERTIDA** en v0.3.1.
+> El primer intento (v0.3.0) rompió el arranque del Wi-Fi: con
+> `pico_cyw43_arch_lwip_sys_freertos`, `cyw43_arch_init()` debe ejecutarse en
+> `main()` **antes** de `vTaskStartScheduler()` (y no dentro de una tarea, como
+> quedó en el primer intento). Queda pendiente re-integrarlo con esa corrección
+> y verificarlo en hardware. Este documento conserva el análisis y la hoja de
+> ruta de la migración.
+
 ## 1. Qué es FreeRTOS
 
 FreeRTOS es un **sistema operativo en tiempo real (RTOS)** de código abierto. En

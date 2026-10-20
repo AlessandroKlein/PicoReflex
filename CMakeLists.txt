@@ -45,9 +45,6 @@ project(PicoReflex C CXX ASM)
 # Initialise the Raspberry Pi Pico SDK
 pico_sdk_init()
 
-# FreeRTOS: localiza el kernel y agrega el port RP2040 (SMP, 2 núcleos).
-include(FreeRTOS_Kernel_import.cmake)
-
 # ---------------------------------------------------------------------------
 # Fuentes del proyecto
 # ---------------------------------------------------------------------------
@@ -66,7 +63,7 @@ add_executable(PicoReflex
 )
 
 pico_set_program_name(PicoReflex "PicoReflex")
-pico_set_program_version(PicoReflex "0.3.0")
+pico_set_program_version(PicoReflex "0.3.1")
 
 # Salida de depuración (printf): USB (CDC) y UART0 (GPIO0=TX, GPIO1=RX, 115200).
 # El USB es el más cómodo (conectar la Pico y abrir el puerto COM a 115200).
@@ -88,11 +85,10 @@ target_link_libraries(PicoReflex
     pico_stdlib
     pico_sync
     pico_util
-    # FreeRTOS (SMP, 2 núcleos) con heap_4 (malloc dinámico)
-    FreeRTOS-Kernel-Heap4
-    # Red (Wi-Fi + lwIP), modo sys_freertos (lwIP en NO_SYS=0 con tarea tcpip)
-    pico_cyw43_arch_lwip_sys_freertos
+    # Red (Wi-Fi + lwIP), modo thread-safe para usar desde 2 núcleos
+    pico_cyw43_arch_lwip_threadsafe_background
     # Núcleos y almacenamiento
+    pico_multicore
     pico_flash
     pico_rand
     pico_low_power
