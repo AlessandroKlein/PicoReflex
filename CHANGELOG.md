@@ -4,6 +4,16 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.4.1] - 2026-10-20
+
+### Corregido
+- **Reinicio al guardar Wi-Fi**: al guardar credenciales, la escritura a Flash
+  (Core 0) y la reconexión `cyw43_arch_deinit/init` (Core 1) corrían a la vez y
+  crasheaban. Ahora la reconexión **espera** (`g_persist_done`) a que termine la
+  persistencia antes de tocar el CYW43.
+- **Diagnóstico del escaneo**: `wifi_scan_now()` imprime por serial el resultado
+  (`rc` y cantidad de redes) para depurar el botón "Buscar redes".
+
 ## [0.4.0] - 2026-10-20
 
 ### Añadido

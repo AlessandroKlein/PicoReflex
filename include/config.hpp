@@ -169,6 +169,7 @@ struct SystemStatus {
 extern volatile bool g_sleep_request;   ///< Core 0 -> Core 1: "apagá el Wi-Fi".
 extern volatile bool g_sleep_ready;     ///< Core 1 -> Core 0: "Wi-Fi apagado".
 extern volatile bool g_force_ap;        ///< true = saltar STA e ir directo a SoftAP.
+extern volatile bool g_persist_done;    ///< true = la persistencia a Flash terminó.
 
 // =============================================================================
 // API de estado compartido (thread-safe entre núcleos)

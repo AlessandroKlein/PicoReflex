@@ -378,6 +378,7 @@ void run() {
                     // configurables en Flash.
                     sync_config_to_persist();
                     persist_if_dirty();
+                    g_persist_done = true;   // Avisa al Core 1 (web) que ya guardó.
                     break;
                 default:
                     break;

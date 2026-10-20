@@ -29,6 +29,7 @@ static queue_t           g_ctrl_q;    ///< Cola de eventos de control (Core1->Co
 volatile bool g_sleep_request = false;
 volatile bool g_sleep_ready   = false;
 volatile bool g_force_ap      = false;
+volatile bool g_persist_done  = true;   // Inicia "listo" (sin persistencia pendiente).
 
 // -----------------------------------------------------------------------------
 // Inicialización

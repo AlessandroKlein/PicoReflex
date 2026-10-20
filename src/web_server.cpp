@@ -122,12 +122,14 @@ static int scan_result_cb(void* env, const cyw43_ev_scan_result_t* result) {
 // Ejecuta un escaneo (SOLO desde el bucle principal del Core 1) y actualiza el caché.
 static void wifi_scan_now() {
     g_scan_count = 0;
-    cyw43_wifi_scan(&cyw43_state, nullptr, nullptr, scan_result_cb);
+    int rc = cyw43_wifi_scan(&cyw43_state, nullptr, nullptr, scan_result_cb);
+    printf("[web] scan iniciado (rc=%d)\n", rc);
     uint32_t start = to_ms_since_boot(get_absolute_time());
     while (cyw43_wifi_scan_active(&cyw43_state)) {
         if (to_ms_since_boot(get_absolute_time()) - start > 5000u) break;  // Timeout 5 s.
         sleep_ms(20);
     }
+    printf("[web] scan terminado: %d redes\n", g_scan_count);
 }
 
 // -----------------------------------------------------------------------------
@@ -259,6 +261,10 @@ static void handle_config(const char* path, const char* query) {
 
     if (changed) {
         config_set(cfg);
+        // Marca "persistencia pendiente" ANTES de encolar el evento: así el bucle
+        // de reconexión espera a que el Core 0 termine de escribir en Flash (evita
+        // que el guardado y el cyw43_arch_deinit/init corran a la vez y crasheen).
+        g_persist_done = false;
         control_send(ControlEvent::CONFIG_CHANGED);  // Persistir en Flash (Core 0).
         if (wifi_changed) {
             g_wifi_reconnect = true;                 // Reconectar en el bucle del Core 1.
@@ -531,6 +537,13 @@ void run() {
 
         // Re-conexión Wi-Fi solicitada desde la web (cambio de credenciales).
         if (g_wifi_reconnect) {
+            // Espera a que el Core 0 termine de persistir en Flash antes de tocar
+            // el CYW43 (si no, el guardado y el deinit/init pueden crashear).
+            uint32_t wait_start = (uint32_t)(time_us_32() / 1000u);
+            while (!g_persist_done &&
+                   ((uint32_t)(time_us_32() / 1000u) - wait_start) < 2000u) {
+                sleep_ms(10);
+            }
             g_wifi_reconnect = false;
             network_down();
             network_up();
