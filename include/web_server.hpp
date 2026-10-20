@@ -23,16 +23,6 @@
 
 namespace web {
 
-// Credenciales de la red Wi-Fi a la que se conectará como Station (STA).
-// Se configuran en tiempo de compilación. Si la conexión falla en 10 s,
-// el dispositivo pasa a modo Access Point (ver AP_* en web_server.cpp).
-#ifndef WIFI_SSID
-#define WIFI_SSID     "TU_RED_WIFI"      ///< SSID de la red Wi-Fi.
-#endif
-#ifndef WIFI_PASSWORD
-#define WIFI_PASSWORD "TU_PASSWORD"      ///< Contraseña de la red Wi-Fi.
-#endif
-
 // Inicializa cyw43_arch (threadsafe background) y el hardware. Debe llamarse
 // UNA vez desde el Core 1 antes de run().
 void init();

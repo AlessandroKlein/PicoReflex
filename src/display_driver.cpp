@@ -112,6 +112,12 @@ bool init() {
 // -----------------------------------------------------------------------------
 // Framebuffer
 // -----------------------------------------------------------------------------
+void set_power(bool on) {
+    if (!g_ready) return;
+    uint8_t cmd = on ? 0xAF : 0xAE;   // Display ON / OFF.
+    send_commands(&cmd, 1);
+}
+
 void clear() {
     for (size_t i = 0; i < sizeof(g_fb); i++) {
         g_fb[i] = 0x00;

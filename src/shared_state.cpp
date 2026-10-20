@@ -94,6 +94,16 @@ void stats_record(uint32_t reaction_us, bool hit, bool timeout) {
         if (reaction_us > g_stats.worst_time_us) g_stats.worst_time_us = reaction_us;
         g_stats.total_time_us += reaction_us;
         g_stats.valid_reactions++;
+
+        // Historial (ms) para la tabla de la web: el más reciente en history[0].
+        uint32_t reaction_ms = reaction_us / 1000u;
+        for (uint32_t i = GameStats::HISTORY_SIZE - 1u; i > 0; i--) {
+            g_stats.history[i] = g_stats.history[i - 1u];
+        }
+        g_stats.history[0] = reaction_ms;
+        if (g_stats.history_count < GameStats::HISTORY_SIZE) {
+            g_stats.history_count++;
+        }
     } else {
         g_stats.misses++;
     }

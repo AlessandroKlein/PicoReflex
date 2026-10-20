@@ -29,13 +29,15 @@ namespace flash {
 #define USER_NAME_MAX 16u
 // Cantidad de récords en el ranking (top mejores tiempos).
 #define RANKING_SIZE  5u
+// Versión del formato de PersistentData (se incrementa al cambiar la estructura).
+#define PERSISTENT_VERSION 2u
 
 // -----------------------------------------------------------------------------
 // Datos persistentes (debe caber en UNA página de 256 bytes)
 // -----------------------------------------------------------------------------
 struct PersistentData {
     uint32_t magic;              ///< Identificador de validez (PERSISTENT_MAGIC).
-    uint32_t version;            ///< Versión del formato (1).
+    uint32_t version;            ///< Versión del formato (PERSISTENT_VERSION).
 
     char     user_name[USER_NAME_MAX]; ///< Nombre del jugador actual.
 
@@ -47,6 +49,12 @@ struct PersistentData {
         uint32_t time_us;            ///< Tiempo de reacción en microsegundos.
         char     name[USER_NAME_MAX];///< Nombre asociado al récord.
     } ranking[RANKING_SIZE];
+
+    // Configuración persistida (v0.2.0+): red y preferencias.
+    char     wifi_ssid[33];      ///< SSID Wi-Fi (STA).
+    char     wifi_password[65];  ///< Contraseña Wi-Fi (STA).
+    uint8_t  oled_enabled;       ///< 1 = OLED habilitado, 0 = apagado.
+    uint32_t start_delay_s;      ///< Retardo de cuenta regresiva (segundos).
 
     uint32_t checksum;           ///< Suma simple de todos los bytes previos.
 };

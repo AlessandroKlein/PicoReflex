@@ -4,6 +4,27 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.2.0] - 2026-10-20
+
+### Añadido
+- **Disparador de inicio con cuenta regresiva**: la ronda arranca presionando DOS
+  botones a la vez, seguido de una cuenta regresiva configurable (`start_delay_s`,
+  por defecto 3 s, máx 10 s) con beeps.
+- **Páginas web separadas** (frontend en `web_ui.cpp`): Home con **tabla de tiempos
+  de reacción**, y páginas de configuración `/seed`, `/game`, `/display`, `/wifi`,
+  `/player` con navegación común.
+- **Wi-Fi configurable desde la web** (`/wifi`): guarda SSID/contraseña, las
+  persiste en Flash y re-conecta automáticamente.
+- **OLED deshabilitable** (`/display`): apaga el display (comando 0xAE); toda la
+  información sigue disponible en la web.
+- **Historial de reacción** (`GameStats.history[20]`) para la tabla del Home.
+- **Persistencia ampliada** (`PersistentData` v2): Wi-Fi, OLED y cuenta regresiva.
+
+### Cambiado
+- `web_server.cpp` divide backend (ruteo/parseo/reconexión) del frontend HTML
+  (`web_ui.cpp`), vía `web_ui::render()`.
+- Todo el sistema (web, DNS, configuración) es 100 % embebido en la Pico W.
+
 ## [0.1.3] - 2026-10-20
 
 ### Arreglado (seguridad)

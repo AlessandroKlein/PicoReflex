@@ -32,6 +32,18 @@
 #include "pin_defs.hpp"
 
 // =============================================================================
+// Credenciales Wi-Fi por defecto (compilación)
+// =============================================================================
+// Se usan para inicializar GameConfig; pueden cambiarse desde la web y persisten
+// en Flash. Si se modifica una red, se re-conecta automáticamente.
+#ifndef WIFI_SSID_DEFAULT
+#define WIFI_SSID_DEFAULT     "TU_RED_WIFI"
+#endif
+#ifndef WIFI_PASSWORD_DEFAULT
+#define WIFI_PASSWORD_DEFAULT "TU_PASSWORD"
+#endif
+
+// =============================================================================
 // Modos de juego
 // =============================================================================
 enum class GameMode : uint8_t {
@@ -82,6 +94,18 @@ struct GameConfig {
 
     // Nombre del jugador (persistido en Flash con los récords).
     char user_name[16] = "JUGADOR";
+
+    // Retardo de cuenta regresiva (segundos) entre el disparador de inicio
+    // (dos botones simultáneos) y el comienzo real de la ronda.
+    uint32_t start_delay_s = 3;
+
+    // Habilitar/deshabilitar el display OLED. Toda la información también se
+    // muestra en la web, así que se puede apagar para ahorrar energía.
+    bool oled_enabled = true;
+
+    // Credenciales Wi-Fi (configurables desde la web; persistidas en Flash).
+    char wifi_ssid[33]     = WIFI_SSID_DEFAULT;
+    char wifi_password[65] = WIFI_PASSWORD_DEFAULT;
 };
 
 // =============================================================================
@@ -97,6 +121,12 @@ struct GameStats {
     uint64_t total_time_us = 0;       ///< Suma de tiempos de reacción válidos.
     uint32_t valid_reactions = 0;     ///< Cantidad de reacciones válidas (para el promedio).
     bool round_active = false;        ///< true si hay una ronda en curso.
+
+    // Historial de tiempos de reacción (ms) para la tabla de la web.
+    // history[0] es el más reciente; 0 = entrada vacía.
+    static constexpr uint32_t HISTORY_SIZE = 20;
+    uint32_t history[HISTORY_SIZE] = {0};
+    uint32_t history_count = 0;       ///< Entradas válidas (0..HISTORY_SIZE).
 };
 
 // =============================================================================

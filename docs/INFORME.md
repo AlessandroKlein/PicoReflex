@@ -26,9 +26,17 @@ las siguientes características concretas:
   ronda). Tres dificultades (1000 / 500 / 250 ms de tolerancia).
 - **Feedback sonoro** mediante un buzzer pasivo (PWM): tono de acierto, de fallo,
   de timeout, cuenta regresiva y melodía de *game over*.
-- **Servidor web embebido** (lwIP) que permite configurar semilla, dificultad,
-  modo, velocidad entre estímulos, duración de ronda y nombre, además de ver
-  estadísticas (promedio, mejor tiempo, tasa de acierto) y el nivel de batería.
+- **Servidor web embebido** (lwIP) con **páginas separadas**: Home (red, batería,
+  estadísticas y tabla de tiempos), semilla (`/seed`), juego (`/game`), display
+  (`/display`), Wi-Fi (`/wifi`) y jugador (`/player`). El frontend (HTML) está
+  separado del backend (ruteo/parseo).
+- **Disparador de inicio con dos botones simultáneos** y **cuenta regresiva**
+  configurable (`start_delay_s`, por defecto 3 s, límite 10 s) antes de arrancar.
+- **Wi-Fi configurable desde la web**: SSID/password se editan en `/wifi`, se
+  persisten en Flash y se re-conecta automáticamente (sin recompilar).
+- **OLED deshabilitable** desde la web (`/display`) para ahorrar energía; toda la
+  información sigue disponible en la web.
+- **Historial de tiempos de reacción** (últimos 20) mostrado como tabla en el Home.
 - **Conectividad redundante:** Station (STA) con *timeout* de 10 s y respaldo en
   Access Point (`PicoW-ReactionGame`, IP `192.168.4.1`) con **captive portal**
   (servidor DNS en puerto 53 que redirige toda consulta a `192.168.4.1`).
@@ -64,18 +72,22 @@ El código está organizado en módulos (`include/` + `src/`), compilados con CM
 y el Pico SDK. Los puntos clave son:
 
 - `main.cpp` arranca el Core 1 con `multicore_launch_core1()`.
-- `game_logic.cpp` (Core 0) implementa el PRNG, la máquina de estados del juego y
-  la temporización con IRQ + `time_us_32()`; usa DMA (buffer en anillo rítmado
-  por PWM) como *trace* hardware de los pulsadores.
-- `web_server.cpp` (Core 1) gestiona `cyw43_arch` (STA/AP) y sirve HTTP con la
-  API raw de lwIP.
+- `game_logic.cpp` (Core 0) implementa el PRNG, la máquina de estados del juego,
+  el **disparador de dos botones + cuenta regresiva** y la temporización con IRQ +
+  `time_us_32()`; usa DMA (buffer en anillo rítmado por PWM) como *trace* hardware
+  de los pulsadores.
+- `web_server.cpp` (Core 1) gestiona `cyw43_arch` (STA/AP, reconexión) y es el
+  **backend** HTTP (ruteo/parseo) con la API raw de lwIP; `web_ui.cpp` es el
+  **frontend** que genera las páginas HTML (`web_ui::render`).
 - `battery_monitor.cpp` lee el ADC protegiendo la lectura con
   `cyw43_arch_lwip_begin/end()` (GPIO29 compartido con el SPI del Wi-Fi).
-- `flash_storage.cpp` persiste récords con `flash_safe_execute()`.
-- `display_driver.cpp` dibuja texto 5×7 en el SSD1306.
+- `flash_storage.cpp` persiste récords y configuración (Wi-Fi, OLED, cuenta
+  regresiva) con `flash_safe_execute()` (estructura `PersistentData` v2).
+- `display_driver.cpp` dibuja texto 5×7 en el SSD1306 y permite apagarlo
+  (`set_power`).
 - `audio.cpp` genera tonos PWM.
-- `shared_state.cpp` sincroniza configuración/estadísticas entre núcleos con
-  `critical_section` + `queue`.
+- `shared_state.cpp` sincroniza configuración/estadísticas/historial entre núcleos
+  con `critical_section` + `queue`.
 
 Cada decisión está documentada y vinculada a la documentación oficial en
 `docs/DECISIONES.md`.

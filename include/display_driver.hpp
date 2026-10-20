@@ -26,6 +26,9 @@ namespace display {
 // Inicializa I2C1 y el controlador SSD1306. Debe llamarse una vez.
 bool init();
 
+// Enciende (true) o apaga (false) el display (comando SSD1306 0xAF / 0xAE).
+void set_power(bool on);
+
 // Limpia el framebuffer (no lo envía al display).
 void clear();
 

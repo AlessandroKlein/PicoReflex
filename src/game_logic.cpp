@@ -187,6 +187,38 @@ static void led_on(uint i) {
 // -----------------------------------------------------------------------------
 // Inicialización
 // -----------------------------------------------------------------------------
+
+// Aplica la configuración persistida (Flash) a la configuración en RAM.
+static void apply_persist_to_config() {
+    GameConfig cfg = config_get();
+    std::strncpy(cfg.wifi_ssid, g_persist.wifi_ssid, sizeof(cfg.wifi_ssid) - 1u);
+    cfg.wifi_ssid[sizeof(cfg.wifi_ssid) - 1u] = '\0';
+    std::strncpy(cfg.wifi_password, g_persist.wifi_password, sizeof(cfg.wifi_password) - 1u);
+    cfg.wifi_password[sizeof(cfg.wifi_password) - 1u] = '\0';
+    cfg.oled_enabled = (g_persist.oled_enabled != 0);
+    cfg.start_delay_s = g_persist.start_delay_s;
+    std::strncpy(cfg.user_name, g_persist.user_name, sizeof(cfg.user_name) - 1u);
+    cfg.user_name[sizeof(cfg.user_name) - 1u] = '\0';
+    config_set(cfg);
+}
+
+// Copia los campos configurables a la estructura persistente (para guardar en Flash).
+static void sync_config_to_persist() {
+    GameConfig cfg = config_get();
+    std::strncpy(g_persist.wifi_ssid, cfg.wifi_ssid, sizeof(g_persist.wifi_ssid) - 1u);
+    g_persist.wifi_ssid[sizeof(g_persist.wifi_ssid) - 1u] = '\0';
+    std::strncpy(g_persist.wifi_password, cfg.wifi_password, sizeof(g_persist.wifi_password) - 1u);
+    g_persist.wifi_password[sizeof(g_persist.wifi_password) - 1u] = '\0';
+    g_persist.oled_enabled = cfg.oled_enabled ? 1 : 0;
+    g_persist.start_delay_s = cfg.start_delay_s;
+    std::strncpy(g_persist.user_name, cfg.user_name, sizeof(g_persist.user_name) - 1u);
+    g_persist.user_name[sizeof(g_persist.user_name) - 1u] = '\0';
+    g_persist_dirty = true;
+}
+
+// Forward declaration (definida más abajo).
+static void start_round(const GameConfig& cfg);
+
 void init() {
     // --- LEDs: salidas digitales, apagados al inicio. ---
     for (uint i = 0; i < LED_COUNT; i++) {
@@ -231,6 +263,7 @@ void init() {
     if (!flash::load(&g_persist)) {
         flash::set_default(&g_persist);
     }
+    apply_persist_to_config();
 
     // --- Temporizador periódico para despertar el Core 0 del WFI. ---
     g_last_activity_us = time_us_32();
@@ -270,6 +303,30 @@ void ranking_insert(uint32_t time_us, const char* name) {
 } // namespace
 
 // -----------------------------------------------------------------------------
+// Disparador de inicio: dos botones presionados simultáneamente
+// -----------------------------------------------------------------------------
+// Devuelve true si hay al menos DOS pulsadores presionados a la vez (nivel bajo).
+static bool two_buttons_pressed() {
+    uint count = 0;
+    for (uint i = 0; i < LED_COUNT; i++) {
+        if (gpio_get(g_button_pins[i]) == 0) count++;   // presionado = bajo (pull-up).
+    }
+    return count >= 2;
+}
+
+// Cuenta regresiva (start_delay_s segundos) y arranque de la ronda.
+static void start_with_countdown(const GameConfig& cfg) {
+    uint delay = cfg.start_delay_s;
+    if (delay > 10u) delay = 10u;   // Límite de seguridad del conteo.
+    for (uint i = 0; i < delay; i++) {
+        audio::play_tone(440u, 90u);   // Beep de conteo (1 por segundo).
+        sleep_ms(910u);
+    }
+    audio::play_tone(880u, 200u);      // "Ya".
+    start_round(cfg);
+}
+
+// -----------------------------------------------------------------------------
 // Transiciones de ronda
 // -----------------------------------------------------------------------------
 static void start_round(const GameConfig& cfg) {
@@ -280,7 +337,6 @@ static void start_round(const GameConfig& cfg) {
 
     g_round_active = true;
     g_round_start_us = time_us_32();
-    audio::play_countdown();
 }
 
 static void end_round() {
@@ -301,7 +357,7 @@ void run() {
         while (control_try_pop(&ev)) {
             switch (ev) {
                 case ControlEvent::START_ROUND:
-                    if (!g_round_active) start_round(config_get());
+                    if (!g_round_active) start_with_countdown(config_get());
                     break;
                 case ControlEvent::STOP_ROUND:
                     if (g_round_active) end_round();
@@ -309,19 +365,28 @@ void run() {
                 case ControlEvent::RESET_STATS:
                     stats_reset();
                     break;
+                case ControlEvent::CONFIG_CHANGED:
+                    // La web cambió la configuración: persiste los campos
+                    // configurables en Flash.
+                    sync_config_to_persist();
+                    persist_if_dirty();
+                    break;
                 default:
-                    break; // CONFIG_CHANGED: la config se relee en cada iteración.
+                    break;
             }
         }
 
         GameConfig cfg = config_get();
 
-        // --- 2) Estado IDLE: espera iniciar (pulsación o evento web). ---
+        // --- 2) Estado IDLE: espera el disparador de inicio. ---
         if (!g_round_active) {
             if (g_button_pending) {
                 g_button_pending = false;
-                g_last_activity_us = time_us_32();
-                start_round(cfg);
+                // Disparador: requiere DOS botones presionados a la vez.
+                if (two_buttons_pressed()) {
+                    g_last_activity_us = time_us_32();
+                    start_with_countdown(cfg);
+                }
             } else if ((time_us_32() - g_last_activity_us) > IDLE_SLEEP_AFTER_US) {
                 // Tras 3 minutos sin actividad, entra en modo DORMANT (< 2 mA).
                 // Se despierta con cualquier pulsador. Si el handshake con el

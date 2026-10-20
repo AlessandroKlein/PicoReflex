@@ -38,6 +38,7 @@
 #include "game_logic.hpp"
 #include "battery_monitor.hpp"
 #include "captive_portal.hpp"
+#include "web_ui.hpp"
 #include "pin_defs.hpp"
 
 namespace web {
@@ -59,6 +60,7 @@ void refresh_display();
 // Estado de la conexión (solo lo usa este módulo, en el Core 1)
 // -----------------------------------------------------------------------------
 static bool g_is_ap = false;        ///< true si quedó en modo Access Point.
+static volatile bool g_wifi_reconnect = false; ///< true si hay que re-conectar Wi-Fi.
 
 // -----------------------------------------------------------------------------
 // Buffer de respuesta HTTP (una conexión a la vez; ver nota en http_recv)
@@ -117,207 +119,87 @@ void url_decode(const char* src, char* dst, size_t n) {
     dst[i] = '\0';
 }
 
-// -----------------------------------------------------------------------------
-// Mini "string builder" para armar el HTML de respuesta
-// -----------------------------------------------------------------------------
-struct Builder {
-    char*  buf;
-    size_t cap;
-    size_t len = 0;
-
-    void append(const char* s) {
-        size_t n = std::strlen(s);
-        if (len + n >= cap) n = cap - len - 1u;   // Recorta si no cabe.
-        std::memcpy(buf + len, s, n);
-        len += n;
-        buf[len] = '\0';
-    }
-
-    void printf(const char* fmt, ...) {
-        char tmp[128];
-        va_list a;
-        va_start(a, fmt);
-        vsnprintf(tmp, sizeof(tmp), fmt, a);
-        va_end(a);
-        append(tmp);
-    }
-};
-
 } // namespace
 
 // =============================================================================
-// Aplicación de configuración desde la query string
-// Escapa los caracteres especiales de HTML para evitar XSS al insertar datos
-// controlados por el usuario (el nombre del jugador) dentro del HTML de respuesta.
-static void html_escape(const char* src, char* dst, size_t n) {
-    size_t i = 0;
-    while (*src && i + 1u < n) {
-        const char* rep = nullptr;
-        switch (*src) {
-            case '<':  rep = "&lt;";    break;
-            case '>':  rep = "&gt;";    break;
-            case '&':  rep = "&amp;";   break;
-            case '"':  rep = "&quot;";  break;
-            case '\'': rep = "&#39;";   break;
-            default:   break;
-        }
-        if (rep) {
-            while (*rep && i + 1u < n) dst[i++] = *rep++;
-        } else {
-            dst[i++] = *src;
-        }
-        src++;
-    }
-    dst[i] = '\0';
-}
-
+// Aplicación de configuración según la ruta
 // =============================================================================
-static void apply_config(const char* query) {
+// Aplica los parámetros de la query string a la configuración según la página
+// (`path`). Si cambió algún campo, envía CONFIG_CHANGED para que el Core 0 lo
+// persista en Flash; si cambió el Wi-Fi, marca reconexión.
+static void handle_config(const char* path, const char* query) {
     GameConfig cfg = config_get();
+    bool changed = false;
+    bool wifi_changed = false;
 
-    cfg.seed = (uint32_t)get_int_param(query, "seed", (int)cfg.seed);
+    if (std::strncmp(path, "/seed", 5) == 0) {
+        cfg.seed = (uint32_t)get_int_param(query, "seed", (int)cfg.seed);
+        changed = true;
+    } else if (std::strncmp(path, "/game", 5) == 0) {
+        int diff = get_int_param(query, "difficulty", (int)cfg.difficulty);
+        if (diff >= 0 && diff < (int)Difficulty::DIFF_COUNT) {
+            cfg.difficulty = (Difficulty)diff;
+        }
+        int mode = get_int_param(query, "mode", (int)cfg.mode);
+        if (mode >= 0 && mode < (int)GameMode::MODE_COUNT) {
+            cfg.mode = (GameMode)mode;
+        }
 
-    int diff = get_int_param(query, "difficulty", (int)cfg.difficulty);
-    if (diff >= 0 && diff < (int)Difficulty::DIFF_COUNT) {
-        cfg.difficulty = (Difficulty)diff;
+        // Velocidad entre estímulos: acotada (50..60000 ms) y smin <= smax, para
+        // que `span = smax - smin + 1` (sin signo) no haga wrap.
+        uint32_t smin = (uint32_t)get_int_param(query, "smin", (int)cfg.stimulus_min_ms);
+        uint32_t smax = (uint32_t)get_int_param(query, "smax", (int)cfg.stimulus_max_ms);
+        if (smin == 0) smin = cfg.stimulus_min_ms;
+        if (smax == 0) smax = cfg.stimulus_max_ms;
+        if (smin < 50u)    smin = 50u;
+        if (smin > 60000u) smin = 60000u;
+        if (smax < smin)   smax = smin;
+        if (smax > 60000u) smax = 60000u;
+        cfg.stimulus_min_ms = smin;
+        cfg.stimulus_max_ms = smax;
+
+        uint32_t rsec = (uint32_t)get_int_param(query, "round", (int)cfg.round_seconds);
+        if (rsec == 0)    rsec = cfg.round_seconds;
+        if (rsec < 1u)    rsec = 1u;
+        if (rsec > 3600u) rsec = 3600u;
+        cfg.round_seconds = rsec;
+
+        uint32_t delay = (uint32_t)get_int_param(query, "delay", (int)cfg.start_delay_s);
+        if (delay > 10u) delay = 10u;   // Límite de la cuenta regresiva.
+        cfg.start_delay_s = delay;
+
+        changed = true;
+    } else if (std::strncmp(path, "/display", 8) == 0) {
+        int oled = get_int_param(query, "oled", cfg.oled_enabled ? 1 : 0);
+        cfg.oled_enabled = (oled != 0);
+        changed = true;
+    } else if (std::strncmp(path, "/wifi", 5) == 0) {
+        const char* ssid = find_param(query, "ssid");
+        const char* pass = find_param(query, "pass");
+        if (ssid) {
+            url_decode(ssid, cfg.wifi_ssid, sizeof(cfg.wifi_ssid));
+            wifi_changed = true;
+        }
+        if (pass) {
+            url_decode(pass, cfg.wifi_password, sizeof(cfg.wifi_password));
+            wifi_changed = true;
+        }
+        changed = wifi_changed;
+    } else if (std::strncmp(path, "/player", 7) == 0) {
+        const char* name = find_param(query, "name");
+        if (name) {
+            url_decode(name, cfg.user_name, sizeof(cfg.user_name));
+            changed = true;
+        }
     }
-    int mode = get_int_param(query, "mode", (int)cfg.mode);
-    if (mode >= 0 && mode < (int)GameMode::MODE_COUNT) {
-        cfg.mode = (GameMode)mode;
+
+    if (changed) {
+        config_set(cfg);
+        control_send(ControlEvent::CONFIG_CHANGED);  // Persistir en Flash (Core 0).
+        if (wifi_changed) {
+            g_wifi_reconnect = true;                 // Reconectar en el bucle del Core 1.
+        }
     }
-
-    // Velocidad entre estímulos: se acota a un rango sano (50..60000 ms) y se
-    // garantiza smin <= smax, para que en game_logic el cálculo
-    // `span = smax - smin + 1` (sin signo) no haga wrap con valores inválidos.
-    uint32_t smin = (uint32_t)get_int_param(query, "smin", (int)cfg.stimulus_min_ms);
-    uint32_t smax = (uint32_t)get_int_param(query, "smax", (int)cfg.stimulus_max_ms);
-    if (smin == 0) smin = cfg.stimulus_min_ms;   // 0 = conservar valor actual.
-    if (smax == 0) smax = cfg.stimulus_max_ms;
-    if (smin < 50u)  smin = 50u;
-    if (smin > 60000u) smin = 60000u;
-    if (smax < smin) smax = smin;
-    if (smax > 60000u) smax = 60000u;
-    cfg.stimulus_min_ms = smin;
-    cfg.stimulus_max_ms = smax;
-
-    uint32_t rsec = (uint32_t)get_int_param(query, "round", (int)cfg.round_seconds);
-    if (rsec == 0) rsec = cfg.round_seconds;
-    if (rsec < 1u)      rsec = 1u;
-    if (rsec > 3600u)   rsec = 3600u;
-    cfg.round_seconds = rsec;
-
-    const char* name = find_param(query, "name");
-    if (name) url_decode(name, cfg.user_name, sizeof(cfg.user_name));
-
-    config_set(cfg);
-    // El núcleo 0 relee la configuración en cada iteración; no hace falta evento.
-}
-
-// =============================================================================
-// Generación de la página HTML
-// =============================================================================
-static void build_page(const char* query, char* out, size_t out_len) {
-    // Si la petición trae parámetros (formulario), aplica la configuración.
-    if (query && *query) {
-        apply_config(query);
-    }
-
-    GameConfig   cfg   = config_get();
-    GameStats    st    = stats_get();
-    SystemStatus sys   = system_status_get();
-
-    // Promedio de reacción en ms (0 si no hay datos).
-    uint32_t avg_ms = st.valid_reactions
-                          ? (uint32_t)(st.total_time_us / st.valid_reactions / 1000u)
-                          : 0u;
-    uint32_t best_ms = (st.best_time_us == UINT32_MAX) ? 0u : st.best_time_us / 1000u;
-    uint32_t hit_rate = st.total_rounds
-                          ? (uint32_t)((uint64_t)st.hits * 100u / st.total_rounds)
-                          : 0u;
-
-    Builder b{out, out_len};
-
-    b.append("<!DOCTYPE html><html lang='es'><head><meta charset='utf-8'>");
-    b.append("<meta name='viewport' content='width=device-width, initial-scale=1'>");
-    b.append("<title>PicoReflex</title><style>");
-    b.append("body{font-family:system-ui,sans-serif;background:#111;color:#eee;"
-             "max-width:640px;margin:0 auto;padding:16px;}");
-    b.append("h1{color:#0f0;} .card{background:#1c1c1c;border:1px solid #333;"
-             "border-radius:8px;padding:12px;margin:10px 0;}");
-    b.append("label{display:inline-block;min-width:110px;margin:4px 0;}");
-    b.append("input,select{background:#222;color:#eee;border:1px solid #444;"
-             "border-radius:4px;padding:4px;margin:2px 0;}");
-    b.append("button{background:#0a0;color:#000;border:0;border-radius:4px;"
-             "padding:6px 12px;margin:4px 4px 4px 0;font-weight:bold;cursor:pointer;}");
-    b.append("button.stop{background:#c00;color:#fff;} .ok{color:#0f0;} .bad{color:#f00;}");
-    b.append("</style></head><body>");
-
-    b.append("<h1>PicoReflex</h1>");
-
-    // --- Estadísticas ---
-    b.append("<div class='card'><h3>Estadísticas</h3>");
-    b.printf("<p>Promedio: <b>%u ms</b> &nbsp; Mejor: <b>%u ms</b></p>", avg_ms, best_ms);
-    b.printf("<p>Aciertos: %u &nbsp; Fallos: %u &nbsp; Timeouts: %u</p>",
-             st.hits, st.misses, st.timeouts);
-    b.printf("<p>Tasa de acierto: <b>%u%%</b></p>", hit_rate);
-    if (battery::is_low_battery(sys.battery_pct)) {
-        b.printf("<p>Batería: <span class='bad'>%u%% (%u mV) - BAJA</span></p>",
-                 (unsigned)sys.battery_pct, (unsigned)sys.battery_mv);
-    } else {
-        b.printf("<p>Batería: <span class='ok'>%u%%</span> (%u mV)</p>",
-                 (unsigned)sys.battery_pct, (unsigned)sys.battery_mv);
-    }
-    b.append("</div>");
-
-    // --- Red ---
-    b.append("<div class='card'><h3>Red</h3>");
-    b.printf("<p>Modo: <b>%s</b> &nbsp; IP: <b>%s</b></p>",
-             sys.wifi_ap ? "Access Point" : (sys.wifi_sta ? "Station" : "---"), sys.ip);
-    b.append("</div>");
-
-    // --- Formulario de configuración ---
-    b.append("<div class='card'><h3>Configuración</h3>");
-    b.append("<form method='get' action='/config'>");
-    b.printf("<label>Semilla (0=alea.):</label><input name='seed' value='%u'><br>", cfg.seed);
-
-    b.append("<label>Dificultad:</label><select name='difficulty'>");
-    for (int i = 0; i < (int)Difficulty::DIFF_COUNT; i++) {
-        b.printf("<option value='%d'%s>%s (%u ms)</option>", i,
-                 ((int)cfg.difficulty == i) ? " selected" : "",
-                 difficulty_name((Difficulty)i), difficulty_tolerance_ms((Difficulty)i));
-    }
-    b.append("</select><br>");
-
-    b.append("<label>Modo:</label><select name='mode'>");
-    for (int i = 0; i < (int)GameMode::MODE_COUNT; i++) {
-        b.printf("<option value='%d'%s>%s</option>", i,
-                 ((int)cfg.mode == i) ? " selected" : "", game_mode_name((GameMode)i));
-    }
-    b.append("</select><br>");
-
-    b.printf("<label>Vel. mín (ms):</label><input name='smin' value='%u'><br>",
-             cfg.stimulus_min_ms);
-    b.printf("<label>Vel. máx (ms):</label><input name='smax' value='%u'><br>",
-             cfg.stimulus_max_ms);
-    b.printf("<label>Ronda (s):</label><input name='round' value='%u'><br>",
-             cfg.round_seconds);
-    // Escapa el nombre antes de insertarlo en el HTML (evita XSS almacenado).
-    char name_esc[96];
-    html_escape(cfg.user_name, name_esc, sizeof(name_esc));
-    b.printf("<label>Nombre:</label><input name='name' value='%s' maxlength='15'><br>",
-             name_esc);
-
-    b.append("<button type='submit'>Guardar</button></form>");
-    b.append("</div>");
-
-    // --- Controles ---
-    b.append("<div class='card'><h3>Controles</h3>");
-    b.append("<a href='/start'><button>Iniciar</button></a>");
-    b.append("<a href='/stop'><button class='stop'>Detener</button></a>");
-    b.append("<a href='/reset'><button>Reiniciar stats</button></a>");
-    b.append("</div>");
-
-    b.append("</body></html>");
 }
 
 // =============================================================================
@@ -365,13 +247,23 @@ err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
         if (q) { *q = '\0'; query = q + 1; }
     }
 
-    // Rutas de control.
-    if (std::strncmp(path, "/start", 6) == 0) control_send(ControlEvent::START_ROUND);
-    else if (std::strncmp(path, "/stop", 5) == 0) control_send(ControlEvent::STOP_ROUND);
-    else if (std::strncmp(path, "/reset", 6) == 0) control_send(ControlEvent::RESET_STATS);
-
-    // Genera el cuerpo de la respuesta.
-    build_page(query, g_body, sizeof(g_body));
+    // Rutas de control: encolan el evento y devuelven el Home.
+    if (std::strncmp(path, "/start", 6) == 0) {
+        control_send(ControlEvent::START_ROUND);
+        web_ui::render("/", g_body, sizeof(g_body));
+    } else if (std::strncmp(path, "/stop", 5) == 0) {
+        control_send(ControlEvent::STOP_ROUND);
+        web_ui::render("/", g_body, sizeof(g_body));
+    } else if (std::strncmp(path, "/reset", 6) == 0) {
+        control_send(ControlEvent::RESET_STATS);
+        web_ui::render("/", g_body, sizeof(g_body));
+    } else {
+        // Páginas de configuración: aplica los parámetros y renderiza la página.
+        handle_config(path, query);
+        if (!web_ui::render(path, g_body, sizeof(g_body))) {
+            web_ui::render("/", g_body, sizeof(g_body));   // Ruta desconocida -> Home.
+        }
+    }
 
     // Arma cabeceras + cuerpo y envía.
     size_t body_len = std::strlen(g_body);
@@ -435,7 +327,9 @@ static void network_up() {
     g_is_ap = false;
     cyw43_arch_enable_sta_mode();
 
-    if (cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD,
+    // Credenciales desde la configuración (persistidas en Flash, editables vía web).
+    GameConfig cfg = config_get();
+    if (cyw43_arch_wifi_connect_timeout_ms(cfg.wifi_ssid, cfg.wifi_password,
                                             CYW43_AUTH_WPA2_AES_PSK,
                                             STA_TIMEOUT_MS) == 0) {
         // Conectado a la red Wi-Fi.
@@ -487,6 +381,16 @@ void run() {
             batt_last  = blink_last;
         }
 
+        // Re-conexión Wi-Fi solicitada desde la web (cambio de credenciales).
+        if (g_wifi_reconnect) {
+            g_wifi_reconnect = false;
+            network_down();
+            network_up();
+            net_up = true;
+            blink_last = (uint32_t)(time_us_32() / 1000u);
+            batt_last  = blink_last;
+        }
+
         uint32_t now_ms = (uint32_t)(time_us_32() / 1000u);
 
         // Parpadeo del LED onboard en modo AP.
@@ -515,12 +419,21 @@ void run() {
 // Actualización del display OLED
 // =============================================================================
 void refresh_display() {
+    GameConfig cfg = config_get();
+
+    // OLED deshabilitado (configurable vía web): apaga el display y no dibuja.
+    // La misma información está disponible en la página web.
+    if (!cfg.oled_enabled) {
+        display::set_power(false);
+        return;
+    }
+
     static bool initialized = false;
     if (!initialized) {
         initialized = display::init();
     }
+    display::set_power(true);
 
-    GameConfig   cfg = config_get();
     GameStats    st  = stats_get();
     SystemStatus sys = system_status_get();
 

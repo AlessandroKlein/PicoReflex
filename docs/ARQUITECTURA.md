@@ -19,11 +19,13 @@ batería, almacenamiento no volátil y doble núcleo.
              +------------+-----------+              +---------+-----------+
              |        Core 0 (juego)   |              |   Core 1 (red/UI)   |
              +------------------------+              +---------------------+
-             | game_logic  (motor)    |   estado     | web_server (HTTP)   |
-             | audio       (buzzer)   |  compartido  | display_driver      |
-             | flash_storage (récords)|<------------>| battery_monitor     |
-             |   |   |   |            | critical_sect| cyw43_arch / lwIP   |
-             +---+---+---+------------+   + queue    +---------------------+
+             | game_logic  (motor)    |   estado     | web_server (backend) |
+             | audio       (buzzer)   |  compartido  | web_ui     (frontend)|
+             | flash_storage (récords)|<------------>| display_driver      |
+             |   |   |   |            | critical_sect| battery_monitor     |
+             |                        |   + queue    | cyw43_arch / lwIP   |
+             |                        |              | captive_portal      |
+             +---+---+---+------------+              +---------------------+
                  |   |   |                 |
        +---------+   |   +---------+       |
        v             v             v       v
@@ -48,7 +50,8 @@ PicoReflex/
 │   ├── display_driver.hpp    # OLED SSD1306
 │   ├── battery_monitor.hpp   # ADC batería
 │   ├── flash_storage.hpp     # Persistencia en Flash
-│   ├── web_server.hpp        # Servidor HTTP + Wi-Fi
+│   ├── web_server.hpp        # Servidor HTTP + Wi-Fi (backend)
+│   ├── web_ui.hpp            # Frontend: generación de las páginas HTML
 │   ├── captive_portal.hpp    # Servidor DNS (captive portal, modo AP)
 │   └── font5x7.hpp           # Fuente 5x7 (generada por tools/gen_font.py)
 ├── src/
@@ -59,7 +62,8 @@ PicoReflex/
 │   ├── display_driver.cpp
 │   ├── battery_monitor.cpp
 │   ├── flash_storage.cpp
-│   ├── web_server.cpp        # HTTP + Wi-Fi + display (Core 1)
+│   ├── web_server.cpp        # HTTP + Wi-Fi + display (backend, Core 1)
+│   ├── web_ui.cpp            # HTML de las páginas (frontend)
 │   └── captive_portal.cpp    # DNS 53 -> 192.168.4.1 (captive portal)
 ├── tools/
 │   └── gen_font.py           # Generador de la fuente 5x7
@@ -76,8 +80,12 @@ PicoReflex/
         +--------+
         | IDLE   |<-----------------------------------------+
         +---+----+                                          |
-            | pulsación / START_ROUND (web)                 |
+            | 2 botones simultáneos / START_ROUND (web)      |
             v                                               |
+   +-------------------+  cuenta regresiva (start_delay_s)  |
+   | CUENTA REGRESIVA  |  beeps "3-2-1"                     |
+   +---------+---------+                                    |
+             v                                              |
    +----------------+  presenta LED + t0=time_us_32()       |
    | ROUND (activa) |----------------------------------+    |
    +----------------+                                  |    |
@@ -95,7 +103,9 @@ PicoReflex/
 ```
 
 La medición de reacción usa la IRQ GPIO + `time_us_32()` (µs); el DMA mantiene
-un *trace* hardware de los estados de los botones (ver DECISIONES.md §4–§5).
+un *trace* hardware de los estados de los botones (ver DECISIONES.md §4–§5). El
+inicio requiere **dos botones simultáneos** y pasa por una **cuenta regresiva**
+configurable (`start_delay_s`, ver DECISIONES.md §16).
 
 ## 5. Flujo de red (Core 1)
 
@@ -122,11 +132,17 @@ Rutas HTTP:
 
 | Ruta | Efecto |
 |---|---|
-| `GET /` | Página de control + estadísticas |
-| `GET /config?seed=..&difficulty=..&mode=..&smin=..&smax=..&round=..&name=..` | Aplica configuración |
-| `GET /start` | `control_send(START_ROUND)` |
+| `GET /` | Home: red, batería, stats y tabla de tiempos |
+| `GET /seed?seed=..` | Semilla del PRNG |
+| `GET /game?difficulty=..&mode=..&smin=..&smax=..&round=..&delay=..` | Dificultad/modo/velocidad/ronda/cuenta regresiva |
+| `GET /display?oled=..` | Habilita/deshabilita el OLED |
+| `GET /wifi?ssid=..&pass=..` | Credenciales Wi-Fi (persistidas + reconexión) |
+| `GET /player?name=..` | Nombre del jugador |
+| `GET /start` | `control_send(START_ROUND)` (con cuenta regresiva) |
 | `GET /stop` | `control_send(STOP_ROUND)` |
 | `GET /reset` | `control_send(RESET_STATS)` |
+
+> Ver `docs/API.md` para el detalle de parámetros y rangos.
 
 ## 6. Sincronización inter-núcleo
 

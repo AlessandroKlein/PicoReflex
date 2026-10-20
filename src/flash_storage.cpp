@@ -22,6 +22,8 @@
 #include "pico/flash.h"      // flash_safe_execute()
 #include "hardware/address_mapped.h" // XIP_BASE
 
+#include "config.hpp"        // WIFI_SSID_DEFAULT / WIFI_PASSWORD_DEFAULT
+
 namespace flash {
 
 // -----------------------------------------------------------------------------
@@ -30,7 +32,7 @@ namespace flash {
 void set_default(PersistentData* d) {
     std::memset(d, 0, sizeof(*d));
     d->magic = PERSISTENT_MAGIC;
-    d->version = 1u;
+    d->version = PERSISTENT_VERSION;
     d->best_time_us = UINT32_MAX;   // "Sin récord" se representa con el máximo.
     const char* def = "JUGADOR";
     std::strncpy(d->user_name, def, USER_NAME_MAX - 1u);
@@ -38,6 +40,11 @@ void set_default(PersistentData* d) {
         d->ranking[i].time_us = UINT32_MAX;
         std::strncpy(d->ranking[i].name, "-", USER_NAME_MAX - 1u);
     }
+    // Configuración de red/preferencias por defecto (v0.2.0+).
+    std::strncpy(d->wifi_ssid, WIFI_SSID_DEFAULT, sizeof(d->wifi_ssid) - 1u);
+    std::strncpy(d->wifi_password, WIFI_PASSWORD_DEFAULT, sizeof(d->wifi_password) - 1u);
+    d->oled_enabled = 1;
+    d->start_delay_s = 3;
     update_checksum(d);
 }
 
@@ -68,6 +75,11 @@ bool load(PersistentData* d) {
     }
 
     std::memcpy(d, src, sizeof(*d));
+
+    // Si la versión del formato cambió (estructura distinta), se re-inicializa.
+    if (d->version != PERSISTENT_VERSION) {
+        return false;
+    }
 
     // Verifica integridad recomputando el checksum.
     uint32_t saved = d->checksum;

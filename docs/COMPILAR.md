@@ -9,14 +9,15 @@
 
 ## Configurar las credenciales Wi-Fi (STA)
 
-Editar `include/web_server.hpp` y definir:
+Hay dos formas de definir la red Wi-Fi:
 
-```cpp
-#define WIFI_SSID     "TU_RED_WIFI"
-#define WIFI_PASSWORD "TU_PASSWORD"
-```
+1. **Por defecto (compilación):** editar `include/config.hpp` y definir
+   `WIFI_SSID_DEFAULT` / `WIFI_PASSWORD_DEFAULT`.
+2. **En caliente (recomendado):** desde la web, en la página `/wifi`, ingresar
+   SSID y contraseña. Se persisten en Flash y el dispositivo se re-conecta solo;
+   no hace falta recompilar.
 
-Si la conexión a esta red falla en 10 s, el dispositivo pasa automáticamente a
+Si la conexión a la red falla en 10 s, el dispositivo pasa automáticamente a
 modo **Access Point** (`PicoW-ReactionGame` / `12345678`, IP `192.168.4.1`).
 
 ## Compilar
@@ -52,9 +53,13 @@ cmake --build build
    muestre en el display (modo STA).
 2. Abrir `http://192.168.4.1` (AP) o la IP del dispositivo (STA). En modo AP,
    cualquier URL que abras redirige automáticamente a la página (captive portal).
-3. Desde la web: configurar semilla/dificultad/modo/velocidad/nombre, iniciar,
-   detener y reiniciar estadísticas.
-4. Físicamente: presionar un botón para iniciar una ronda.
+3. Desde la web (páginas separadas): semilla (`/seed`), juego (`/game`), OLED
+   (`/display`), Wi-Fi (`/wifi`) y nombre (`/player`), más los controles iniciar,
+   detener y reiniciar.
+4. Físicamente: **presionar dos botones a la vez** para iniciar la ronda; hay una
+   **cuenta regresiva** configurable (por defecto 3 s) antes del primer LED.
+   También se puede iniciar desde `/start`.
+5. El **OLED se puede apagar** desde `/display` (toda la info sigue en la web).
 
 ## Depurar (printf por USB)
 

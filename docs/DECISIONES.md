@@ -251,3 +251,87 @@ Documentación oficial de referencia (carpeta raíz):
 - **Referencia:**
   - [lwIP raw UDP API](https://www.nongnu.org/lwip/2_1_x/group__udp__raw.html)
   - Formato DNS: RFC 1035.
+
+---
+
+## 16. Disparador de inicio: dos botones simultáneos + cuenta regresiva
+
+- **Decisión:** la ronda **no** arranca con un solo botón. Se requiere presionar
+  **dos botones a la vez** (disparador de inicio) y, tras eso, se ejecuta una
+  **cuenta regresiva** de `start_delay_s` segundos (configurable vía web, por
+  defecto 3 s, límite 10 s) con *beeps*, antes de encender el primer LED. El
+  inicio desde la web (`/start`) pasa por la misma cuenta regresiva.
+- **Por qué:** evita arranques accidentales por una pulsación suelta y da al
+  jugador un "3, 2, 1" audible para prepararse, lo que hace la medición más
+  justa y reproducible en competencias estandarizadas.
+- **Referencia:**
+  - [hardware_gpio](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_gpio)
+    (lectura de múltiples pulsadores simultáneos)
+  - [hardware_timer](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_timer)
+    (temporización de la cuenta regresiva)
+  - [hardware_pwm](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_pwm)
+    (beeps del buzzer)
+
+---
+
+## 17. Separación frontend / backend de la web
+
+- **Decisión:** la web se separa en dos módulos: el **backend** de ruteo y parseo
+  en `src/web_server.cpp` (lwIP + `handle_config`) y el **frontend** en
+  `src/web_ui.cpp` / `include/web_ui.hpp`, con la interfaz pura
+  `web_ui::render(path, out, len)` que **solo lee** el estado y produce HTML, sin
+  modificar nada.
+- **Por qué:** desacopla la lógica de red (qué ruta, qué parámetro) de la
+  presentación (HTML), lo que facilita mantener cada página y reutilizar el
+  escape de HTML (`web_ui::html_escape`) en un único lugar. Cada página tiene su
+  formulario y su ruta propios (`/`, `/seed`, `/game`, `/display`, `/wifi`,
+  `/player`).
+- **Referencia:**
+  - [lwIP raw TCP API](https://www.nongnu.org/lwip/2_1_x/group__tcp__raw.html)
+    (backend HTTP)
+  - Módulos `web_server` / `web_ui` en `include/` y `src/`.
+
+---
+
+## 18. OLED deshabilitable (`oled_enabled`)
+
+- **Decisión:** el display se puede apagar/encender desde la web (`/display`,
+  campo `oled_enabled` en `GameConfig`) con `display::set_power(false)`, que envía
+  el comando SSD1306 **0xAE** (display off); para encenderlo, **0xAF**.
+- **Por qué:** toda la información también está disponible en la web, así que el
+  OLED puede apagarse para **ahorrar energía** (especialmente útil alimentado por
+  batería) sin perder funcionalidad.
+- **Referencia:**
+  - [hardware_i2c](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_i2c)
+  - Datasheet SSD1306 (Solomon Systech) — comandos 0xAE / 0xAF.
+
+---
+
+## 19. Wi-Fi configurable desde la web y persistido
+
+- **Decisión:** las credenciales STA se guardan en `GameConfig`
+  (`wifi_ssid[33]` / `wifi_password[65]`, con defaults `WIFI_SSID_DEFAULT` /
+  `WIFI_PASSWORD_DEFAULT`), se editan desde `/wifi`, se **persisten en Flash**
+  (`PersistentData` v2) y se aplican re-conectando automáticamente (bandera
+  `g_wifi_reconnect` en el bucle del Core 1).
+- **Por qué:** permite cambiar de red **sin recompilar ni flashear**; el
+  dispositivo queda configurable en campo (mismo criterio que el resto de la
+  configuración).
+- **Referencia:**
+  - [pico_cyw43_arch / cyw43_arch_wifi_connect_timeout_ms](https://www.raspberrypi.com/documentation/pico-sdk/networking.html#pico_cyw43_arch)
+  - [hardware_flash](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash)
+  - [pico_flash / flash_safe_execute](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_flash)
+
+---
+
+## 20. Historial de tiempos de reacción
+
+- **Decisión:** `GameStats` guarda un **historial de los últimos 20 tiempos**
+  (`history[20]` en ms, `history[0]` = más reciente, más `history_count`), que la
+  página Home muestra como tabla.
+- **Por qué:** además del promedio y el mejor tiempo, el usuario puede ver la
+  evolución de sus reacciones y detectar tendencias (fatiga, mejora), enriqueciendo
+  el panel sin tocar el motor del juego.
+- **Referencia:**
+  - [pico_sync (critical_section)](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_sync)
+    para proteger el acceso al historial entre núcleos.
