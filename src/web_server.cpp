@@ -60,6 +60,7 @@ void refresh_display();
 #define AP_SSID       "PicoW-ReactionGame"
 #define AP_PASSWORD   "12345678"   // Clave WPA2 (solo si AP_OPEN = 0).
 #define AP_OPEN       1            // 1 = AP abierto (recomendado), 0 = WPA2.
+#define AP_CHANNEL    1            // Canal 2.4 GHz fijo (1, 6 u 11). Estable.
 #define AP_IP         "192.168.4.1"
 #define STA_TIMEOUT_MS 10000u      // Tiempo máximo intentando STA (10 s).
 
@@ -220,6 +221,28 @@ err_t http_sent(void*, struct tcp_pcb* tpcb, u16_t) {
     return ERR_OK;
 }
 
+// Envía una respuesta HTTP simple (status + texto opcional) y cierra la conexión.
+// Se usa para el "captive portal check": responder lo que el cliente espera para
+// que NO se desconecte de la red "sin internet".
+static void send_http_response(struct tcp_pcb* tpcb, const char* status_line,
+                               const char* content_type, const char* body) {
+    char headers[256];
+    size_t body_len = body ? std::strlen(body) : 0;
+    if (body) {
+        int hlen = std::snprintf(headers, sizeof(headers),
+            "HTTP/1.1 %s\r\nContent-Type: %s\r\nConnection: close\r\nContent-Length: %u\r\n\r\n",
+            status_line, content_type, (unsigned)body_len);
+        tcp_write(tpcb, headers, (u16_t)hlen, TCP_WRITE_FLAG_COPY);
+        tcp_write(tpcb, body, (u16_t)body_len, TCP_WRITE_FLAG_COPY);
+    } else {
+        int hlen = std::snprintf(headers, sizeof(headers),
+            "HTTP/1.1 %s\r\nConnection: close\r\n\r\n", status_line);
+        tcp_write(tpcb, headers, (u16_t)hlen, TCP_WRITE_FLAG_COPY);
+    }
+    tcp_output(tpcb);
+    tcp_sent(tpcb, http_sent);
+}
+
 // Se llama al recibir datos del cliente.
 err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
     if (p == nullptr) {
@@ -252,6 +275,23 @@ err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
         // Separa la query string (tras '?').
         char* q = std::strchr(path, '?');
         if (q) { *q = '\0'; query = q + 1; }
+    }
+
+    // --- Captive portal check (conectividad) ---
+    // Los teléfonos/PC hacen un GET a una URL conocida para detectar "internet".
+    // Si no reciben lo esperado, se desconectan de la red "sin internet". Se
+    // responde lo que cada plataforma espera para que mantengan la conexión.
+    if (std::strstr(path, "generate_204") || std::strstr(path, "gen_204")) {
+        send_http_response(tpcb, "204 No Content", nullptr, nullptr);          // Android.
+        return ERR_OK;
+    }
+    if (std::strstr(path, "hotspot-detect") || std::strstr(path, "success.html")) {
+        send_http_response(tpcb, "200 OK", "text/plain", "Success");           // iOS.
+        return ERR_OK;
+    }
+    if (std::strstr(path, "connecttest") || std::strstr(path, "ncsi") || std::strstr(path, "redirect")) {
+        send_http_response(tpcb, "200 OK", "text/plain", "Microsoft Connect Test"); // Windows.
+        return ERR_OK;
     }
 
     // Rutas de control: encolan el evento y devuelven el Home.
@@ -361,9 +401,10 @@ static void network_up() {
         // Falló STA -> conmuta a Access Point (SoftAP) + captive portal.
         g_is_ap = true;
         cyw43_arch_disable_sta_mode();
+        cyw43_wifi_ap_set_channel(&cyw43_state, AP_CHANNEL);   // Canal fijo (estable).
 #if AP_OPEN
         cyw43_arch_enable_ap_mode(AP_SSID, nullptr, CYW43_AUTH_OPEN);
-        printf("[web] Modo AP (ABIERTO): %s / IP %s\n", AP_SSID, AP_IP);
+        printf("[web] Modo AP (ABIERTO): %s / canal %d / IP %s\n", AP_SSID, AP_CHANNEL, AP_IP);
 #else
         cyw43_arch_enable_ap_mode(AP_SSID, AP_PASSWORD, CYW43_AUTH_WPA2_MIXED_PSK);
         printf("[web] Modo AP: %s / clave %s / IP %s\n", AP_SSID, AP_PASSWORD, AP_IP);

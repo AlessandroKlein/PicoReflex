@@ -4,6 +4,17 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.2.6] - 2026-10-20
+
+### Corregido
+- **"Se desconecta solo" del AP**: el teléfono hace un *captive portal check*
+  (GET a `/generate_204` en Android, `/hotspot-detect.html` en iOS, etc.) y, al no
+  recibir la respuesta esperada, descarta la red "sin internet". El servidor ahora
+  responde `204`/`Success`/`Microsoft Connect Test` para que el teléfono mantenga
+  la conexión.
+- **Canal del AP fijo** en 1 (`cyw43_wifi_ap_set_channel`): evita inestabilidad del
+  auto-canal del CYW43439.
+
 ## [0.2.5] - 2026-10-20
 
 ### Corregido
