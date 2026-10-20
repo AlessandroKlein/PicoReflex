@@ -122,8 +122,8 @@ Documentación oficial de referencia (carpeta raíz):
   usar el driver CYW43 y lwIP desde **ambos núcleos** con servicio en segundo
   plano automático.
 - **Conectividad:** STA (10 s de timeout) → si falla, SoftAP
-  (`PicoW-ReactionGame`, IP `192.168.4.1`). El LED onboard queda fijo en STA y
-  parpadea en AP.
+  (`PicoW-ReactionGame` / clave `12345678`, IP `192.168.4.1`, WPA2 mixto). El LED
+  onboard queda fijo en STA y parpadea en AP.
 - **Referencia:**
   - [pico_cyw43_arch](https://www.raspberrypi.com/documentation/pico-sdk/networking.html#pico_cyw43_arch)
   - `cyw43_arch_wifi_connect_timeout_ms`, `cyw43_arch_enable_ap_mode` en

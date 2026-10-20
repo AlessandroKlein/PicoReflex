@@ -50,6 +50,10 @@ void refresh_display();
 // -----------------------------------------------------------------------------
 // Constantes del Access Point de respaldo
 // -----------------------------------------------------------------------------
+// Credenciales del AP (modo respaldo cuando falla la conexión STA):
+//   SSID:     PicoW-ReactionGame
+//   Clave:    12345678
+//   IP:       192.168.4.1
 #define HTTP_PORT     80u
 #define AP_SSID       "PicoW-ReactionGame"
 #define AP_PASSWORD   "12345678"   // WPA2 exige al menos 8 caracteres.
@@ -343,7 +347,7 @@ static void network_up() {
         // Falló STA -> conmuta a Access Point (SoftAP) + captive portal.
         g_is_ap = true;
         cyw43_arch_disable_sta_mode();
-        cyw43_arch_enable_ap_mode(AP_SSID, AP_PASSWORD, CYW43_AUTH_WPA2_AES_PSK);
+        cyw43_arch_enable_ap_mode(AP_SSID, AP_PASSWORD, CYW43_AUTH_WPA2_MIXED_PSK);
         system_status_update_network(false, true, AP_IP);
         captive::init();    // DNS en puerto 53 -> 192.168.4.1 (redirección).
     }

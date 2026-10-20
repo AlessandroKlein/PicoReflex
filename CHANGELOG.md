@@ -4,6 +4,17 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.2.3] - 2026-10-20
+
+### Corregido
+- **Conexión al Access Point**: se cambió la autenticación de `WPA2_AES_PSK` a
+  `WPA2_MIXED_PSK` para mejorar la compatibilidad con más clientes (algunos
+  teléfonos no se conectaban con la clave `12345678`).
+
+### Documentado
+- Credenciales del AP (`PicoW-ReactionGame` / `12345678` / IP `192.168.4.1`)
+  documentadas en `COMPILAR.md` (sección "Usar") y `DECISIONES.md`.
+
 ## [0.2.2] - 2026-10-20
 
 ### Añadido
