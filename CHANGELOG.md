@@ -4,6 +4,13 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.2.7] - 2026-10-20
+
+### Corregido
+- **DNS del captive portal**: ahora responde solo consultas A (IPv4) con la IP del
+  dispositivo y devuelve NODATA para AAAA (IPv6), para que el *captive portal check*
+  del teléfono no falle y descarte la red.
+
 ## [0.2.6] - 2026-10-20
 
 ### Corregido

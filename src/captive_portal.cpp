@@ -63,14 +63,16 @@ static void dns_recv_cb(void*, struct udp_pcb* pcb, struct pbuf* p,
         return;
     }
 
+    // QTYPE de la consulta (justo después del QNAME). Solo respondemos consultas
+    // de tipo A (IPv4) con la IP del dispositivo; para AAAA (IPv6) y el resto se
+    // devuelve NODATA (sin respuesta) para que el cliente reintente con A.
+    uint16_t qtype = (uint16_t)((query[i + 1] << 8) | query[i + 2]);
+    bool answer_a = (qtype == 0x0001);
+
     // Arma la respuesta.
     // Tamaño máximo: 12 (header) + (qend-12) (question) + 16 (answer) <= 148 B.
     // Se reserva 160 B para dejar margen y evitar desbordes de pila.
     uint8_t resp[160];
-    if (qend + 16 > (int)sizeof(resp)) {  // Defensa en profundidad.
-        pbuf_free(p);
-        return;
-    }
     int r = 0;
 
     // Header.
@@ -79,22 +81,26 @@ static void dns_recv_cb(void*, struct udp_pcb* pcb, struct pbuf* p,
     resp[r++] = 0x81;                    // Flags: QR=1 (respuesta), RD eco.
     resp[r++] = 0x80;                    // RA=1 (recursion available).
     resp[r++] = 0x00; resp[r++] = 0x01;  // QDCOUNT = 1.
-    resp[r++] = 0x00; resp[r++] = 0x01;  // ANCOUNT = 1.
+    resp[r++] = 0x00; resp[r++] = (answer_a ? 0x01 : 0x00);  // ANCOUNT.
     resp[r++] = 0x00; resp[r++] = 0x00;  // NSCOUNT = 0.
     resp[r++] = 0x00; resp[r++] = 0x00;  // ARCOUNT = 0.
 
     // Question: eco íntegro de la consulta.
+    if (r + (qend - 12) > (int)sizeof(resp)) { pbuf_free(p); return; }
     std::memcpy(&resp[r], &query[12], (size_t)(qend - 12));
     r += qend - 12;
 
-    // Answer.
-    resp[r++] = 0xC0; resp[r++] = 0x0C;  // NAME: puntero a offset 0x0C.
-    resp[r++] = 0x00; resp[r++] = 0x01;  // TYPE = A.
-    resp[r++] = 0x00; resp[r++] = 0x01;  // CLASS = IN.
-    resp[r++] = 0x00; resp[r++] = 0x00;
-    resp[r++] = 0x00; resp[r++] = 0x3C;  // TTL = 60 s.
-    resp[r++] = 0x00; resp[r++] = 0x04;  // RDLENGTH = 4.
-    resp[r++] = AP_IP_BYTES;             // RDATA = 192.168.4.1.
+    // Answer (solo para consultas A).
+    if (answer_a) {
+        if (r + 16 > (int)sizeof(resp)) { pbuf_free(p); return; }
+        resp[r++] = 0xC0; resp[r++] = 0x0C;  // NAME: puntero a offset 0x0C.
+        resp[r++] = 0x00; resp[r++] = 0x01;  // TYPE = A.
+        resp[r++] = 0x00; resp[r++] = 0x01;  // CLASS = IN.
+        resp[r++] = 0x00; resp[r++] = 0x00;
+        resp[r++] = 0x00; resp[r++] = 0x3C;  // TTL = 60 s.
+        resp[r++] = 0x00; resp[r++] = 0x04;  // RDLENGTH = 4.
+        resp[r++] = AP_IP_BYTES;             // RDATA = 192.168.4.1.
+    }
 
     // Envía la respuesta al cliente.
     struct pbuf* out = pbuf_alloc(PBUF_TRANSPORT, (u16_t)r, PBUF_RAM);
