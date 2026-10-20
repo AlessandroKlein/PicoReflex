@@ -64,7 +64,13 @@ static void dns_recv_cb(void*, struct udp_pcb* pcb, struct pbuf* p,
     }
 
     // Arma la respuesta.
-    uint8_t resp[128];
+    // Tamaño máximo: 12 (header) + (qend-12) (question) + 16 (answer) <= 148 B.
+    // Se reserva 160 B para dejar margen y evitar desbordes de pila.
+    uint8_t resp[160];
+    if (qend + 16 > (int)sizeof(resp)) {  // Defensa en profundidad.
+        pbuf_free(p);
+        return;
+    }
     int r = 0;
 
     // Header.

@@ -61,7 +61,7 @@ add_executable(PicoReflex
 )
 
 pico_set_program_name(PicoReflex "PicoReflex")
-pico_set_program_version(PicoReflex "0.1")
+pico_set_program_version(PicoReflex "0.1.1")
 
 # Salida por USB (printf de depuración). UART deshabilitado.
 pico_enable_stdio_uart(PicoReflex 0)

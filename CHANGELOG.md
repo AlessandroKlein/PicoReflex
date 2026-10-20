@@ -4,6 +4,18 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.1.1] - 2026-10-20
+
+### Arreglado
+- **Desborde de búfer en la respuesta DNS** (`captive_portal.cpp`): el búfer de
+  respuesta se amplió a 160 B y se añadió una comprobación defensiva. Un paquete
+  DNS de 128 B con QNAME largo podía escribir fuera de un búfer de 128 B.
+
+### Añadido
+- `docs/SEGURIDAD.md`: auditoría de seguridad (hallazgos, estado y hardening).
+- `docs/MEJORAS.md`: hoja de ruta de mejoras futuras.
+- `docs/API.md`: referencia de los endpoints HTTP y sus parámetros.
+
 ## [0.1.0] - 2026-10-20
 
 ### Añadido
