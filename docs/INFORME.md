@@ -42,8 +42,9 @@ las siguientes características concretas:
 **Límites / fuera de alcance:** no se implementa control de sonido polifónico
 completo (solo tonos PWM), ni *datalogging* a nube, ni carga de batería (se asume
 alimentación externa o módulo TP4056 + boost). El modo de ultra-bajo consumo
-*dormant* (< 1 mA) queda documentado como mejora pendiente de verificación en
-hardware (ver `docs/DUDAS.md`).
+*DORMANT* (< 1.5 mA) está **implementado** con un protocolo dual-core (apagado
+del Wi-Fi + `low_power_dormant_until_gpio_pin_state`); queda pendiente su
+verificación de consumo en hardware (ver `docs/DECISIONES.md` §13).
 
 ### b. Descripción de la solución propuesta
 
@@ -94,8 +95,9 @@ Wi-Fi/lwIP) en un dispositivo funcional y reproducible.
 3. **Escritura segura en Flash con dos núcleos:** se resolvió con
    `flash_safe_execute()` y `flash_safe_execute_core_init()` en ambos núcleos.
 4. **Bajo consumo real (< 2 mA):** requiere modo *dormant* (no *sleep*), que exige
-   apagar el Wi-Fi y coordinar ambos núcleos; quedó documentado como mejora
-   pendiente de verificación en hardware.
+   apagar el Wi-Fi (`cyw43_arch_deinit()`) y coordinar ambos núcleos; se implementó
+   con un protocolo de *handshake* y `low_power_dormant_until_gpio_pin_state()`,
+   pendiente de verificación de consumo en hardware.
 5. **Comunicación inter-núcleo:** se evitó el uso de los FIFOs crudos y se usó
    `queue_t` + `critical_section`, siguiendo la recomendación del SDK.
 

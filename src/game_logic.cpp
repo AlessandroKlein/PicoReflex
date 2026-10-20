@@ -36,6 +36,7 @@
 #include "hardware/structs/sio.h"
 #include "pico/time.h"
 #include "pico/rand.h"
+#include "pico/low_power.h"
 
 #include "audio.hpp"
 #include "flash_storage.hpp"
@@ -84,15 +85,15 @@ static flash::PersistentData g_persist;
 static bool g_persist_dirty = false;   ///< true si hay que escribir a Flash.
 
 // -----------------------------------------------------------------------------
-// Modo de bajo consumo (idle)
+// Modo de bajo consumo (DORMANT, < 2 mA)
 // -----------------------------------------------------------------------------
-// Si no hay actividad en IDLE_SLEEP_AFTER_US, el Core 0 entra en "sleep" (WFI)
-// para reducir consumo. Un temporizador periódico lo despierta cada
-// IDLE_WAKE_PERIOD_MS para seguir atendiendo eventos de la web (queue) y medir
-// la inactividad. NOTA: el modo "dormant" (< 2 mA) requiere apagar el Wi-Fi y
-// coordinar ambos núcleos; está documentado en docs/DUDAS.md.
+// Tras IDLE_SLEEP_AFTER_US sin actividad, el Core 0 inicia el protocolo de
+// dormancia: pide al Core 1 que apague el Wi-Fi (cyw43_arch_deinit) y, cuando
+// responde, entra en modo DORMANT con wake por GPIO (cualquier pulsador).
+// Ver low_power_dormant_until_gpio_pin_state() en pico/low_power.h.
 #define IDLE_SLEEP_AFTER_US   (3u * 60u * 1000000u)  ///< 3 minutos.
-#define IDLE_WAKE_PERIOD_MS   50u                    ///< Despertar periódico.
+#define IDLE_WAKE_PERIOD_MS   50u                    ///< Despertar periódico (fallback).
+#define SLEEP_READY_TIMEOUT_MS 1000u                 ///< Timeout del handshake.
 
 static uint32_t g_last_activity_us = 0;   ///< Última actividad (pulsación/ronda).
 static struct repeating_timer g_wake_timer;
@@ -101,6 +102,43 @@ static struct repeating_timer g_wake_timer;
 // interrumpe el WFI para que el bucle revise la cola de eventos).
 static bool wake_timer_cb(struct repeating_timer*) {
     return true;   // true = seguir repitiendo.
+}
+
+// -----------------------------------------------------------------------------
+// Entrada al modo DORMANT (protocolo con el Core 1)
+// -----------------------------------------------------------------------------
+// Devuelve false si el Core 1 no respondió a tiempo (no se durmió).
+static bool enter_dormant() {
+    // 1) Pide al Core 1 que apague el Wi-Fi.
+    g_sleep_ready = false;
+    g_sleep_request = true;
+
+    // 2) Espera la respuesta del Core 1 (con timeout).
+    uint32_t start = time_us_32();
+    while (!g_sleep_ready) {
+        if ((time_us_32() - start) > SLEEP_READY_TIMEOUT_MS * 1000u) {
+            g_sleep_request = false;   // Aborta: el Core 1 no respondió.
+            return false;
+        }
+        tight_loop_contents();
+    }
+
+    // 3) Habilita el wake-up por GPIO (flanco de bajada) en los 5 pulsadores.
+    for (uint i = 0; i < LED_COUNT; i++) {
+        gpio_set_dormant_irq_enabled(g_button_pins[i], GPIO_IRQ_EDGE_FALL, true);
+    }
+
+    // 4) Entra en DORMANT (bloquea hasta que un pulsador despierte al chip).
+    //    DORMANT_CLOCK_SOURCE_ROSC apaga el XOSC y las PLL (mínimo consumo).
+    //    Al despertar, el SDK restaura los relojes automáticamente.
+    low_power_dormant_until_gpio_pin_state(g_button_pins[0],
+                                           /*edge=*/true, /*high=*/false,
+                                           DORMANT_CLOCK_SOURCE_ROSC, nullptr);
+
+    // 5) Ya despierto: libera al Core 1 para que re-inicialice el Wi-Fi.
+    g_sleep_request = false;
+    g_last_activity_us = time_us_32();
+    return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -285,11 +323,13 @@ void run() {
                 g_last_activity_us = time_us_32();
                 start_round(cfg);
             } else if ((time_us_32() - g_last_activity_us) > IDLE_SLEEP_AFTER_US) {
-                // Tras 3 minutos sin actividad, entra en bajo consumo (WFI).
-                // Se despierta con una pulsación (IRQ GPIO) o con el timer
-                // periódico (IDLE_WAKE_PERIOD_MS) para revisar la cola web.
+                // Tras 3 minutos sin actividad, entra en modo DORMANT (< 2 mA).
+                // Se despierta con cualquier pulsador. Si el handshake con el
+                // Core 1 falla, cae en un WFI como respaldo.
                 leds_off();
-                __wfi();
+                if (!enter_dormant()) {
+                    __wfi();   // Respaldo: sleep ligero si no se pudo dormir.
+                }
             } else {
                 sleep_ms(5);       // Pequeña espera para no saturar el núcleo.
             }

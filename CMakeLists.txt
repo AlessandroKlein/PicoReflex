@@ -86,6 +86,7 @@ target_link_libraries(PicoReflex
     pico_multicore
     pico_flash
     pico_rand
+    pico_low_power
     # Periféricos hardware
     hardware_gpio
     hardware_adc

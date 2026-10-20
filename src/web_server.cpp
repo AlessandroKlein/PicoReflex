@@ -374,18 +374,23 @@ void http_server_init() {
 // Inicialización y bucle del Core 1
 // =============================================================================
 void init() {
-    // Inicializa el driver CYW43 + lwIP (threadsafe background, multi-núcleo).
-    if (cyw43_arch_init()) {
-        // En hardware real esto no debería fallar; sin red el proyecto no sirve.
-        return;
-    }
     // Medición de batería (ADC). Se hace en el Core 1 porque requiere el lock
     // del CYW43 (GPIO29 = VSYS/3 y WL_CLK compartidos); ver battery_monitor.cpp.
     battery::init();
 }
 
-void run() {
-    // --- Fase 1: intenta conectarse como Station (STA). ---
+// Apaga la pila de red (llamado antes de que el Core 0 entre en DORMANT).
+static void network_down() {
+    cyw43_arch_deinit();
+}
+
+// Levanta la pila de red (STA -> SoftAP) y el servidor HTTP. Se llama al
+// arrancar y de nuevo tras cada despertar de DORMANT.
+static void network_up() {
+    if (cyw43_arch_init()) {
+        return;   // En hardware real no debería fallar.
+    }
+
     g_is_ap = false;
     cyw43_arch_enable_sta_mode();
 
@@ -400,21 +405,46 @@ void run() {
                       a & 0xffu, (a >> 8) & 0xffu, (a >> 16) & 0xffu, (a >> 24) & 0xffu);
         system_status_update_network(true, false, ip);
     } else {
-        // --- Fase 2: falló STA -> conmuta a Access Point (SoftAP). ---
+        // Falló STA -> conmuta a Access Point (SoftAP).
         g_is_ap = true;
         cyw43_arch_disable_sta_mode();
         cyw43_arch_enable_ap_mode(AP_SSID, AP_PASSWORD, CYW43_AUTH_WPA2_AES_PSK);
         system_status_update_network(false, true, AP_IP);
     }
 
-    // --- Fase 3: arranca el servidor HTTP. ---
     http_server_init();
+}
 
-    // --- Fase 4: bucle del Core 1 (display + LED indicador + batería). ---
+void run() {
+    // Levanta la red la primera vez.
+    network_up();
+    bool net_up = true;
+
+    // --- Bucle del Core 1 (display + LED indicador + batería + dormancia). ---
     uint32_t blink_last = 0;
     uint32_t batt_last = 0;
     bool blink_state = false;
     while (true) {
+        // Protocolo de DORMANT: el Core 0 pide apagar el Wi-Fi.
+        if (g_sleep_request) {
+            if (net_up) {
+                network_down();
+                net_up = false;
+                g_sleep_ready = true;   // Avisa al Core 0 que ya puede dormir.
+            }
+            // Espera activa: este núcleo se detendrá cuando el chip entre en
+            // DORMANT (el ROSC se apaga y clk_sys se congela).
+            tight_loop_contents();
+            continue;
+        }
+        // Despertar: si la red estaba apagada, la re-inicializa.
+        if (!net_up) {
+            network_up();
+            net_up = true;
+            blink_last = (uint32_t)(time_us_32() / 1000u);
+            batt_last  = blink_last;
+        }
+
         uint32_t now_ms = (uint32_t)(time_us_32() / 1000u);
 
         // Parpadeo del LED onboard en modo AP.

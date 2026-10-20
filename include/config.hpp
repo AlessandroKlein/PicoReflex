@@ -122,6 +122,16 @@ struct SystemStatus {
 };
 
 // =============================================================================
+// Protocolo de dormancia (flags compartidos entre núcleos)
+// =============================================================================
+// El Core 0 (juego) pide dormir cuando hay 3 min de inactividad; el Core 1 (red)
+// apaga el Wi-Fi (cyw43_arch_deinit) y responde; luego el Core 0 entra en modo
+// DORMANT (< 2 mA). Al despertar por un pulsador, ambos núcleos reanudan.
+// Son flags `volatile bool` (accesos de 1 byte, atómicos en ARM).
+extern volatile bool g_sleep_request;   ///< Core 0 -> Core 1: "apagá el Wi-Fi".
+extern volatile bool g_sleep_ready;     ///< Core 1 -> Core 0: "Wi-Fi apagado".
+
+// =============================================================================
 // API de estado compartido (thread-safe entre núcleos)
 // =============================================================================
 

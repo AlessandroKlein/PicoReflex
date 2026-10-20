@@ -150,9 +150,15 @@ Rutas HTTP:
 
 ## 8. Estimación de consumo
 
-- Pico W + Wi-Fi activo: ~70–90 mA.
-- 5 LEDs + display + buzzer: ~30–50 mA.
-- Total pico: ~120–140 mA.
-- Autonomía con LiPo 1800 mAh: ~12–15 h (estimado; ver DUDAS.md §8).
-- Idle (WFI, Wi-Fi apagado): objetivo < 2 mA (pendiente de verificación con modo
-  *dormant*).
+| Estado | Consumo estimado |
+|---|---|
+| Wi-Fi activo (STA/AP) + CPU dual-core (125 MHz) | ~70–90 mA |
+| 5 LEDs + OLED + buzzer (promedio) | ~20–35 mA |
+| **Total en juego** | ~100–120 mA |
+| **Dormant (sueño profundo)** | **< 1.5 mA** |
+
+- Autonomía con LiPo 1S de 1800 mAh (descarga útil 85%): ~13.9 h
+  (`1800 mAh · 0.85 / 110 mA`).
+- El modo *idle* implementa **DORMANT** (no *sleep*): apaga el Wi-Fi y entra en
+  `low_power_dormant_until_gpio_pin_state(DORMANT_CLOCK_SOURCE_ROSC)`, con
+  consumo < 1.5 mA (ver DECISIONES.md §13).

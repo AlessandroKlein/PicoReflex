@@ -25,6 +25,10 @@ static GameStats         g_stats;     ///< Estadísticas actuales (compartidas).
 static SystemStatus      g_status;    ///< Estado del sistema (batería/red).
 static queue_t           g_ctrl_q;    ///< Cola de eventos de control (Core1->Core0).
 
+// Flags del protocolo de dormancia (ver config.hpp).
+volatile bool g_sleep_request = false;
+volatile bool g_sleep_ready   = false;
+
 // -----------------------------------------------------------------------------
 // Inicialización
 // -----------------------------------------------------------------------------

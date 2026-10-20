@@ -170,10 +170,12 @@ Documentación oficial de referencia (carpeta raíz):
 - **Decisión:** Se reserva el **último sector** de la Flash (2 MB → `0x1FF000`).
   Escritura con `flash_range_erase()` (4096 B) + `flash_range_program()` (256 B)
   dentro de `flash_safe_execute()`.
-- **Por qué:** `flash_safe_execute()` (pico_flash) deshabilita IRQs y bloquea al
-  otro núcleo (`multicore_lockout`) para garantizar que no se ejecute código
-  desde Flash durante el borrado/programación. Ambos núcleos llaman
-  `flash_safe_execute_core_init()` al arrancar.
+- **Por qué:** `flash_safe_execute()` (pico_flash) deshabilita IRQs
+  (`save_and_disable_interrupts`) y bloquea al otro núcleo (`multicore_lockout`)
+  para garantizar que no se ejecute código desde Flash durante el
+  borrado/programación. Ambos núcleos llaman `flash_safe_execute_core_init()` al
+  arrancar. Es exactamente la secuencia `multicore_lockout_start()` +
+  `save_and_disable_interrupts()` que exige la cátedra, encapsulada por el SDK.
 - **Referencia:**
   - [hardware_flash](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_flash)
   - [pico_flash / flash_safe_execute](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_flash)
@@ -204,15 +206,26 @@ Documentación oficial de referencia (carpeta raíz):
 
 ---
 
-## 13. Bajo consumo (idle)
+## 13. Bajo consumo (DORMANT, < 2 mA)
 
-- **Decisión:** Tras 3 min sin actividad, el Core 0 entra en **WFI** (`__wfi()`),
-  despertando por la IRQ de un pulsador o por un temporizador periódico de 50 ms.
-- **Por qué:** El modo *dormant* (< 1 mA) requiere apagar el Wi-Fi y coordinar
-  ambos núcleos; su API y consumo están documentados en `pico/low_power.h`. Se
-  deja como mejora pendiente de verificación en hardware (docs/DUDAS.md §3).
+- **Decisión:** Tras 3 min sin actividad, el Core 0 ejecuta un protocolo con el
+  Core 1 y entra en modo **DORMANT** (`low_power_dormant_until_gpio_pin_state`)
+  con `DORMANT_CLOCK_SOURCE_ROSC`, despertando por **cualquier pulsador**.
+- **Protocolo (dual-core):**
+  1. Core 0 activa `g_sleep_request`.
+  2. Core 1 apaga la radio con `cyw43_arch_deinit()` y responde `g_sleep_ready`.
+  3. Core 0 habilita el *wake-up* GPIO en los 5 pulsadores
+     (`gpio_set_dormant_irq_enabled`) y entra en DORMANT.
+  4. Al despertar, el SDK restaura los relojes automáticamente
+     (`low_power_wake_from_dormant` → `runtime_init_clocks`); Core 0 libera
+     `g_sleep_request` y Core 1 re-inicializa con `cyw43_arch_init()`.
+- **Por qué:** el modo *sleep* (~7–9 mA) no cumple "< 2 mA"; *dormant* (~0.95 mA
+  en RP2040) sí. Es imprescindible apagar el CYW43 antes (si no, consume
+  20–40 mA en reposo). Pendiente de verificación final en hardware (DUDAS.md §3).
 - **Referencia:**
   - [pico_low_power](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_low_power)
+  - `low_power_dormant_until_gpio_pin_state` y `DORMANT_CLOCK_SOURCE_ROSC` en
+    `pico/low_power.h`
 
 ---
 

@@ -2,6 +2,10 @@
 
 > Archivo de dudas/consultas técnicas detectadas durante el desarrollo.
 > Se actualiza a medida que se resuelven o se confirman con la cátedra / datasheet.
+>
+> **Estado tras la revisión de cátedra:** los puntos §1, §2, §4, §5, §6 y §8 quedan
+> validados; §3 (DORMANT) y §4 (escáner I2C) fueron implementados en el código.
+> Ver `git log` para el historial.
 
 ---
 
@@ -32,25 +36,34 @@
 - **Pendiente:** confirmar si la cátedra exige específicamente `pico_rand` o acepta un
   generador software (la consigna dice "pico_rand o xorshift/LCG en C++", así que es válido).
 
-## 3. Modo de bajo consumo (< 2 mA) en Pico W
+## 3. Modo de bajo consumo (< 2 mA) en Pico W — ✅ IMPLEMENTADO
 
 - **Duda:** La consigna pide "Sleep < 2 mA". Según
   [`pico/low_power.h`](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_low_power),
   el modo *sleep* consume ~7.3 mA (Pico, VSYS), y el modo *dormant* ~0.95 mA.
   Para cumplir "< 2 mA" es necesario usar **dormant**, no *sleep*.
-- **Resolución:** se usa `low_power_dormant_until_gpio_pin_state()` (wake por GPIO) con
-  `DORMANT_CLOCK_SOURCE_ROSC`, tras `cyw43_arch_deinit()` para apagar la radio.
-- **Pendiente de verificación en hardware:** comportamiento de la re-inicialización del
-  CYW43 después de dormant, y si hace falta fuente de reloj externa para el RTC en RP2040
-  (el propio header lo advierte).
+- **Resolución (implementada):** protocolo dual-core en `game_logic.cpp` /
+  `web_server.cpp`:
+  1. Core 0 activa `g_sleep_request` tras 3 min de inactividad.
+  2. Core 1 ejecuta `cyw43_arch_deinit()` (apaga la radio, 20–40 mA de ahorro) y
+     responde `g_sleep_ready`.
+  3. Core 0 habilita el wake-up GPIO en los 5 pulsadores y llama
+     `low_power_dormant_until_gpio_pin_state(DORMANT_CLOCK_SOURCE_ROSC)`.
+  4. Al despertar, el SDK restaura los relojes; Core 1 re-inicializa con
+     `cyw43_arch_init()`.
+- **Pendiente de verificación en hardware:** ciclo `cyw43_arch_deinit()` →
+  dormant → `cyw43_arch_init()` con el modo *threadsafe background*, y confirmar
+  el consumo real (< 1.5 mA) con un multímetro.
 
-## 4. Display OLED SSD1306 vs LCD1602
+## 4. Display OLED SSD1306 vs LCD1602 — ✅ AUTO-DETECCIÓN
 
 - **Duda:** La consigna menciona "Display I2C (OLED SSD1306 / LCD 1602)". Se elige
   **SSD1306 (128x64)** porque permite mostrar más información (tiempo, semilla, modo,
   batería) y usa I2C1 en GPIO14/15.
-- **Pendiente:** confirmar el modelo exacto del display del alumno (¿SSD1306 o SH1106?
-  ¿dirección I2C 0x3C o 0x3D?). El driver incluye ambas direcciones configurables.
+- **Resolución (implementada):** `display_driver.cpp` incluye un **escáner I2C** en
+  `init()` que prueba `0x3C` y `0x3D` y usa la que responde (ACK), evitando
+  fallos de bus. Diferencia SSD1306 vs SH1106: el SH1106 tiene RAM 132×64 (2 px
+  de desfase); el driver actual apunta a SSD1306.
 
 ## 5. Mapeo de botones por DMA
 
@@ -78,11 +91,20 @@
   configurables en tiempo de compilación y (a futuro) vía web. El modo AP de respaldo
   (`PicoW-ReactionGame`, IP `192.168.4.1`) permite configurarlo sin recompilar.
 
-## 8. Autonomía / consumo
+## 8. Autonomía / consumo — ✅ VALIDADO
 
-- **Duda:** La consigna estima 12–15 h con 1800 mAh. Verificar con medición real.
-- **Pendiente:** medir consumo real (Wi-Fi activo + LEDs + display) y ajustar la
-  constante de autonomía en `battery_monitor`.
+- **Consolidado (cátedra):**
+
+  | Estado | Consumo |
+  |---|---|
+  | Wi-Fi + CPU dual-core (125 MHz) | ~70–90 mA |
+  | LEDs + OLED + buzzer | ~20–35 mA |
+  | Total en juego | ~100–120 mA |
+  | Dormant | < 1.5 mA |
+
+- **Autonomía:** LiPo 1800 mAh con descarga útil 85% → `1800·0.85/110 ≈ 13.9 h`.
+- **Pendiente:** medir consumo real con multímetro y ajustar la constante de
+  autonomía en `battery_monitor`.
 
 ---
 

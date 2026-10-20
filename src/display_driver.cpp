@@ -32,6 +32,25 @@ namespace display {
 // -----------------------------------------------------------------------------
 static uint8_t g_fb[OLED_PAGES * OLED_WIDTH]; ///< Framebuffer (8 páginas x 128).
 static bool    g_ready = false;               ///< true si el display inicializó.
+static uint8_t g_oled_addr = OLED_ADDR;       ///< Dirección I2C detectada.
+
+// -----------------------------------------------------------------------------
+// Escáner I2C (auto-detección de la dirección del OLED)
+// -----------------------------------------------------------------------------
+// Prueba una escritura de 1 byte (comando 0x00) y comprueba si hay ACK.
+// Referencia: i2c_write_blocking() devuelve PICO_ERROR_GENERIC en un NACK.
+static bool i2c_probe(uint8_t addr) {
+    uint8_t dummy = 0x00;
+    int rc = i2c_write_blocking(I2C_DISPLAY, addr, &dummy, 1, false);
+    return (rc == 1);
+}
+
+// Detecta la dirección del SSD1306: 0x3C (SA0 a GND) o 0x3D (SA0 a 3V3).
+static void detect_address() {
+    if (i2c_probe(OLED_ADDR))      { g_oled_addr = OLED_ADDR; return; }
+    if (i2c_probe(OLED_ADDR_ALT))  { g_oled_addr = OLED_ADDR_ALT; return; }
+    g_oled_addr = OLED_ADDR;       // Por defecto si no se detecta nada.
+}
 
 // -----------------------------------------------------------------------------
 // Helpers I2C
@@ -40,9 +59,9 @@ static bool    g_ready = false;               ///< true si el display inicializ�
 static int send_commands(const uint8_t* cmds, size_t n) {
     // Envía el byte de control 0x00 SIN stop, luego los comandos CON stop.
     uint8_t ctrl = 0x00;
-    int rc = i2c_write_blocking(I2C_DISPLAY, OLED_ADDR, &ctrl, 1, true);
+    int rc = i2c_write_blocking(I2C_DISPLAY, g_oled_addr, &ctrl, 1, true);
     if (rc == PICO_ERROR_GENERIC) return rc;   // NACK: no hay dispositivo.
-    return i2c_write_blocking(I2C_DISPLAY, OLED_ADDR, cmds, n, false);
+    return i2c_write_blocking(I2C_DISPLAY, g_oled_addr, cmds, n, false);
 }
 
 // -----------------------------------------------------------------------------
@@ -55,6 +74,9 @@ bool init() {
     gpio_set_function(I2C_DISPLAY_SCL, GPIO_FUNC_I2C);
     gpio_pull_up(I2C_DISPLAY_SDA);
     gpio_pull_up(I2C_DISPLAY_SCL);
+
+    // Detecta la dirección I2C del panel (0x3C o 0x3D).
+    detect_address();
 
     // Secuencia de inicialización del SSD1306 (128x64).
     // Cada par (0xXX, 0xYY) es un comando con argumento.
@@ -109,8 +131,8 @@ void show() {
     // Vuelca el framebuffer completo. Con direccionamiento horizontal, el
     // controlador auto-incrementa columna/página tras cada byte.
     uint8_t ctrl = 0x40;
-    i2c_write_blocking(I2C_DISPLAY, OLED_ADDR, &ctrl, 1, true);         // 0x40, sin stop.
-    i2c_write_blocking(I2C_DISPLAY, OLED_ADDR, g_fb, sizeof(g_fb), false); // datos, con stop.
+    i2c_write_blocking(I2C_DISPLAY, g_oled_addr, &ctrl, 1, true);           // 0x40, sin stop.
+    i2c_write_blocking(I2C_DISPLAY, g_oled_addr, g_fb, sizeof(g_fb), false); // datos, con stop.
 }
 
 // -----------------------------------------------------------------------------
