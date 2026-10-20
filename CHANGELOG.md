@@ -4,6 +4,14 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.3.2] - 2026-10-20
+
+### Corregido
+- **La web dejaba de responder**: el modo DORMANT se activaba a los 3 min sin
+  tocar botones y apagaba el Wi-Fi, dejando el servidor HTTP inaccesible. Ahora
+  **no se duerme mientras el Wi-Fi está activo** (STA o AP); solo entra en
+  DORMANT cuando no hay red (ahorro de energía real sin cortar la web).
+
 ## [0.3.1] - 2026-10-20
 
 ### Revertido

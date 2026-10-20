@@ -396,12 +396,21 @@ void run() {
                     start_with_countdown(cfg);
                 }
             } else if ((time_us_32() - g_last_activity_us) > IDLE_SLEEP_AFTER_US) {
-                // Tras 3 minutos sin actividad, entra en modo DORMANT (< 2 mA).
-                // Se despierta con cualquier pulsador. Si el handshake con el
-                // Core 1 falla, cae en un WFI como respaldo.
-                leds_off();
-                if (!enter_dormant()) {
-                    __wfi();   // Respaldo: sleep ligero si no se pudo dormir.
+                // Tras 3 minutos sin actividad, entra en modo DORMANT (< 2 mA),
+                // PERO solo si el Wi-Fi está apagado: con la web activa (STA o AP)
+                // hay que mantener el servidor HTTP accesible. Si el handshake con
+                // el Core 1 falla, cae en un WFI como respaldo.
+                SystemStatus st = system_status_get();
+                if (st.wifi_sta || st.wifi_ap) {
+                    // Wi-Fi activo: no dormir; refresca el contador de inactividad
+                    // para volver a evaluar pasados otros 3 minutos.
+                    g_last_activity_us = time_us_32();
+                    sleep_ms(5);
+                } else {
+                    leds_off();
+                    if (!enter_dormant()) {
+                        __wfi();   // Respaldo: sleep ligero si no se pudo dormir.
+                    }
                 }
             } else {
                 sleep_ms(5);       // Pequeña espera para no saturar el núcleo.
