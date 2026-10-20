@@ -32,12 +32,14 @@
 #include "pico/time.h"
 #include "lwip/init.h"
 #include "lwip/tcp.h"
+#include "lwip/ip4_addr.h"
 
 #include "config.hpp"
 #include "display_driver.hpp"
 #include "game_logic.hpp"
 #include "battery_monitor.hpp"
 #include "captive_portal.hpp"
+#include "dhcpserver.h"
 #include "web_ui.hpp"
 #include "pin_defs.hpp"
 
@@ -69,6 +71,24 @@ void refresh_display();
 // -----------------------------------------------------------------------------
 static bool g_is_ap = false;        ///< true si quedó en modo Access Point.
 static volatile bool g_wifi_reconnect = false; ///< true si hay que re-conectar Wi-Fi.
+
+// Servidor DHCP para el modo AP: sin él, el cliente se asocia pero no recibe IP
+// (por eso el teléfono "conectaba y se desconectaba"). Implementación de
+// MicroPython/pico-examples (MIT), ver dhcpserver.c.
+static dhcp_server_t g_dhcp_server;
+
+// Inicia el servidor DHCP en la interfaz del AP (192.168.4.1, máscara /24).
+static void ap_dhcp_start() {
+    ip4_addr_t gw, mask;
+    IP4_ADDR(&gw, 192, 168, 4, 1);
+    IP4_ADDR(&mask, 255, 255, 255, 0);
+    dhcp_server_init(&g_dhcp_server, &cyw43_state.netif[CYW43_ITF_AP], &gw, &mask);
+}
+
+// Detiene el servidor DHCP del AP.
+static void ap_dhcp_stop() {
+    dhcp_server_deinit(&g_dhcp_server);
+}
 
 // -----------------------------------------------------------------------------
 // Buffer de respuesta HTTP (una conexión a la vez; ver nota en http_recv)
@@ -361,6 +381,7 @@ void init() {
 // Apaga la pila de red (llamado antes de que el Core 0 entre en DORMANT).
 static void network_down() {
     captive::stop();        // Libera el servidor DNS (captive portal) si estaba.
+    ap_dhcp_stop();         // Detiene el servidor DHCP del AP.
     cyw43_arch_deinit();
 }
 
@@ -411,6 +432,7 @@ static void network_up() {
 #endif
         system_status_update_network(false, true, AP_IP);
         captive::init();    // DNS en puerto 53 -> 192.168.4.1 (redirección).
+        ap_dhcp_start();    // DHCP: asigna IP 192.168.4.16..23 a los clientes.
     }
 
     http_server_init();

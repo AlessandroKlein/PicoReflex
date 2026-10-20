@@ -59,6 +59,7 @@ add_executable(PicoReflex
     src/web_server.cpp
     src/web_ui.cpp
     src/captive_portal.cpp
+    src/dhcpserver.c
 )
 
 pico_set_program_name(PicoReflex "PicoReflex")

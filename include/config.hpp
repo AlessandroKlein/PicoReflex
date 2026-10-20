@@ -37,10 +37,10 @@
 // Se usan para inicializar GameConfig; pueden cambiarse desde la web y persisten
 // en Flash. Si se modifica una red, se re-conecta automáticamente.
 #ifndef WIFI_SSID_DEFAULT
-#define WIFI_SSID_DEFAULT     "TU_RED_WIFI"
+#define WIFI_SSID_DEFAULT     ""
 #endif
 #ifndef WIFI_PASSWORD_DEFAULT
-#define WIFI_PASSWORD_DEFAULT "TU_PASSWORD"
+#define WIFI_PASSWORD_DEFAULT ""
 #endif
 
 // =============================================================================

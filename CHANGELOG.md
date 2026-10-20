@@ -4,6 +4,14 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.2.9] - 2026-10-20
+
+### Corregido (raíz del problema del AP)
+- **Faltaba el servidor DHCP en modo AP**: el teléfono se asociaba a
+  `PicoW-ReactionGame` pero nunca recibía IP, por eso "conectaba y se
+  desconectaba". Se integró `dhcpserver` (MicroPython/pico-examples, MIT), que
+  asigna IPs `192.168.4.16`–`192.168.4.23` a los clientes del AP.
+
 ## [0.2.8] - 2026-10-20
 
 ### Añadido
