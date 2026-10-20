@@ -62,10 +62,12 @@ add_executable(PicoReflex
 )
 
 pico_set_program_name(PicoReflex "PicoReflex")
-pico_set_program_version(PicoReflex "0.2.0")
+pico_set_program_version(PicoReflex "0.2.8")
 
-# Salida por USB (printf de depuración). UART deshabilitado.
-pico_enable_stdio_uart(PicoReflex 0)
+# Salida de depuración (printf): USB (CDC) y UART0 (GPIO0=TX, GPIO1=RX, 115200).
+# El USB es el más cómodo (conectar la Pico y abrir el puerto COM a 115200).
+# El UART0 sirve de respaldo con un adaptador USB-serial (FTDI).
+pico_enable_stdio_uart(PicoReflex 1)
 pico_enable_stdio_usb(PicoReflex 1)
 
 # Directorios de includes del proyecto (include/ y la raíz para lwipopts.h).

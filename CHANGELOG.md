@@ -4,6 +4,13 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.2.8] - 2026-10-20
+
+### Añadido
+- **UART de depuración** habilitado (UART0 en GPIO0=TX / GPIO1=RX, 115200 baud)
+  como respaldo al USB CDC para ver el `printf` de estado de red.
+- Versión del firmware corregida en el binario (antes quedó en 0.2.0).
+
 ## [0.2.7] - 2026-10-20
 
 ### Corregido
