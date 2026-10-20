@@ -377,12 +377,8 @@ void render_wifi(Builder& b) {
 
     b.append("<div class='card'><h3>Credenciales (modo Station)</h3>");
     b.append("<form method='get' action='/wifi'>");
-    // SSID con datalist para autocompletar; el botón "Buscar redes" lo puebla vía JS.
     b.printf("<label>SSID:</label><input name='ssid' id='ssid' value='%s' "
-             "list='ssid-list' autocomplete='off'><br>", ssid_esc);
-    b.append("<datalist id='ssid-list'></datalist>");
-    b.append("<button type='button' id='scan-btn' onclick='scanWifi()'>Buscar redes</button>");
-    b.append("<span class='muted' id='scan-msg'></span><br>");
+             "autocomplete='off'><br>", ssid_esc);
     b.printf("<label>Contraseña:</label><input type='password' id='pass' name='pass' "
              "value='%s'><br>", pass_esc);
     b.append("<label class='muted'><input type='checkbox' id='show-pass' "
@@ -390,26 +386,10 @@ void render_wifi(Builder& b) {
     b.append("<button type='submit'>Guardar</button></form>");
     b.append("</div>");
 
-    // JavaScript: búsqueda de redes (poll de /scan) + toggle de contraseña.
+    // JavaScript: toggle de contraseña (mostrar/ocultar).
     b.append("<script>");
     b.append("function togglePass(){var p=document.getElementById('pass');"
              "p.type=(p.type==='password')?'text':'password';}");
-    b.append("function scanWifi(){var btn=document.getElementById('scan-btn');"
-             "var msg=document.getElementById('scan-msg');"
-             "var dl=document.getElementById('ssid-list');var tries=0;"
-             "btn.disabled=true;msg.textContent='Buscando...';");
-    b.append("function attempt(){fetch('/scan').then(function(r){return r.json();})"
-             ".then(function(list){tries++;"
-             "if(list&&list.length>0){dl.innerHTML='';"
-             "for(var i=0;i<list.length;i++){var o=document.createElement('option');"
-             "o.value=list[i];dl.appendChild(o);}"
-             "msg.textContent='Se encontraron '+list.length+' redes.';btn.disabled=false;}"
-             "else if(tries>=6){dl.innerHTML='';msg.textContent='No se encontraron redes.';"
-             "btn.disabled=false;}else{setTimeout(attempt,700);}})"
-             ".catch(function(){tries++;"
-             "if(tries>=6){msg.textContent='No se encontraron redes.';btn.disabled=false;}"
-             "else{setTimeout(attempt,700);}});}");
-    b.append("attempt();}");
     b.append("</script>");
 
     render_footer(b);

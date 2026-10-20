@@ -4,6 +4,17 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.4.3] - 2026-10-20
+
+### Corregido (causa raíz del guardado de Wi-Fi)
+- **`url_decode` no se detenía en `&`**: al guardar, el SSID capturaba toda la
+  query restante (`"ssid&pass=..."`) y la contraseña quedaba "sola" → el SSID
+  guardado era inválido y la reconexión fallaba. Ahora `url_decode` corta en `&`.
+
+### Eliminado
+- Botón **"Buscar redes"** (y su JavaScript/datalist): el escaneo del CYW43 no
+  devolvía redes de forma fiable, así que se quitó de `/wifi`.
+
 ## [0.4.2] - 2026-10-20
 
 ### Corregido (causa raíz del reinicio al guardar/escanear)

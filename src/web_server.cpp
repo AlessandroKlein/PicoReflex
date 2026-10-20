@@ -174,9 +174,12 @@ int hexval(char c) {
 }
 
 // Decodifica %XX y '+' -> espacio (URL encoding mínimo para formularios GET).
+// Se detiene en '&' (separador de parámetros): el valor de un parámetro va hasta
+// el siguiente '&' o el final de la query. Sin esto, el SSID capturaba el resto
+// ("ssid&pass=...").
 void url_decode(const char* src, char* dst, size_t n) {
     size_t i = 0;
-    while (*src && i < n - 1u) {
+    while (*src && *src != '&' && i < n - 1u) {
         if (*src == '+') {
             dst[i++] = ' ';
             src++;
