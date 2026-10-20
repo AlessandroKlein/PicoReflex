@@ -93,7 +93,9 @@ static void ap_dhcp_stop() {
 // -----------------------------------------------------------------------------
 // Buffer de respuesta HTTP (una conexión a la vez; ver nota en http_recv)
 // -----------------------------------------------------------------------------
-static char g_body[2048];
+static char g_body[8192];   // Buffer de respuesta HTTP (HTML). La Home mide ~4.4 KB
+                            // con el CSS nuevo; 8192 da margen para contraseñas/
+                            // nombres largos escapados sin truncar la página.
 
 // =============================================================================
 // Utilidades de parseo de la query string

@@ -105,3 +105,42 @@ y las credenciales del AP en tiempo real.
 ```powershell
 python tools\gen_font.py   # regenera include/font5x7.hpp
 ```
+
+### ¿Qué es la fuente 5x7?
+
+Es la **tipografía de mapa de bits** que usa el display OLED (SSD1306) para
+dibujar texto. Cada carácter ocupa una celda de **5 columnas × 7 filas** de
+píxeles. Es la fuente clásica de los OLED monocromos: compacta, legible y fácil
+de almacenar.
+
+### ¿Por qué hay que "regenerarla"?
+
+Los glifos (las letras/dígitos) están definidos **como ASCII-art** dentro de
+`tools/gen_font.py` (cada carácter son 7 líneas de 5 caracteres, `#` = píxel
+encendido). El firmware **no entiende ASCII-art**: necesita un array de bytes.
+El script traduce ese dibujo a un array C++ (`include/font5x7.hpp`):
+
+```
+'0': [".###.", "#...#", "#..##", "#.#.#", "##..#", "#...#", ".###."]
+  → {0x0E, 0x11, 0x13, 0x15, 0x19, 0x11, 0x0E}
+```
+
+Solo hay que ejecutar el script **si se modifica un glifo o se agrega un carácter
+nuevo** (por ejemplo, un símbolo que falte). El archivo `font5x7.hpp` está marcado
+como "NO EDITAR A MANO": cualquier cambio se hace en `gen_font.py` y se regenera.
+
+### Cómo funciona el formato
+
+- `FONT5X7[95][5]`: **95 glifos** (ASCII imprimible `0x20`..`0x7E`), **5 bytes cada
+  uno**.
+- Cada byte es **una columna** del carácter; el **bit 0 es la fila superior**
+  (por eso el OLED dibuja "apaisado" los 5 bytes).
+- Se indexa por `carácter - 0x20`: `FONT5X7['A' - 0x20]`.
+- El driver (`src/display_driver.cpp`) recorre esos 5 bytes y setea/limpia los
+  píxeles correspondientes en el framebuffer de 128×64.
+
+### Referencia
+
+- `tools/gen_font.py` — generador (ASCII-art → array C++).
+- `include/font5x7.hpp` — salida generada (no editar a mano).
+- `src/display_driver.cpp` — consumo de la fuente (`draw_char_5x7`).

@@ -63,7 +63,7 @@ add_executable(PicoReflex
 )
 
 pico_set_program_name(PicoReflex "PicoReflex")
-pico_set_program_version(PicoReflex "0.3.2")
+pico_set_program_version(PicoReflex "0.3.3")
 
 # Salida de depuración (printf): USB (CDC) y UART0 (GPIO0=TX, GPIO1=RX, 115200).
 # El USB es el más cómodo (conectar la Pico y abrir el puerto COM a 115200).

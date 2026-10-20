@@ -4,6 +4,18 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.3.3] - 2026-10-20
+
+### Corregido
+- **Página web en negro**: el buffer de respuesta HTTP era de 2048 B y el HTML
+  nuevo (CSS + contenido) mide ~4.4 KB, por lo que la página se truncaba y
+  quedaba vacía. Se amplió a 8192 B.
+
+### Documentado
+- `COMPILAR.md`: explicación de **qué es la fuente 5x7**, por qué se regenera con
+  `tools/gen_font.py` y cómo funciona su formato (95 glifos × 5 bytes, bit 0 = fila
+  superior).
+
 ## [0.3.2] - 2026-10-20
 
 ### Corregido
