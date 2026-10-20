@@ -34,7 +34,13 @@ GameStats stats_get() {
     s.valid_reactions = 42;
     s.round_active = true;
     // Historial de ejemplo (más reciente primero).
-    for (uint32_t i = 0; i < 12; i++) s.history[i] = 210 + i * 35;
+    for (uint32_t i = 0; i < 12; i++) {
+        s.history[i].time_ms    = 210 + i * 35;
+        s.history[i].seed       = 12345u;
+        s.history[i].difficulty = (i % 3 == 0) ? Difficulty::HARD
+                                 : (i % 3 == 1) ? Difficulty::NORMAL
+                                                : Difficulty::EASY;
+    }
     s.history_count = 12;
     return s;
 }

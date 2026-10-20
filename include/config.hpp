@@ -111,6 +111,14 @@ struct GameConfig {
 // =============================================================================
 // Estadísticas del juego (actualizadas por el núcleo 0)
 // =============================================================================
+// Entrada del historial de reacción (para la tabla de la web): guarda el tiempo,
+// la semilla usada y la dificultad de esa reacción.
+struct HistoryEntry {
+    uint32_t   time_ms;      ///< Tiempo de reacción en ms.
+    uint32_t   seed;         ///< Semilla del PRNG en ese momento.
+    Difficulty difficulty;   ///< Dificultad en ese momento.
+};
+
 struct GameStats {
     uint32_t total_rounds = 0;        ///< Total de estímulos presentados.
     uint32_t hits = 0;                ///< Aciertos (botón correcto dentro de la tolerancia).
@@ -122,10 +130,10 @@ struct GameStats {
     uint32_t valid_reactions = 0;     ///< Cantidad de reacciones válidas (para el promedio).
     bool round_active = false;        ///< true si hay una ronda en curso.
 
-    // Historial de tiempos de reacción (ms) para la tabla de la web.
-    // history[0] es el más reciente; 0 = entrada vacía.
+    // Historial de reacciones para la tabla de la web.
+    // history[0] es el más reciente; time_ms == 0 = entrada vacía.
     static constexpr uint32_t HISTORY_SIZE = 20;
-    uint32_t history[HISTORY_SIZE] = {0};
+    HistoryEntry history[HISTORY_SIZE];
     uint32_t history_count = 0;       ///< Entradas válidas (0..HISTORY_SIZE).
 };
 
@@ -185,7 +193,10 @@ void stats_reset();
 // Registra un resultado de reacción (llamado por el núcleo 0, juego).
 //  - reaction_us: tiempo en microsegundos (0 si hubo timeout).
 //  - hit: true si acertó el botón correcto dentro de la tolerancia.
-void stats_record(uint32_t reaction_us, bool hit, bool timeout);
+//  - timeout: true si se agotó el tiempo sin responder.
+//  - seed / difficulty: contexto de la reacción (para el historial de la web).
+void stats_record(uint32_t reaction_us, bool hit, bool timeout,
+                  uint32_t seed, Difficulty difficulty);
 
 // --- Eventos de control (Core1 -> Core0) -------------------------------------
 // Encola un evento de control para el núcleo 0 (no bloquea si la cola está llena).

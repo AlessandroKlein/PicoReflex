@@ -82,7 +82,8 @@ void stats_reset() {
     stats_set(s);
 }
 
-void stats_record(uint32_t reaction_us, bool hit, bool timeout) {
+void stats_record(uint32_t reaction_us, bool hit, bool timeout,
+                  uint32_t seed, Difficulty difficulty) {
     critical_section_enter_blocking(&g_cs);
     g_stats.total_rounds++;
     if (timeout) {
@@ -95,12 +96,13 @@ void stats_record(uint32_t reaction_us, bool hit, bool timeout) {
         g_stats.total_time_us += reaction_us;
         g_stats.valid_reactions++;
 
-        // Historial (ms) para la tabla de la web: el más reciente en history[0].
-        uint32_t reaction_ms = reaction_us / 1000u;
+        // Historial para la tabla de la web: el más reciente en history[0].
         for (uint32_t i = GameStats::HISTORY_SIZE - 1u; i > 0; i--) {
             g_stats.history[i] = g_stats.history[i - 1u];
         }
-        g_stats.history[0] = reaction_ms;
+        g_stats.history[0].time_ms    = reaction_us / 1000u;
+        g_stats.history[0].seed       = seed;
+        g_stats.history[0].difficulty = difficulty;
         if (g_stats.history_count < GameStats::HISTORY_SIZE) {
             g_stats.history_count++;
         }

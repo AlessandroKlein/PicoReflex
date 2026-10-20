@@ -4,6 +4,14 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.2.2] - 2026-10-20
+
+### Añadido
+- **Tabla de tiempos con contexto**: la tabla "Últimos tiempos de reacción" del
+  Home ahora muestra, por cada reacción, la **semilla** usada y la **dificultad**
+  (además del tiempo en ms). El historial (`GameStats.history`) pasó de guardar
+  solo `uint32_t` a una estructura `HistoryEntry { time_ms, seed, difficulty }`.
+
 ## [0.2.1] - 2026-10-20
 
 ### Corregido

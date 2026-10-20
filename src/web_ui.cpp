@@ -214,10 +214,13 @@ void render_home(Builder& b) {
     if (st.history_count == 0u) {
         b.append("<p>Sin datos todavía.</p>");
     } else {
-        b.append("<table><tr><th>#</th><th>Tiempo (ms)</th></tr>");
+        b.append("<table><tr><th>#</th><th>Tiempo (ms)</th><th>Semilla</th><th>Dificultad</th></tr>");
         for (uint32_t i = 0; i < st.history_count && i < GameStats::HISTORY_SIZE; i++) {
-            b.printf("<tr><td>%u</td><td>%u ms</td></tr>",
-                     (unsigned)(i + 1u), (unsigned)st.history[i]);
+            b.printf("<tr><td>%u</td><td>%u ms</td><td>%u</td><td>%s</td></tr>",
+                     (unsigned)(i + 1u),
+                     (unsigned)st.history[i].time_ms,
+                     (unsigned)st.history[i].seed,
+                     difficulty_name(st.history[i].difficulty));
         }
         b.append("</table>");
     }

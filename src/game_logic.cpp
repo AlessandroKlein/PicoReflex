@@ -468,7 +468,7 @@ void run() {
         }
 
         // --- 5) Evalúa el resultado y da feedback. ---
-        stats_record(hit ? reaction_us : 0u, hit, timeout);
+        stats_record(hit ? reaction_us : 0u, hit, timeout, cfg.seed, cfg.difficulty);
 
         if (hit) {
             audio::play_hit();

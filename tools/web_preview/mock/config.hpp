@@ -30,6 +30,12 @@ struct GameConfig {
     char wifi_password[65] = "TU_PASSWORD";
 };
 
+struct HistoryEntry {
+    uint32_t time_ms;
+    uint32_t seed;
+    Difficulty difficulty;
+};
+
 struct GameStats {
     uint32_t total_rounds = 0;
     uint32_t hits = 0;
@@ -41,7 +47,7 @@ struct GameStats {
     uint32_t valid_reactions = 0;
     bool round_active = false;
     static constexpr uint32_t HISTORY_SIZE = 20;
-    uint32_t history[HISTORY_SIZE] = {0};
+    HistoryEntry history[HISTORY_SIZE];
     uint32_t history_count = 0;
 };
 
