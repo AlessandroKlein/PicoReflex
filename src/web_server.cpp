@@ -329,13 +329,23 @@ static void network_up() {
     }
 
     g_is_ap = false;
-    cyw43_arch_enable_sta_mode();
 
-    // Credenciales desde la configuración (persistidas en Flash, editables vía web).
+    // Diagnóstico por USB (stdio). Si el usuario mantiene el botón 0 al arrancar,
+    // se fuerza AP sin intentar STA.
     GameConfig cfg = config_get();
-    if (cyw43_arch_wifi_connect_timeout_ms(cfg.wifi_ssid, cfg.wifi_password,
-                                            CYW43_AUTH_WPA2_AES_PSK,
-                                            STA_TIMEOUT_MS) == 0) {
+    bool sta_ok = false;
+
+    if (!g_force_ap) {
+        cyw43_arch_enable_sta_mode();
+        printf("[web] Intentando STA: %s ...\n", cfg.wifi_ssid);
+        sta_ok = (cyw43_arch_wifi_connect_timeout_ms(cfg.wifi_ssid, cfg.wifi_password,
+                                                      CYW43_AUTH_WPA2_AES_PSK,
+                                                      STA_TIMEOUT_MS) == 0);
+    } else {
+        printf("[web] STA omitido (forzar AP)\n");
+    }
+
+    if (sta_ok) {
         // Conectado a la red Wi-Fi.
         cyw43_arch_gpio_put(CYW43_WL_GPIO_LED_PIN, true);  // LED fijo = STA.
         uint32_t a = cyw43_state.netif[CYW43_ITF_STA].ip_addr.addr;
@@ -343,6 +353,7 @@ static void network_up() {
         std::snprintf(ip, sizeof(ip), "%u.%u.%u.%u",
                       a & 0xffu, (a >> 8) & 0xffu, (a >> 16) & 0xffu, (a >> 24) & 0xffu);
         system_status_update_network(true, false, ip);
+        printf("[web] Conectado a STA, IP %s\n", ip);
     } else {
         // Falló STA -> conmuta a Access Point (SoftAP) + captive portal.
         g_is_ap = true;
@@ -350,6 +361,7 @@ static void network_up() {
         cyw43_arch_enable_ap_mode(AP_SSID, AP_PASSWORD, CYW43_AUTH_WPA2_MIXED_PSK);
         system_status_update_network(false, true, AP_IP);
         captive::init();    // DNS en puerto 53 -> 192.168.4.1 (redirección).
+        printf("[web] Modo AP: %s / clave %s / IP %s\n", AP_SSID, AP_PASSWORD, AP_IP);
     }
 
     http_server_init();

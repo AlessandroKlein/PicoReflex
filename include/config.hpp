@@ -168,6 +168,7 @@ struct SystemStatus {
 // Son flags `volatile bool` (accesos de 1 byte, atómicos en ARM).
 extern volatile bool g_sleep_request;   ///< Core 0 -> Core 1: "apagá el Wi-Fi".
 extern volatile bool g_sleep_ready;     ///< Core 1 -> Core 0: "Wi-Fi apagado".
+extern volatile bool g_force_ap;        ///< true = saltar STA e ir directo a SoftAP.
 
 // =============================================================================
 // API de estado compartido (thread-safe entre núcleos)

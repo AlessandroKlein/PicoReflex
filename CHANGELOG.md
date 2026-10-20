@@ -4,6 +4,18 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.2.4] - 2026-10-20
+
+### Añadido
+- **Forzar modo AP**: mantener el botón 0 al encender/reiniciar salta el intento
+  de STA y arranca directo en `PicoW-ReactionGame` (flag `g_force_ap`).
+- **Diagnóstico por USB**: `printf` del estado de red (STA/AP, IP, credenciales)
+  para depurar la conexión.
+
+### Documentado
+- `COMPILAR.md`: nueva sección "Solución de problemas del AP" (forzar AP, esperar
+  10 s, alimentación por USB, LED indicador).
+
 ## [0.2.3] - 2026-10-20
 
 ### Corregido

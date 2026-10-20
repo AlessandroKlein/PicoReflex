@@ -76,10 +76,30 @@ Cuando la Pico W no logra conectarse a la red STA, levanta su propio Access Poin
    También se puede iniciar desde `/start`.
 5. El **OLED se puede apagar** desde `/display` (toda la info sigue en la web).
 
+### Solución de problemas del AP (no conecta)
+
+1. **Forzar modo AP:** mantené presionado el **botón 0** mientras conectás la
+   alimentación (o reiniciás). La Pico salta el intento de STA y arranca directo
+   en `PicoW-ReactionGame`. Esto descarta el caso "quedó en STA".
+2. **Ver el estado por USB:** conectá el USB (no BOOTSEL) y abrí un monitor serie
+   a 115200 baud. El firmware imprime:
+   - `[game] Boton 0 presionado al arrancar -> forzando modo AP`
+   - `[web] Intentando STA: ...` o `[web] STA omitido (forzar AP)`
+   - `[web] Modo AP: PicoW-ReactionGame / clave 12345678 / IP 192.168.4.1`
+   - `[web] Conectado a STA, IP ...`
+3. **Esperar:** si no se fuerza AP, la Pico intenta STA durante **10 s** antes de
+   levantar el AP. Esperá ~12-15 s desde el encendido.
+4. **Alimentación:** para probar, alimentá por **USB** (estable 5 V). Una batería
+   débil o un *boost* insuficiente puede dejar el Wi-Fi sin corriente suficiente
+   (el CYW43 necesita ~100-150 mA).
+5. **LED onboard:** fijo = conectado a STA; parpadeo = modo AP; apagado = Wi-Fi
+   sin inicializar.
+
 ## Depurar (printf por USB)
 
 El programa usa `stdio` por USB. Conectar el USB (no en modo BOOTSEL) y abrir el
-puerto serie (por ejemplo, PuTTY / `minicom`) a 115200 baud.
+puerto serie (por ejemplo, PuTTY / `minicom`) a 115200 baud. Ver el estado de red
+y las credenciales del AP en tiempo real.
 
 ## Regenerar la fuente 5x7 (opcional)
 

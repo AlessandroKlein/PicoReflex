@@ -28,6 +28,7 @@
 #include "game_logic.hpp"
 
 #include <cstring>
+#include <cstdio>
 
 #include "hardware/gpio.h"
 #include "hardware/dma.h"
@@ -234,6 +235,13 @@ void init() {
         gpio_pull_up(g_button_pins[i]);
         gpio_set_irq_enabled_with_callback(g_button_pins[i], GPIO_IRQ_EDGE_FALL,
                                            true, &gpio_irq_callback);
+    }
+
+    // --- "Forzar AP": si el botón 0 se mantiene presionado durante el arranque,
+    // se salta STA y la Pico arranca directo en modo Access Point. ---
+    if (gpio_get(g_button_pins[0]) == 0) {
+        g_force_ap = true;
+        printf("[game] Boton 0 presionado al arrancar -> forzando modo AP\n");
     }
 
     // --- DMA: trace continuo de los botones. ---
