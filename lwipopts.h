@@ -6,8 +6,9 @@
 // (see https://www.nongnu.org/lwip/2_1_x/group__lwip__opts.html for details)
 
 // allow override in some examples
+// NO_SYS=0: lwIP usa la tarea tcpip de FreeRTOS (pico_lwip_freertos).
 #ifndef NO_SYS
-#define NO_SYS                      1
+#define NO_SYS                      0
 #endif
 // allow override in some examples
 #ifndef LWIP_SOCKET

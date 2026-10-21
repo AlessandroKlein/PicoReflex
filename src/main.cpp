@@ -1,74 +1,77 @@
 /**
  * @file   main.cpp
- * @brief  Punto de entrada del PicoReflex y arranque de los dos núcleos.
+ * @brief  Punto de entrada del PicoReflex con FreeRTOS (SMP, 2 núcleos).
  *
- * División de tareas por núcleo (dual-core RP2040, ver docs/DECISIONES.md):
+ * FreeRTOS SMP reemplaza al arranque manual por `multicore_launch_core1()`:
+ *   - `game_task`: lógica del juego en tiempo real (IRQ GPIO, LEDs, buzzer PWM,
+ *     Flash).
+ *   - `network_task`: Wi-Fi (`cyw43_arch` sys_freertos), servidor HTTP (lwIP),
+ *     display OLED, batería.
  *
- *   Core 0 (juego en tiempo real):
- *     - Lógica del juego, LEDs, interrupciones de pulsadores, PWM del buzzer.
- *     - Medición de reacción en microsegundos (hardware_timer).
- *     - Persistencia de récords en Flash (flash_safe_execute).
+ * PUNTO CLAVE: `cyw43_arch_init()` se ejecuta en `main()` **ANTES** de
+ * `vTaskStartScheduler()`. Con `pico_cyw43_arch_lwip_sys_freertos`, esto crea la
+ * tarea `tcpip` de lwIP; si se llamara dentro de una tarea (después del scheduler)
+ * el Wi-Fi no arranca.
  *
- *   Core 1 (red + display):
- *     - Inicialización del CYW43 (cyw43_arch) y pila lwIP.
- *     - Servidor HTTP embebido (STA / SoftAP).
- *     - Medición de batería (ADC) y refresco del display OLED.
- *
- * Sincronización: estado compartido protegido con critical_section + queue
- * (ver config.hpp / shared_state.cpp).
+ * Sincronización: un semáforo binario garantiza que `game::init()` (que detecta el
+ * "forzar AP" por botón 0) termine antes de que la red intente conectarse.
  *
  * Referencias:
- *  - multicore_launch_core1: https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_multicore
- *  - flash_safe_execute_core_init: https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_flash
+ *  - pico-examples pico_w/wifi/freertos (iperf/tcp): https://github.com/raspberrypi/pico-examples/tree/master/pico_w/wifi/freertos
+ *  - pico_cyw43_arch_lwip_sys_freertos
  */
 
+#include "FreeRTOS.h"
+#include "task.h"
+#include "semphr.h"
+
 #include "pico/stdlib.h"
-#include "pico/multicore.h"
-#include "pico/flash.h"      // flash_safe_execute_core_init()
 
 #include "config.hpp"
 #include "game_logic.hpp"
 #include "audio.hpp"
 #include "web_server.hpp"
 
-// -----------------------------------------------------------------------------
-// Entrada del Core 1 (red + display)
-// -----------------------------------------------------------------------------
-static void core1_entry() {
-    // Habilita a ESTE núcleo para ser "bloqueado" durante escrituras a Flash
-    // iniciadas por el Core 0 (ver flash_safe_execute). Debe llamarse antes de
-    // que el Core 0 intente guardar récords.
-    flash_safe_execute_core_init();
+// Semáforo binario: game_task lo da tras init; network_task lo toma antes de red.
+static SemaphoreHandle_t g_game_init_sem;
 
-    // Inicializa el chip Wi-Fi (cyw43_arch) y la medición de batería, y luego
-    // entra al bucle principal del servidor web + display (no retorna).
-    web::init();
-    web::run();
+// -----------------------------------------------------------------------------
+// Tarea del juego (equivale al antiguo Core 0)
+// -----------------------------------------------------------------------------
+static void game_task(void*) {
+    game::init();                       // GPIO (LEDs/botones), IRQ, DMA, PRNG, Flash.
+    xSemaphoreGive(g_game_init_sem);    // Señaliza que el juego ya inicializó.
+    game::run();                        // Bucle del juego (bloquea para siempre).
 }
 
 // -----------------------------------------------------------------------------
-// main() — Core 0
+// Tarea de red (equivale al antiguo Core 1)
+// -----------------------------------------------------------------------------
+static void network_task(void*) {
+    // Espera a que el juego inicialice (para leer bien el flag "forzar AP").
+    xSemaphoreTake(g_game_init_sem, portMAX_DELAY);
+    web::init();                        // cyw43_arch_init() (sys_freertos) + batería.
+    web::run();                         // Bucle de red/display (bloquea para siempre).
+}
+
 // -----------------------------------------------------------------------------
 int main() {
-    // Estándar: inicializa UART/USB para depuración (printf).
     stdio_init_all();
-
-    // Estado compartido (critical_section + colas) antes de arrancar el Core 1.
     shared_state_init();
 
-    // Habilita a este núcleo (Core 0) para ser bloqueado durante escrituras a
-    // Flash iniciadas desde el Core 1 (por robustez/futuro).
-    flash_safe_execute_core_init();
+    // Buzzer PWM (se configura una sola vez antes del scheduler).
+    audio::init();
 
-    // Inicialización del hardware del Core 0.
-    audio::init();      // Buzzer PWM.
-    game::init();       // GPIO (LEDs/pulsadores), IRQ, DMA, PRNG, carga de Flash.
+    g_game_init_sem = xSemaphoreCreateBinary();
 
-    // Arranca el Core 1 (red + display).
-    multicore_launch_core1(core1_entry);
+    // Tareas: la de red con prioridad mayor y más stack (lwIP/display).
+    // cyw43_arch_init() se hace DENTRO de network_task (patrón oficial pico-examples).
+    xTaskCreate(game_task,    "game",    2048, nullptr, tskIDLE_PRIORITY + 2, nullptr);
+    xTaskCreate(network_task, "network", 4096, nullptr, tskIDLE_PRIORITY + 3, nullptr);
 
-    // Bucle principal del juego en el Core 0 (bloquea para siempre).
-    game::run();
+    // Arranca el planificador (SMP en 2 núcleos). No retorna.
+    vTaskStartScheduler();
 
+    // Nunca debería llegar acá.
     return 0;
 }

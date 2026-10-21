@@ -1,18 +1,17 @@
-# Análisis de FreeRTOS — PicoReflex
+# FreeRTOS — PicoReflex
 
-> **Estado**: ANÁLISIS realizado e integración **REVERTIDA** en v0.3.1.
-> El primer intento (v0.3.0) rompió el arranque del Wi-Fi: con
-> `pico_cyw43_arch_lwip_sys_freertos`, `cyw43_arch_init()` debe ejecutarse en
-> `main()` **antes** de `vTaskStartScheduler()` (y no dentro de una tarea, como
-> quedó en el primer intento). Queda pendiente re-integrarlo con esa corrección
-> y verificarlo en hardware. Este documento conserva el análisis y la hoja de
-> ruta de la migración.
+> **Estado**: **INTEGRADO** en v0.5.0 (SMP, 2 núcleos).
+> Historial: el primer intento (v0.3.0) falló en hardware y se revirtió en v0.3.1.
+> La causa **no** fue la ubicación de `cyw43_arch_init()` (que, según los ejemplos
+> oficiales, va **dentro de una tarea**, no en `main()`), sino el stack reducido y
+> detalles de configuración. Con el patrón oficial corregido y el stack ampliado,
+> se re-integró.
 
 ## 1. Qué es FreeRTOS
 
 FreeRTOS es un **sistema operativo en tiempo real (RTOS)** de código abierto. En
 la RP2040 (Pico W) se usa en modo **SMP** (Symmetric Multi-Processing): ambos
-núcleos ejecutan el **planificador de FreeRTOS**, y las tareas se reparten entre
+núcleos ejecutan el **planificador de FreeRTOS** y las tareas se reparten entre
 los dos núcleos de forma transparente.
 
 ## 2. Antes vs. después
@@ -21,7 +20,7 @@ los dos núcleos de forma transparente.
 |---|---|---|
 | Ejecución por núcleo | Fija: Core 0 = juego, Core 1 = red | Dinámica: el planificador reparte tareas |
 | Arranque | `multicore_launch_core1()` | `vTaskStartScheduler()` |
-| Sincronización | `critical_section` + `queue` + flags `volatile` | + semáforos/mutex de FreeRTOS |
+| Sincronización | `critical_section` + `queue` + flags `volatile` | + semáforos de FreeRTOS |
 | Wi-Fi/lwIP | `threadsafe_background` (IRQ baja) | `sys_freertos` (tarea `tcpip`) |
 | Retardos | `sleep_ms` (bloquea el núcleo en WFE) | `vTaskDelay` (cede el núcleo) |
 | lwIP | `NO_SYS=1` | `NO_SYS=0` |
@@ -35,17 +34,43 @@ los dos núcleos de forma transparente.
 - **Escalable**: agregar tareas (p. ej. una para logueo, otra para OTA) es trivial.
 - **Estándar de la industria**: aporta valor técnico al TP.
 
-## 4. Cambios realizados (v0.3.0)
+## 4. Cambios realizados (v0.5.0)
 
 - `CMakeLists.txt`: enlaza `pico_cyw43_arch_lwip_sys_freertos` y
-  `FreeRTOS-Kernel-Heap4`; agrega `FreeRTOS_Kernel_import.cmake`.
+  `FreeRTOS-Kernel-Heap4`; agrega `FreeRTOS_Kernel_import.cmake` y
+  `PICO_CORE1_STACK_SIZE=0x1000` (el port FreeRTOS arranca el Core 1 con
+  `multicore_launch_core1`).
 - `include/FreeRTOSConfig.h`: configuración SMP (2 núcleos, heap 128 KB, tick 1 kHz).
 - `lwipopts.h`: `NO_SYS 0`.
 - `src/main.cpp`: crea `game_task` y `network_task` (semáforo binario de
   sincronización) y arranca el scheduler.
+- `src/web_server.cpp`: `cyw43_arch_init()` **dentro de la tarea de red**
+  (`web::init()`), reconexión "liviana" (sin deinit/init) y `vTaskDelay`.
 - `game_logic.cpp`, `web_server.cpp`, `audio.cpp`: `sleep_ms` → `vTaskDelay`.
 
-## 5. Requisitos de compilación
+## 5. Patrón oficial (corrección del primer intento)
+
+En los ejemplos oficiales (`pico_w/wifi/freertos`), `cyw43_arch_init()` se llama
+**dentro de `main_task`** (una tarea FreeRTOS creada antes del scheduler), NO en
+`main()`:
+
+```c
+void main_task(void *params) {
+    if (cyw43_arch_init()) { /* error */ }
+    cyw43_arch_enable_sta_mode();
+    ...
+    while (true) vTaskDelay(100);
+}
+void vLaunch(void) {
+    xTaskCreate(main_task, "TestMainThread", configMINIMAL_STACK_SIZE, NULL, TEST_TASK_PRIORITY, &task);
+    vTaskStartScheduler();
+}
+```
+
+PicoReflex sigue este patrón: `cyw43_arch_init()` está en `web::init()`, invocado
+desde `network_task`.
+
+## 6. Requisitos de compilación
 
 FreeRTOS-Kernel no está incluido en el SDK. Hay que clonarlo:
 
@@ -53,16 +78,20 @@ FreeRTOS-Kernel no está incluido en el SDK. Hay que clonarlo:
 git clone --branch V11.1.0 https://github.com/FreeRTOS/FreeRTOS-Kernel.git %USERPROFILE%\.pico-sdk\FreeRTOS-Kernel
 ```
 
-O definir `FREERTOS_KERNEL_PATH`. El CI ya lo clona automáticamente.
+O definir `FREERTOS_KERNEL_PATH`. El CI lo clona automáticamente.
 
-## 6. Pendiente de verificación en hardware
+## 7. Limitaciones conocidas (con FreeRTOS SMP)
 
-- **Asignación de núcleos**: la IRQ GPIO de botones se configura en el núcleo que
-  ejecuta `game::init()`; con SMP el núcleo puede variar (funciona igual, pero
-  verificar que los botones responden).
-- **DORMANT**: el modo *dormant* (`low_power_dormant_until_gpio_pin_state`) asume
-  ambos núcleos en WFE; con FreeRTOS SMP requiere rework (quedó con el *fallback*
-  `__wfi()` y se recomienda desactivarlo o migrar a `vTaskSuspend` + sleep).
-- **Escrituras a Flash**: `flash_safe_execute` usa `multicore_lockout`; con
-  FreeRTOS SMP conviene verificar que no haya *race* entre la tarea de juego y la
-  de red.
+- **DORMANT degradado**: el modo *dormant* real (`low_power_dormant_until_gpio_pin_state`)
+  exige ambos núcleos en WFE y no es compatible con FreeRTOS SMP sin rework. Se
+  reemplazó por un **sleep ligero** (`vTaskDelay`); el ahorro de energía profundo
+  (< 2 mA) queda pendiente con la API `low_power` + FreeRTOS SMP.
+- **Reconexión "liviana"**: al cambiar credenciales Wi-Fi no se hace
+  `cyw43_arch_deinit/init` (la tarea `tcpip` no se recrea); se apaga el modo
+  actual y se re-ejecuta STA/AP.
+
+## 8. Referencias
+
+- Ejemplos FreeRTOS: <https://github.com/raspberrypi/pico-examples/tree/master/pico_w/wifi/freertos>
+- `pico_cyw43_arch_lwip_sys_freertos`: <https://www.raspberrypi.com/documentation/pico-sdk/networking.html>
+- FreeRTOS-Kernel (V11.1.0): <https://github.com/FreeRTOS/FreeRTOS-Kernel>

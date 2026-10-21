@@ -28,6 +28,9 @@
 #include <cstring>
 #include <cstdlib>
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "pico/cyw43_arch.h"
 #include "pico/time.h"
 #include "lwip/init.h"
@@ -127,7 +130,7 @@ static void wifi_scan_now() {
     uint32_t start = to_ms_since_boot(get_absolute_time());
     while (cyw43_wifi_scan_active(&cyw43_state)) {
         if (to_ms_since_boot(get_absolute_time()) - start > 5000u) break;  // Timeout 5 s.
-        sleep_ms(20);
+        vTaskDelay(pdMS_TO_TICKS(20));
     }
     printf("[web] scan terminado: %d redes\n", g_scan_count);
 }
@@ -445,25 +448,28 @@ void http_server_init() {
 // Inicialización y bucle del Core 1
 // =============================================================================
 void init() {
-    // Medición de batería (ADC, divisor externo en GPIO26). Se hace en el Core 1
-    // porque es quien publica el estado (batería) para la web y el display.
+    // Inicializa el chip Wi-Fi + lwIP (sys_freertos crea la tarea tcpip). Se hace
+    // DENTRO de la tarea de red (patrón oficial pico-examples), UNA sola vez.
+    if (cyw43_arch_init()) {
+        printf("[web] fallo cyw43_arch_init\n");
+        return;
+    }
+    // Medición de batería (ADC, divisor externo en GPIO26). Se hace en la tarea de
+    // red porque es quien publica el estado (batería) para la web y el display.
     battery::init();
 }
 
-// Apaga la pila de red (llamado antes de que el Core 0 entre en DORMANT).
+// Apaga los servicios del AP (DNS/DHCP). Con FreeRTOS NO se hace cyw43_arch_deinit:
+// el chip se inicializa UNA vez en main() antes del scheduler.
 static void network_down() {
     captive::stop();        // Libera el servidor DNS (captive portal) si estaba.
     ap_dhcp_stop();         // Detiene el servidor DHCP del AP.
-    cyw43_arch_deinit();
 }
 
-// Levanta la pila de red (STA -> SoftAP), el captive portal (si AP) y el
-// servidor HTTP. Se llama al arrancar y de nuevo tras cada despertar de DORMANT.
+// Configura la red (STA -> SoftAP), el captive portal (si AP) y el servidor HTTP.
+// NO llama a cyw43_arch_init(): ya se hizo en main() (sys_freertos). Se llama al
+// arrancar y de nuevo en cada reconexión (cambio de credenciales).
 static void network_up() {
-    if (cyw43_arch_init()) {
-        return;   // En hardware real no debería fallar.
-    }
-
     g_is_ap = false;
 
     // Diagnóstico por USB (stdio). Si el usuario mantiene el botón 0 al arrancar,
@@ -520,16 +526,15 @@ void run() {
     uint32_t batt_last = 0;
     bool blink_state = false;
     while (true) {
-        // Protocolo de DORMANT: el Core 0 pide apagar el Wi-Fi.
+        // Protocolo de DORMANT (degradado con FreeRTOS): el Core 0 pide "dormir",
+        // solo se detienen los servicios del AP. No se entra en DORMANT real.
         if (g_sleep_request) {
             if (net_up) {
                 network_down();
                 net_up = false;
                 g_sleep_ready = true;   // Avisa al Core 0 que ya puede dormir.
             }
-            // Espera activa: este núcleo se detendrá cuando el chip entre en
-            // DORMANT (el ROSC se apaga y clk_sys se congela).
-            tight_loop_contents();
+            vTaskDelay(pdMS_TO_TICKS(50));
             continue;
         }
         // Despertar: si la red estaba apagada, la re-inicializa.
@@ -543,14 +548,22 @@ void run() {
         // Re-conexión Wi-Fi solicitada desde la web (cambio de credenciales).
         if (g_wifi_reconnect) {
             // Espera a que el Core 0 termine de persistir en Flash antes de tocar
-            // el CYW43 (si no, el guardado y el deinit/init pueden crashear).
+            // el CYW43 (evita la carrera Flash vs cyw43).
             uint32_t wait_start = (uint32_t)(time_us_32() / 1000u);
             while (!g_persist_done &&
                    ((uint32_t)(time_us_32() / 1000u) - wait_start) < 2000u) {
-                sleep_ms(10);
+                vTaskDelay(pdMS_TO_TICKS(10));
             }
             g_wifi_reconnect = false;
-            network_down();
+            // Re-conexión "liviana": apaga el modo actual y re-ejecuta STA/AP.
+            // (NO se hace cyw43_arch_deinit/init con FreeRTOS.)
+            captive::stop();
+            ap_dhcp_stop();
+            if (g_is_ap) {
+                cyw43_arch_disable_ap_mode();
+            } else {
+                cyw43_arch_disable_sta_mode();
+            }
             network_up();
             net_up = true;
             blink_last = (uint32_t)(time_us_32() / 1000u);
@@ -585,7 +598,7 @@ void run() {
         }
 
         refresh_display();
-        sleep_ms(200);   // Refresco del display ~5 veces por segundo.
+        vTaskDelay(pdMS_TO_TICKS(200));   // Refresco del display ~5 veces por segundo.
     }
 }
 

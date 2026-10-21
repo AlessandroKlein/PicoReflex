@@ -30,6 +30,9 @@
 #include <cstring>
 #include <cstdio>
 
+#include "FreeRTOS.h"
+#include "task.h"
+
 #include "hardware/gpio.h"
 #include "hardware/dma.h"
 #include "hardware/timer.h"
@@ -106,11 +109,14 @@ static bool wake_timer_cb(struct repeating_timer*) {
 }
 
 // -----------------------------------------------------------------------------
-// Entrada al modo DORMANT (protocolo con el Core 1)
+// Entrada al modo de bajo consumo (degradado con FreeRTOS)
 // -----------------------------------------------------------------------------
-// Devuelve false si el Core 1 no respondió a tiempo (no se durmió).
+// Con FreeRTOS SMP NO se usa el DORMANT real (low_power_dormant_until_gpio_pin_state)
+// porque exige ambos núcleos en WFE. En su lugar se hace un sleep ligero: se pide
+// al Core 1 que detenga los servicios del AP y se cede el núcleo con vTaskDelay.
+// Devuelve false si el Core 1 no respondió a tiempo.
 static bool enter_dormant() {
-    // 1) Pide al Core 1 que apague el Wi-Fi.
+    // 1) Pide al Core 1 que apague los servicios de red (DNS/DHCP del AP).
     g_sleep_ready = false;
     g_sleep_request = true;
 
@@ -121,22 +127,14 @@ static bool enter_dormant() {
             g_sleep_request = false;   // Aborta: el Core 1 no respondió.
             return false;
         }
-        tight_loop_contents();
+        vTaskDelay(pdMS_TO_TICKS(1));
     }
 
-    // 3) Habilita el wake-up por GPIO (flanco de bajada) en los 5 pulsadores.
-    for (uint i = 0; i < LED_COUNT; i++) {
-        gpio_set_dormant_irq_enabled(g_button_pins[i], GPIO_IRQ_EDGE_FALL, true);
-    }
+    // 3) Sleep ligero (sin DORMANT real): cede el núcleo hasta la próxima
+    //    actividad. El despertar lo maneja la IRQ de botones o el timer.
+    vTaskDelay(pdMS_TO_TICKS(IDLE_WAKE_PERIOD_MS));
 
-    // 4) Entra en DORMANT (bloquea hasta que un pulsador despierte al chip).
-    //    DORMANT_CLOCK_SOURCE_ROSC apaga el XOSC y las PLL (mínimo consumo).
-    //    Al despertar, el SDK restaura los relojes automáticamente.
-    low_power_dormant_until_gpio_pin_state(g_button_pins[0],
-                                           /*edge=*/true, /*high=*/false,
-                                           DORMANT_CLOCK_SOURCE_ROSC, nullptr);
-
-    // 5) Ya despierto: libera al Core 1 para que re-inicialice el Wi-Fi.
+    // 4) Libera al Core 1 para que re-inicialice la red si hacía falta.
     g_sleep_request = false;
     g_last_activity_us = time_us_32();
     return true;
@@ -328,7 +326,7 @@ static void start_with_countdown(const GameConfig& cfg) {
     if (delay > 10u) delay = 10u;   // Límite de seguridad del conteo.
     for (uint i = 0; i < delay; i++) {
         audio::play_tone(440u, 90u);   // Beep de conteo (1 por segundo).
-        sleep_ms(910u);
+        vTaskDelay(pdMS_TO_TICKS(910u));
     }
     audio::play_tone(880u, 200u);      // "Ya".
     start_round(cfg);
@@ -414,7 +412,7 @@ void run() {
                     }
                 }
             } else {
-                sleep_ms(5);       // Pequeña espera para no saturar el núcleo.
+                vTaskDelay(pdMS_TO_TICKS(5));   // Pequeña espera para no saturar.
             }
             continue;
         }
@@ -424,7 +422,7 @@ void run() {
         leds_off();
         uint32_t span = cfg.stimulus_max_ms - cfg.stimulus_min_ms + 1u;
         uint32_t delay_ms = cfg.stimulus_min_ms + g_rng.next_range(span);
-        sleep_ms(delay_ms);
+        vTaskDelay(pdMS_TO_TICKS(delay_ms));
 
         // Descarta pulsaciones "tempranas" durante el intervalo.
         g_button_pending = false;

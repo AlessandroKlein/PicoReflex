@@ -4,6 +4,23 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.5.0] - 2026-10-20
+
+### Añadido
+- **FreeRTOS (SMP, 2 núcleos) integrado**: `game_task` + `network_task` con
+  `vTaskStartScheduler()`. Wi-Fi/lwIP en `pico_cyw43_arch_lwip_sys_freertos`
+  (`NO_SYS=0`). `cyw43_arch_init()` dentro de la tarea de red (patrón oficial
+  pico-examples).
+
+### Cambiado
+- `sleep_ms` → `vTaskDelay` en los bucles de tarea.
+- Reconexión Wi-Fi "liviana" (sin `cyw43_arch_deinit/init`).
+- DORMANT degradado a sleep ligero (el DORMANT real no es compatible con FreeRTOS
+  SMP sin rework).
+
+### Documentado
+- `docs/FREERTOS.md`: actualizado a "integrado" con el patrón oficial corregido.
+
 ## [0.4.7] - 2026-10-20
 
 ### Documentado
