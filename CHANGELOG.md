@@ -4,6 +4,14 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.4.6] - 2026-10-20
+
+### Documentado
+- **Esquemático / diagrama circuital** (`docs/ESQUEMATICO.md` + `docs/esquematico.svg`):
+  diagrama de bloques, tabla de conexiones, detalle por subsistema (LEDs con
+  cálculo de resistencia, pulsadores, I2C, buzzer con driver, divisor de batería
+  10 k/22 k, alimentación) y mapa de pines completo.
+
 ## [0.4.5] - 2026-10-20
 
 ### Documentado

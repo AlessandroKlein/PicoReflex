@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="620" viewBox="0 0 920 620" font-family="Arial, sans-serif">
+  <style>
+    .title { font-size: 22px; font-weight: bold; fill: #1a1a1a; }
+    .sub   { font-size: 13px; fill: #555; }
+    .pin   { font-size: 11px; fill: #333; font-family: monospace; }
+    .lbl   { font-size: 12px; fill: #222; }
+    .val   { font-size: 10px; fill: #666; }
+    .wire  { stroke: #222; stroke-width: 1.4; fill: none; }
+    .bus   { stroke: #999; stroke-width: 1; fill: none; }
+  </style>
+
+  <text x="20" y="34" class="title">PicoReflex — Esquema circuital</text>
+  <text x="20" y="54" class="sub">Raspberry Pi Pico W · 5 LEDs + 5 pulsadores + OLED SSD1306 + buzzer PWM + medición de batería (ADC)</text>
+
+  <!-- ======================= Placa Pico W ======================= -->
+  <rect x="340" y="110" width="240" height="380" rx="10" fill="#eef6ee" stroke="#2f7d32" stroke-width="2"/>
+  <text x="360" y="140" style="font-size:16px;font-weight:bold;fill:#2f7d32">Raspberry Pi</text>
+  <text x="360" y="158" style="font-size:16px;font-weight:bold;fill:#2f7d32">Pico W</text>
+
+  <!-- Pines (lado izquierdo: LEDs, buzzer, ADC) -->
+  <g class="pin">
+    <text x="230" y="150" text-anchor="end">GPIO2</text>
+    <text x="230" y="185" text-anchor="end">GPIO3</text>
+    <text x="230" y="220" text-anchor="end">GPIO4</text>
+    <text x="230" y="255" text-anchor="end">GPIO5</text>
+    <text x="230" y="290" text-anchor="end">GPIO6</text>
+    <text x="230" y="360" text-anchor="end">GPIO16 (PWM)</text>
+    <text x="230" y="430" text-anchor="end">GPIO26 (ADC0)</text>
+  </g>
+
+  <!-- Pines (lado derecho: pulsadores, I2C) -->
+  <g class="pin">
+    <text x="690" y="150">GPIO7</text>
+    <text x="690" y="185">GPIO8</text>
+    <text x="690" y="220">GPIO9</text>
+    <text x="690" y="255">GPIO10</text>
+    <text x="690" y="290">GPIO11</text>
+    <text x="690" y="400">GPIO14 (SDA)</text>
+    <text x="690" y="435">GPIO15 (SCL)</text>
+  </g>
+
+  <!-- Cables lado izquierdo (LEDs) -->
+  <g class="wire">
+    <line x1="340" y1="146" x2="330" y2="146"/><line x1="330" y1="146" x2="330" y2="146"/>
+    <line x1="238" y1="146" x2="330" y2="146"/>
+    <line x1="238" y1="181" x2="330" y2="181"/>
+    <line x1="238" y1="216" x2="330" y2="216"/>
+    <line x1="238" y1="251" x2="330" y2="251"/>
+    <line x1="238" y1="286" x2="330" y2="286"/>
+  </g>
+
+  <!-- LEDs + resistencias -->
+  <g>
+    <circle cx="205" cy="146" r="10" fill="#d32f2f"/><text x="205" y="170" class="lbl" text-anchor="middle">LED1</text>
+    <circle cx="205" cy="181" r="10" fill="#f57c00"/><text x="205" y="205" class="lbl" text-anchor="middle">LED2</text>
+    <circle cx="205" cy="216" r="10" fill="#fbc02d"/><text x="205" y="240" class="lbl" text-anchor="middle">LED3</text>
+    <circle cx="205" cy="251" r="10" fill="#388e3c"/><text x="205" y="275" class="lbl" text-anchor="middle">LED4</text>
+    <circle cx="205" cy="286" r="10" fill="#1976d2"/><text x="205" y="310" class="lbl" text-anchor="middle">LED5</text>
+  </g>
+
+  <!-- Cables lado derecho (pulsadores) -->
+  <g class="wire">
+    <line x1="580" y1="146" x2="682" y2="146"/>
+    <line x1="580" y1="181" x2="682" y2="181"/>
+    <line x1="580" y1="216" x2="682" y2="216"/>
+    <line x1="580" y1="251" x2="682" y2="251"/>
+    <line x1="580" y1="286" x2="682" y2="286"/>
+  </g>
+
+  <!-- Pulsadores -->
+  <g>
+    <rect x="548" y="136" width="32" height="20" rx="3" fill="#eee" stroke="#444"/><text x="600" y="150" class="lbl">P1</text>
+    <rect x="548" y="171" width="32" height="20" rx="3" fill="#eee" stroke="#444"/><text x="600" y="185" class="lbl">P2</text>
+    <rect x="548" y="206" width="32" height="20" rx="3" fill="#eee" stroke="#444"/><text x="600" y="220" class="lbl">P3</text>
+    <rect x="548" y="241" width="32" height="20" rx="3" fill="#eee" stroke="#444"/><text x="600" y="255" class="lbl">P4</text>
+    <rect x="548" y="276" width="32" height="20" rx="3" fill="#eee" stroke="#444"/><text x="600" y="290" class="lbl">P5</text>
+  </g>
+  <text x="564" y="330" class="val" text-anchor="middle">a GND (pull-up interno)</text>
+
+  <!-- Buzzer -->
+  <g class="wire">
+    <line x1="238" y1="356" x2="330" y2="356"/>
+  </g>
+  <circle cx="205" cy="356" r="14" fill="none" stroke="#444" stroke-width="1.6"/>
+  <path d="M205 350 a6 6 0 0 1 0 12" stroke="#444" stroke-width="1.6" fill="none"/>
+  <text x="205" y="390" class="lbl" text-anchor="middle">Buzzer (pasivo)</text>
+  <text x="205" y="404" class="val" text-anchor="middle">driver transistor</text>
+
+  <!-- Divisor de batería -->
+  <g class="wire">
+    <line x1="238" y1="426" x2="330" y2="426"/>
+  </g>
+  <text x="230" y="446" class="lbl" text-anchor="end">VBAT</text>
+  <rect x="150" y="416" width="30" height="8" fill="#fff" stroke="#444"/>
+  <text x="165" y="412" class="val" text-anchor="middle">R1 10k</text>
+  <line x1="180" y1="420" x2="238" y2="420" class="wire"/>
+  <line x1="165" y1="424" x2="165" y2="452" class="wire"/>
+  <rect x="150" y="452" width="30" height="8" fill="#fff" stroke="#444"/>
+  <text x="165" y="476" class="val" text-anchor="middle">R2 22k</text>
+  <line x1="165" y1="460" x2="165" y2="488" class="wire"/>
+  <text x="165" y="502" class="lbl" text-anchor="middle">GND</text>
+  <text x="150" y="540" class="val">Vbat = Vpin × 32/22</text>
+
+  <!-- OLED I2C -->
+  <g class="wire">
+    <line x1="580" y1="396" x2="682" y2="396"/>
+    <line x1="580" y1="431" x2="682" y2="431"/>
+  </g>
+  <rect x="720" y="360" width="160" height="120" rx="6" fill="#f3f8ff" stroke="#1565c0" stroke-width="2"/>
+  <text x="800" y="385" class="lbl" text-anchor="middle" style="font-weight:bold">OLED SSD1306</text>
+  <text x="800" y="402" class="val" text-anchor="middle">128×64 · I2C 0x3C</text>
+  <text x="800" y="424" class="pin" text-anchor="middle">SDA ← GPIO14</text>
+  <text x="800" y="440" class="pin" text-anchor="middle">SCL ← GPIO15</text>
+  <text x="800" y="462" class="val" text-anchor="middle">pull-up 4.7k → 3V3</text>
+  <text x="800" y="476" class="val" text-anchor="middle">VCC 3V3 · GND</text>
+
+  <!-- Leyenda -->
+  <g transform="translate(20,560)">
+    <text class="sub">LED: cátodo a GND vía R 330 Ω · Pulsador: activo en BAJO · Batería: LiPo 1S (3.0–4.2 V) + TP4056 + boost 5 V</text>
+  </g>
+</svg>
