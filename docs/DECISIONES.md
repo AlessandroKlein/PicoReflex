@@ -370,7 +370,7 @@ Documentación oficial de referencia (carpeta raíz):
 - **Decisión:** se analizó e intentó FreeRTOS (SMP, 2 núcleos) en v0.3.0, pero
   **rompía el arranque del Wi-Fi**, así que se revirtió en v0.3.1 al dual-core
   manual (`multicore_launch_core1`). El análisis completo queda en
-  [`FREERTOS.md`](FREERTOS.md).
+  [`Freertos.md`](Freertos.md).
 - **Por qué (causa):** con `pico_cyw43_arch_lwip_sys_freertos`, `cyw43_arch_init()`
   debe ejecutarse en `main()` **antes** de `vTaskStartScheduler()` (y no dentro de
   una tarea, como quedó en el primer intento). Pendiente re-integrarlo con esa

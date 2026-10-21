@@ -5,7 +5,7 @@ cada periférico a la Raspberry Pi Pico W, los componentes y valores, y los
 cálculos de dimensionamiento. Es el "Diagrama circuital" que pide la consigna
 (`Idea.md`, punto 2 de la sección "Puntos a Cubrir en el Informe Final").
 
-La fuente de verdad de los pines está en [`include/pin_defs.hpp`](../include/pin_defs.hpp).
+La fuente de verdad de los pines está en [`include/pin_defs.hpp`](https://github.com/AlessandroKlein/PicoReflex/blob/main/include/pin_defs.hpp).
 
 ![Esquema circuital](esquematico.svg)
 

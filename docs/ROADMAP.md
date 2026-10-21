@@ -52,7 +52,7 @@ y [pico-examples](https://github.com/raspberrypi/pico-examples).
 ### 1.2 [P0] Credenciales Wi-Fi configurables desde la web (persistidas en Flash)
 
 - **Qué:** hoy `WIFI_SSID`/`WIFI_PASSWORD` son macros de compilación en
-  [`include/web_server.hpp`](../include/web_server.hpp). Hay que guardarlas en
+  [`include/web_server.hpp`](https://github.com/AlessandroKlein/PicoReflex/blob/main/include/web_server.hpp). Hay que guardarlas en
   Flash (junto a `PersistentData`) y permitir editarlas desde el panel web
   (endpoint `/config`).
 - **Cómo:** ampliar `PersistentData` con `ssid[]`/`password[]`, añadir campos al
