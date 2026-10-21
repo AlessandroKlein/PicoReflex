@@ -122,8 +122,9 @@ Documentación oficial de referencia (carpeta raíz):
   usar el driver CYW43 y lwIP desde **ambos núcleos** con servicio en segundo
   plano automático.
 - **Conectividad:** STA (10 s de timeout) → si falla, SoftAP
-  (`PicoW-ReactionGame` / clave `12345678`, IP `192.168.4.1`, WPA2 mixto). El LED
-  onboard queda fijo en STA y parpadea en AP.
+  (`PicoW-ReactionGame` / clave `12345678`, IP `192.168.4.1`, **WPA2 mixto**,
+  **canal 1 fijo**). El LED onboard queda fijo en STA y parpadea en AP. El DHCP del
+  AP lo provee el servidor integrado (ver §21).
 - **Referencia:**
   - [pico_cyw43_arch](https://www.raspberrypi.com/documentation/pico-sdk/networking.html#pico_cyw43_arch)
   - `cyw43_arch_wifi_connect_timeout_ms`, `cyw43_arch_enable_ap_mode` en
@@ -140,7 +141,9 @@ Documentación oficial de referencia (carpeta raíz):
   de un RTOS. Las callbacks corren en contexto de IRQ de baja prioridad que
   `pico_cyw43_arch_lwip_threadsafe_background` atiende automáticamente.
 - **Configuración lwIP:** `lwipopts.h` con `MEM_SIZE=16000`, `PBUF_POOL_SIZE=32`
-  y `TCP_SND_BUF=(8*TCP_MSS)` para acomodar la página HTML (~2 KB).
+  y `TCP_SND_BUF=(8*TCP_MSS)`. El buffer de respuesta HTTP es `g_body[8192]`
+  (la Home con el CSS nuevo mide ~4.4 KB) y el **stack del Core 1 se amplió a
+  4 KB** (`PICO_CORE1_STACK_SIZE=0x1000`), ver §24.
 - **Referencia:**
   - [lwIP raw TCP API](https://www.nongnu.org/lwip/2_1_x/group__tcp__raw.html)
   - [Networking (pico-sdk)](https://www.raspberrypi.com/documentation/pico-sdk/networking.html)
@@ -247,7 +250,8 @@ Documentación oficial de referencia (carpeta raíz):
 - **Por qué:** los dispositivos modernos validan la conexión con un "captive
   portal check" (resuelven un dominio de prueba). Responder el DNS con la IP
   local captura ese chequeo y muestra la web embebida. Es el complemento natural
-  del DHCP que el CYW43 ya provee en modo AP.
+  del **servidor DHCP integrado** (`src/dhcpserver.c`, ver §21) que asigna IP a
+  los clientes del AP.
 - **Referencia:**
   - [lwIP raw UDP API](https://www.nongnu.org/lwip/2_1_x/group__udp__raw.html)
   - Formato DNS: RFC 1035.
@@ -284,8 +288,8 @@ Documentación oficial de referencia (carpeta raíz):
 - **Por qué:** desacopla la lógica de red (qué ruta, qué parámetro) de la
   presentación (HTML), lo que facilita mantener cada página y reutilizar el
   escape de HTML (`web_ui::html_escape`) en un único lugar. Cada página tiene su
-  formulario y su ruta propios (`/`, `/seed`, `/game`, `/display`, `/wifi`,
-  `/player`).
+  formulario y su ruta propios (`/`, `/seed`, `/game`, `/display`, `/wifi`).
+  La página `/player` fue eliminada en v0.4.0 (sin multijugador).
 - **Referencia:**
   - [lwIP raw TCP API](https://www.nongnu.org/lwip/2_1_x/group__tcp__raw.html)
     (backend HTTP)
@@ -345,9 +349,11 @@ Documentación oficial de referencia (carpeta raíz):
   `CYW43_NETUTILS` está desactivada por defecto). Sin DHCP, el teléfono se asociaba
   a `PicoW-ReactionGame` pero **nunca recibía IP**, por eso "conectaba y se
   desconectaba". El ejemplo oficial lo deja explícito: `dhcp_server_init(...)`.
-- **Nota:** el AP se dejó **abierto** (sin clave) porque el WPA2 del CYW43 da
-  problemas de compatibilidad con varios teléfonos; se puede volver a WPA2 con
-  `AP_OPEN 0` en `src/web_server.cpp`.
+- **Nota de seguridad:** entre v0.2.5 y v0.4.3 el AP se dejó **abierto** (sin
+  clave) para esquivar un problema de compatibilidad WPA2 con algunos teléfonos.
+  En **v0.4.4 se volvió a WPA2** (clave `12345678`): el problema real era el DHCP
+  (ya resuelto), no la autenticación. Se controla con `AP_OPEN` en
+  `src/web_server.cpp`.
 
 ## 22. DORMANT condicionado al estado del Wi-Fi
 
@@ -369,4 +375,35 @@ Documentación oficial de referencia (carpeta raíz):
   debe ejecutarse en `main()` **antes** de `vTaskStartScheduler()` (y no dentro de
   una tarea, como quedó en el primer intento). Pendiente re-integrarlo con esa
   corrección y verificarlo en hardware.
+
+## 24. Stack del Core 1 ampliado a 4 KB (fix de *hard fault*)
+
+- **Decisión:** `PICO_CORE1_STACK_SIZE` se sube de 2 KB (0x800, valor por defecto)
+  a **4 KB** (0x1000) con `add_compile_definitions(PICO_CORE1_STACK_SIZE=0x1000)`
+  en `CMakeLists.txt`.
+- **Por qué:** el Core 1 aloja el servidor web (`cyw43_arch` + lwIP + HTTP). Con
+  2 KB, al reconectar el Wi-Fi (`cyw43_arch_deinit/init`) o al escanear, el stack
+  **desbordaba** y el dispositivo se reiniciaba solo (*hard fault*). 4 KB es el
+  máximo que cabe en `SCRATCH_X` junto al stack del Core 0.
+- **Referencia:**
+  - [pico_multicore (PICO_CORE1_STACK_SIZE)](https://www.raspberrypi.com/documentation/pico-sdk/runtime.html#pico_multicore)
+
+## 25. `url_decode` corta en `&` (fix del guardado de Wi-Fi)
+
+- **Decisión:** `url_decode()` (en `src/web_server.cpp`) se modifica para que
+  **termine en `&`** (separador de parámetros), no solo en `\0`.
+- **Por qué:** antes copiaba el valor de un parámetro hasta el final de la query,
+  así que al guardar `ssid=MiRed&pass=clave`, el SSID quedaba como
+  `"MiRed&pass=clave"` (todo junto) y la reconexión fallaba. Ahora cada parámetro
+  se decodifica solo hasta su propio `&`.
+- **Referencia:** formato de query string (RFC 3986, separador `&`).
+
+## 26. Escaneo de redes Wi-Fi: retirado del frontend
+
+- **Decisión:** el endpoint `/scan` (backend) se mantiene **reservado/interno**,
+  pero el **botón "Buscar redes"** (y su JavaScript/datalist) se **elimina** de
+  `/wifi` en v0.4.3.
+- **Por qué:** el escaneo del CYW43 (`cyw43_wifi_scan`) no devolvía redes de forma
+  fiable en el modo *threadsafe background* (y menos en modo AP), así que no
+  aportaba valor. Se prefiere que el usuario escriba el SSID a mano.
 

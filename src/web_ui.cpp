@@ -12,7 +12,7 @@
  *   "/seed"    -> Semilla del PRNG.
  *   "/game"    -> Dificultad, modo, velocidad, duración de ronda y cuenta regresiva.
  *   "/display" -> Habilitar/deshabilitar el OLED.
- *   "/wifi"    -> Credenciales Wi-Fi (SSID/contraseña + búsqueda de redes).
+ *   "/wifi"    -> Credenciales Wi-Fi (SSID/contraseña + mostrar/ocultar contraseña).
  *
  * Seguridad: todo texto controlado por el usuario (nombre, SSID, contraseña) se
  * escapa con html_escape() antes de insertarse en el HTML (prevención de XSS).

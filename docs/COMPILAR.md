@@ -38,6 +38,11 @@ cmake -G Ninja -B build -S .
 cmake --build build
 ```
 
+> **Stack del Core 1 (importante):** el servidor web corre en el Core 1 y necesita
+> **4 KB** de stack (`PICO_CORE1_STACK_SIZE=0x1000`). Ya está definido en
+> `CMakeLists.txt` con `add_compile_definitions(PICO_CORE1_STACK_SIZE=0x1000)`; el
+> valor por defecto del SDK es 2 KB y provocaba *hard fault* al reconectar/escanear.
+
 ## Flashear
 
 1. Mantener pulsado **BOOTSEL** y conectar el USB (o reconectar). La Pico aparece
@@ -56,20 +61,21 @@ Cuando la Pico W no logra conectarse a la red STA, levanta su propio Access Poin
 | Campo | Valor |
 |---|---|
 | **Red (SSID)** | `PicoW-ReactionGame` |
-| **Seguridad** | **Abierto** (sin clave) |
+| **Seguridad** | **WPA2** (clave `12345678`) |
 | **IP del panel** | `192.168.4.1` |
+| **Canal** | `1` (fijo) |
 
-> Por defecto el AP es **ABIERTO** (sin clave): el AP WPA2 del CYW43 da problemas
-> de compatibilidad con varios teléfonos ("No fue posible conectarse a la red").
-> Para habilitar WPA2, poné `AP_OPEN 0` en `src/web_server.cpp` (clave `12345678`).
+> El AP usa **WPA2** con clave `12345678` y canal fijo 1. El **servidor DHCP
+> integrado** (`src/dhcpserver.c`) asigna IPs `192.168.4.16`–`192.168.4.23` a los
+> clientes; sin ese DHCP el teléfono se asociaba pero nunca recibía IP.
 
 1. Conectar a la red `PicoW-ReactionGame` (si quedó en AP) o a la IP que se
    muestre en el display (modo STA).
 2. Abrir `http://192.168.4.1` (AP) o la IP del dispositivo (STA). En modo AP,
    cualquier URL que abras redirige automáticamente a la página (captive portal).
 3. Desde la web (páginas separadas): semilla (`/seed`), juego (`/game`), OLED
-   (`/display`), Wi-Fi (`/wifi`) y nombre (`/player`), más los controles iniciar,
-   detener y reiniciar.
+   (`/display`) y Wi-Fi (`/wifi`, con "Mostrar contraseña"), más los controles
+   iniciar, detener y reiniciar.
 4. Físicamente: **presionar dos botones a la vez** para iniciar la ronda; hay una
    **cuenta regresiva** configurable (por defecto 3 s) antes del primer LED.
    También se puede iniciar desde `/start`.

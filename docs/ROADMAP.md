@@ -7,15 +7,25 @@ tags:
 
 # Hoja de Ruta de Mejoras — PicoReflex
 
-> **Tipo:** Planificación | **Estado:** Propuesta | **Fecha:** 2026-10-20 | **Base:** v0.1.1
+> **Tipo:** Planificación | **Estado:** Propuesta | **Fecha:** 2026-10-20 | **Base:** v0.4.4
 >
 > Prioridades: **P0** imprescindible para operación real · **P1** valor alto ·
 > **P2** deseable · **P3** opcional/investigación.
 
+> **Completado desde la base original (v0.1.1) hasta v0.4.4:**
+> - Credenciales Wi-Fi configurables desde la web y **persistidas en Flash** (1.2 y 2.2).
+> - Re-conexión Wi-Fi en caliente al cambiar credenciales (1.3, parcial).
+> - **Servidor DHCP del AP** (fix "conecta y se desconecta") — `src/dhcpserver.c`.
+> - **AP con WPA2** (clave `12345678`, canal 1) y **captive portal**.
+> - **Stack del Core 1 = 4 KB** (fix de *hard fault* al guardar/escanear).
+> - **Buffer HTTP 8192 B** (la Home con CSS mide ~4.4 KB).
+> - Frontend con CSS moderno; `/player` eliminado; botón "Buscar redes" eliminado.
+> - FreeRTOS analizado y revertido (ver `docs/FREERTOS.md`).
+
 Esta hoja de ruta surge del análisis del código actual (módulos `game_logic`,
 `web_server`, `battery_monitor`, `display_driver`, `flash_storage`, `audio`,
-`captive_portal`, `main`, `shared_state`) y de la documentación oficial del
-[Pico SDK](https://www.raspberrypi.com/documentation/pico-sdk/index_doxygen.html)
+`captive_portal`, `dhcpserver`, `main`, `shared_state`) y de la documentación
+oficial del [Pico SDK](https://www.raspberrypi.com/documentation/pico-sdk/index_doxygen.html)
 y [pico-examples](https://github.com/raspberrypi/pico-examples).
 
 ---
@@ -194,7 +204,8 @@ y [pico-examples](https://github.com/raspberrypi/pico-examples).
 ### 2.6 [P2] Tamaño de la imagen y memoria
 
 - **Situación:** `text` ~356 KB / `bss` ~82 KB (versión 0.1.1). Queda margen, pero
-  el búfer HTML (`g_body[2048]`) y el framebuffer OLED (1 KB) son estáticos.
+  el búfer HTML (`g_body[8192]`, ampliado en v0.3.3) y el framebuffer OLED (1 KB)
+  son estáticos.
 - **Propuesta:** si se añade OTA (doble imagen), revisar el particionado de la
   Flash de 2 MB y el presupuesto de RAM de 264 KB.
 

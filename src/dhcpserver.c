@@ -28,6 +28,27 @@
 //  https://www.ietf.org/rfc/rfc2131.txt
 //  https://tools.ietf.org/html/rfc2132 -- DHCP Options and BOOTP Vendor Extensions
 
+/**
+ * @file   dhcpserver.c
+ * @brief  Implementación del servidor DHCP del Access Point (MIT, MicroPython).
+ *
+ * ¿QUÉ hace? Cuando la Pico W queda en modo Access Point, este módulo responde a
+ * las peticiones DHCP de los clientes (teléfonos/PC) y les asigna una IP de la
+ * subred 192.168.4.x. Sin esto, el cliente se asocia al AP pero no obtiene IP.
+ *
+ * ¿CÓMO? Implementa el protocolo DHCP (RFC 2131) por UDP en el puerto 67. El
+ * "diálogo" clásico es DORA:
+ *   1. DHCPDISCOVER  (cliente busca servidor, en broadcast)
+ *   2. DHCPOFFER     (servidor ofrece una IP libre)
+ *   3. DHCPREQUEST   (cliente pide esa IP en concreto)
+ *   4. DHCPACK       (servidor confirma y registra el arrendamiento)
+ *
+ * El arrendamiento (lease) vincula la MAC del cliente a una IP durante 24 h.
+ *
+ * NOTA: este archivo es C (no C++). Su header (dhcpserver.h) tiene guardas
+ * extern "C" para poder usarlo desde web_server.cpp.
+ */
+
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
@@ -36,6 +57,7 @@
 #include "dhcpserver.h"
 #include "lwip/udp.h"
 
+// Tipos de mensaje DHCP (campo "options", opción 53). Ver RFC 2131 / RFC 2132.
 #define DHCPDISCOVER    (1)
 #define DHCPOFFER       (2)
 #define DHCPREQUEST     (3)
@@ -45,6 +67,7 @@
 #define DHCPRELEASE     (7)
 #define DHCPINFORM      (8)
 
+// Códigos de las opciones DHCP (pares código-longitud-valor). RFC 2132.
 #define DHCP_OPT_PAD                (0)
 #define DHCP_OPT_SUBNET_MASK        (1)
 #define DHCP_OPT_ROUTER             (3)
@@ -60,27 +83,29 @@
 #define DHCP_OPT_CLIENT_ID          (61)
 #define DHCP_OPT_END                (255)
 
-#define PORT_DHCP_SERVER (67)
-#define PORT_DHCP_CLIENT (68)
+#define PORT_DHCP_SERVER (67)   ///< Puerto UDP donde escucha el servidor DHCP.
+#define PORT_DHCP_CLIENT (68)   ///< Puerto UDP donde escucha el cliente (broadcast).
 
-#define DEFAULT_LEASE_TIME_S (24 * 60 * 60) // in seconds
+#define DEFAULT_LEASE_TIME_S (24 * 60 * 60) // Duración del arrendamiento: 24 h.
 
 #define MAC_LEN (6)
 #define MAKE_IP4(a, b, c, d) ((a) << 24 | (b) << 16 | (c) << 8 | (d))
 
+// Estructura de un mensaje DHCP completo (cabecera BOOTP + opciones). El layout
+// sigue el RFC 2131 byte a byte: es lo que se envía/recibe por UDP.
 typedef struct {
-    uint8_t op; // message opcode
-    uint8_t htype; // hardware address type
-    uint8_t hlen; // hardware address length
+    uint8_t op; // message opcode (1 = request del cliente, 2 = reply del servidor)
+    uint8_t htype; // hardware address type (1 = Ethernet)
+    uint8_t hlen; // hardware address length (6 = MAC)
     uint8_t hops;
-    uint32_t xid; // transaction id, chosen by client
+    uint32_t xid; // transaction id, chosen by client (se repite en la respuesta)
     uint16_t secs; // client seconds elapsed
     uint16_t flags;
     uint8_t ciaddr[4]; // client IP address
-    uint8_t yiaddr[4]; // your IP address
+    uint8_t yiaddr[4]; // your IP address (la IP que el servidor asigna)
     uint8_t siaddr[4]; // next server IP address
     uint8_t giaddr[4]; // relay agent IP address
-    uint8_t chaddr[16]; // client hardware address
+    uint8_t chaddr[16]; // client hardware address (MAC del cliente)
     uint8_t sname[64]; // server host name
     uint8_t file[128]; // boot file name
     uint8_t options[312]; // optional parameters, variable, starts with magic
@@ -143,16 +168,22 @@ static int dhcp_socket_sendto(struct udp_pcb **udp, struct netif *nif, const voi
     return len;
 }
 
+// --- Helpers de opciones DHCP (formato código-longitud-valor, RFC 2132) -------
+// Cada opción es: [1 byte código][1 byte longitud][longitud bytes de valor].
+// La lista de opciones termina con DHCP_OPT_END (255).
+
+// Busca una opción por su código y devuelve un puntero a su byte de código (o NULL).
 static uint8_t *opt_find(uint8_t *opt, uint8_t cmd) {
     for (int i = 0; i < 308 && opt[i] != DHCP_OPT_END;) {
         if (opt[i] == cmd) {
             return &opt[i];
         }
-        i += 2 + opt[i + 1];
+        i += 2 + opt[i + 1];   // Avanza: código + longitud + valor.
     }
     return NULL;
 }
 
+// Escribe una opción de longitud variable (n bytes de datos).
 static void opt_write_n(uint8_t **opt, uint8_t cmd, size_t n, const void *data) {
     uint8_t *o = *opt;
     *o++ = cmd;
@@ -161,6 +192,7 @@ static void opt_write_n(uint8_t **opt, uint8_t cmd, size_t n, const void *data) 
     *opt = o + n;
 }
 
+// Escribe una opción de 1 byte.
 static void opt_write_u8(uint8_t **opt, uint8_t cmd, uint8_t val) {
     uint8_t *o = *opt;
     *o++ = cmd;
@@ -169,6 +201,7 @@ static void opt_write_u8(uint8_t **opt, uint8_t cmd, uint8_t val) {
     *opt = o;
 }
 
+// Escribe una opción de 4 bytes (big-endian), p. ej. una IP o un tiempo.
 static void opt_write_u32(uint8_t **opt, uint8_t cmd, uint32_t val) {
     uint8_t *o = *opt;
     *o++ = cmd;
@@ -180,6 +213,11 @@ static void opt_write_u32(uint8_t **opt, uint8_t cmd, uint32_t val) {
     *opt = o;
 }
 
+// Callback que se ejecuta al recibir un datagrama UDP en el puerto 67. Implementa
+// el "lado servidor" del diálogo DHCP:
+//   - DHCPDISCOVER -> busca una IP libre y responde DHCPOFFER.
+//   - DHCPREQUEST  -> confirma la IP pedida y responde DHCPACK (si es válida).
+//   - resto        -> se ignora (este servidor mínimo no maneja release/inform).
 static void dhcp_server_process(void *arg, struct udp_pcb *upcb, struct pbuf *p, const ip_addr_t *src_addr, u16_t src_port) {
     dhcp_server_t *d = arg;
     (void)upcb;

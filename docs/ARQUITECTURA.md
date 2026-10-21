@@ -53,6 +53,7 @@ PicoReflex/
 │   ├── web_server.hpp        # Servidor HTTP + Wi-Fi (backend)
 │   ├── web_ui.hpp            # Frontend: generación de las páginas HTML
 │   ├── captive_portal.hpp    # Servidor DNS (captive portal, modo AP)
+│   ├── dhcpserver.h          # Servidor DHCP del AP (MicroPython/pico-examples)
 │   └── font5x7.hpp           # Fuente 5x7 (generada por tools/gen_font.py)
 ├── src/
 │   ├── main.cpp              # Arranque de ambos núcleos
@@ -64,7 +65,8 @@ PicoReflex/
 │   ├── flash_storage.cpp
 │   ├── web_server.cpp        # HTTP + Wi-Fi + display (backend, Core 1)
 │   ├── web_ui.cpp            # HTML de las páginas (frontend)
-│   └── captive_portal.cpp    # DNS 53 -> 192.168.4.1 (captive portal)
+│   ├── captive_portal.cpp    # DNS 53 -> 192.168.4.1 (captive portal)
+│   └── dhcpserver.c          # DHCP del AP: IPs 192.168.4.16..23
 ├── tools/
 │   └── gen_font.py           # Generador de la fuente 5x7
 └── docs/
@@ -117,9 +119,10 @@ cyw43_arch_init()
       |
       +-- ¿conectado?
             |-- SÍ -> STA (LED fijo) + DHCP -> IP
-            |-- NO -> disable_sta + enable_ap_mode("PicoW-ReactionGame")
-            |         IP 192.168.4.1 (LED parpadea)
+            |-- NO -> disable_sta + enable_ap_mode("PicoW-ReactionGame", WPA2)
+            |         IP 192.168.4.1 (canal 1, LED parpadea)
             |         captive::init()  -> DNS puerto 53 -> 192.168.4.1
+            |         ap_dhcp_start()  -> DHCP IPs 192.168.4.16..23
       |
       v
 http_server_init()  (lwIP raw API, puerto 80)
@@ -136,11 +139,13 @@ Rutas HTTP:
 | `GET /seed?seed=..` | Semilla del PRNG |
 | `GET /game?difficulty=..&mode=..&smin=..&smax=..&round=..&delay=..` | Dificultad/modo/velocidad/ronda/cuenta regresiva |
 | `GET /display?oled=..` | Habilita/deshabilita el OLED |
-| `GET /wifi?ssid=..&pass=..` | Credenciales Wi-Fi (persistidas + reconexión) |
-| `GET /player?name=..` | Nombre del jugador |
+| `GET /wifi?ssid=..&pass=..` | Credenciales Wi-Fi (persistidas + reconexión, "Mostrar contraseña") |
 | `GET /start` | `control_send(START_ROUND)` (con cuenta regresiva) |
 | `GET /stop` | `control_send(STOP_ROUND)` |
 | `GET /reset` | `control_send(RESET_STATS)` |
+
+> Eliminada `GET /player` (v0.4.0). La ruta `GET /scan` quedó reservada/interna
+> (sin uso visible; ver `docs/API.md`).
 
 > Ver `docs/API.md` para el detalle de parámetros y rangos.
 

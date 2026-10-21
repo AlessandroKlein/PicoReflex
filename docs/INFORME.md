@@ -28,8 +28,8 @@ las siguientes características concretas:
   de timeout, cuenta regresiva y melodía de *game over*.
 - **Servidor web embebido** (lwIP) con **páginas separadas**: Home (red, batería,
   estadísticas y tabla de tiempos), semilla (`/seed`), juego (`/game`), display
-  (`/display`), Wi-Fi (`/wifi`) y jugador (`/player`). El frontend (HTML) está
-  separado del backend (ruteo/parseo).
+  (`/display`) y Wi-Fi (`/wifi`, con "Mostrar contraseña"). El frontend (HTML) está
+  separado del backend (ruteo/parseo). La página `/player` se eliminó (v0.4.0).
 - **Disparador de inicio con dos botones simultáneos** y **cuenta regresiva**
   configurable (`start_delay_s`, por defecto 3 s, límite 10 s) antes de arrancar.
 - **Wi-Fi configurable desde la web**: SSID/password se editan en `/wifi`, se
@@ -38,12 +38,14 @@ las siguientes características concretas:
   información sigue disponible en la web.
 - **Historial de tiempos de reacción** (últimos 20) mostrado como tabla en el Home.
 - **Conectividad redundante:** Station (STA) con *timeout* de 10 s y respaldo en
-  Access Point (`PicoW-ReactionGame`, IP `192.168.4.1`) con **captive portal**
-  (servidor DNS en puerto 53 que redirige toda consulta a `192.168.4.1`).
+  Access Point (`PicoW-ReactionGame`, WPA2 clave `12345678`, IP `192.168.4.1`,
+  canal 1) con **servidor DHCP propio** (IPs `192.168.4.16`–`192.168.4.23`) y
+  **captive portal** (servidor DNS en puerto 53 que redirige toda consulta a
+  `192.168.4.1`).
 - **Medición de batería** por ADC con divisor resistivo externo (10 kΩ/22 kΩ) en
   GPIO26, con estimación de porcentaje y alerta de batería baja (< 15 %).
-- **Almacenamiento no volátil** en Flash (récords/ranking, nombre y última
-  semilla).
+- **Almacenamiento no volátil** en Flash (récords/ranking, semilla, credenciales
+  Wi-Fi y preferencias).
 - **Doble núcleo:** Core 0 (juego) y Core 1 (red + display).
 - **Display OLED SSD1306** (I2C1) para mostrar tiempo, semilla, modo, batería y
   dirección IP.
@@ -52,8 +54,9 @@ las siguientes características concretas:
 completo (solo tonos PWM), ni *datalogging* a nube, ni carga de batería (se asume
 alimentación externa o módulo TP4056 + boost). El modo de ultra-bajo consumo
 *DORMANT* (< 1.5 mA) está **implementado** con un protocolo dual-core (apagado
-del Wi-Fi + `low_power_dormant_until_gpio_pin_state`); queda pendiente su
-verificación de consumo en hardware (ver `docs/DECISIONES.md` §13).
+del Wi-Fi + `low_power_dormant_until_gpio_pin_state`) y **solo se activa cuando
+no hay red activa** (ni STA ni AP, ver v0.3.2); queda pendiente su verificación de
+consumo en hardware (ver `docs/DECISIONES.md` §13 y §22).
 
 ### b. Descripción de la solución propuesta
 
@@ -114,6 +117,15 @@ Wi-Fi/lwIP) en un dispositivo funcional y reproducible.
    pendiente de verificación de consumo en hardware.
 5. **Comunicación inter-núcleo:** se evitó el uso de los FIFOs crudos y se usó
    `queue_t` + `critical_section`, siguiendo la recomendación del SDK.
+6. **El AP "conectaba y se desconectaba":** el CYW43 no trae servidor DHCP en
+   modo AP; se integró `src/dhcpserver.c` (MicroPython/pico-examples, MIT), que
+   asigna IPs `192.168.4.16`–`192.168.4.23` a los clientes.
+7. **Reinicio al guardar/escanear Wi-Fi:** el Core 1 (servidor web) corría con
+   2 KB de stack y desbordaba (*hard fault*); se amplió a 4 KB con
+   `PICO_CORE1_STACK_SIZE=0x1000`.
+8. **SSID corrupto al guardar:** `url_decode()` copiaba el valor hasta el final de
+   la query, dejando `ssid&pass=...` en el campo SSID; se corrigió para que corte
+   en el separador `&`.
 
 ---
 

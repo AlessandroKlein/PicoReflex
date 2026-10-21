@@ -45,6 +45,9 @@
      `low_power_dormant_until_gpio_pin_state(DORMANT_CLOCK_SOURCE_ROSC)`.
   4. Al despertar, el SDK restaura los relojes; Core 1 re-inicializa con
      `cyw43_arch_init()`.
+- **Actualización (v0.3.2):** el DORMANT **solo se activa si no hay red activa**
+  (ni STA ni AP). Si el Wi-Fi está activo, el dispositivo permanece despierto para
+  no dejar la web inaccesible.
 - **Pendiente de verificación en hardware:** ciclo `cyw43_arch_deinit()` →
   dormant → `cyw43_arch_init()` con el modo *threadsafe background*, y confirmar
   el consumo real (< 1.5 mA) con un multímetro.
@@ -78,12 +81,14 @@
   `0x1FF000`, alineado a 4096). Se documenta cómo adaptarlo al tamaño real de Flash.
 - **Pendiente:** confirmar el tamaño de Flash de la placa del alumno (2 MB estándar).
 
-## 7. Credenciales Wi-Fi
+## 7. Credenciales Wi-Fi — ✅ RESUELTO (web + Flash)
 
 - **Duda:** ¿Cómo se configuran SSID/password de la red STA si el dispositivo es móvil?
-- **Resolución:** valores por defecto en `config.hpp` (`WIFI_SSID` / `WIFI_PASSWORD`),
-  configurables en tiempo de compilación y (a futuro) vía web. El modo AP de respaldo
-  (`PicoW-ReactionGame`, IP `192.168.4.1`) permite configurarlo sin recompilar.
+- **Resolución:** desde la web, en `/wifi` (SSID + contraseña + "Mostrar contraseña"),
+  se **persisten en Flash** y el dispositivo **se re-conecta solo** (sin recompilar).
+  El AP de respaldo (`PicoW-ReactionGame`, WPA2 `12345678`, IP `192.168.4.1`, con
+  **DHCP propio**) permite configurarlo sin recompilar. Nota: en v0.4.3 se corrigió
+  que `url_decode` cortara en `&` (antes corrompía el SSID dejando `ssid&pass=...`).
 
 ## 8. Autonomía / consumo — ✅ VALIDADO
 

@@ -2,12 +2,19 @@
 
 > **Alcance:** firmware C/C++ (Pico SDK 2.3.0) de un juego de reacción en Raspberry
 > Pi Pico W, con servidor web lwIP (HTTP + DNS captive portal) y conectividad
-> Wi-Fi STA/SoftAP. **Fecha:** 2026-10-20 · **Firmware auditado:** v0.1.1
+> Wi-Fi STA/SoftAP. **Fecha:** 2026-10-20 · **Firmware auditado:** v0.4.4 (revisado)
 >
 > **Modelo de amenaza:** el dispositivo opera en una red local (SoftAP propio o
 > Wi-Fi de confianza), no expuesto directamente a internet. Aun así se audita con
 > criterio de defensa en profundidad, porque el SoftAP (y el modo STA en redes
 > ajenas) amplía la superficie a terceros en la misma red o con acceso físico.
+
+> **Cambios de estado desde v0.1.1 (auditoría original):**
+> - ✅ XSS por `name` **resuelto** (`html_escape`) y la página `/player` **eliminada**.
+> - ✅ `smin`/`smax` acotados y ordenados (clamp 50..60000 ms).
+> - ✅ Credenciales STA ya no son solo macros: se configuran desde la web y se
+>   persisten en Flash (siguen en texto plano, ver 3.3).
+> - 🔄 AP volvió a **WPA2** (clave `12345678` por defecto, ver 3.4).
 
 ---
 
@@ -45,27 +52,15 @@ desborde de búfer del DNS fue corregido (búfer `resp[160]` + chequeo defensivo
 
 ## 3. Hallazgos detallados
 
-### 3.1 🔴 Reflected/Stored XSS por el campo `name`
+### 3.1 ✅ Resuelto — XSS por campos de texto (nombre)
 
-- **Código:** `web_server.cpp:173-174` decodifica `name` y lo guarda en
-  `cfg.user_name`; `web_server.cpp:268` lo inyecta en el HTML **sin escapar**:
-
-  ```cpp
-  b.printf("<label>Nombre:</label><input name='name' value='%s' maxlength='15'><br>",
-           cfg.user_name);
-  ```
-
-- **Problema:** `user_name` es una cadena controlada por el usuario que se
-  inserta directamente en el atributo `value='...'`. Un valor como
-  `'><script>alert(1)</script>` rompe el atributo y el tag, y el navegador
-  ejecuta el script. Como el nombre **se persiste en Flash** (`ranking`/`user_name`)
-  y se vuelve a renderizar en cada carga, es XSS almacenado (CWE-79).
-- **Impacto:** cualquier dispositivo que conozca la clave del AP puede fijar un
-  nombre malicioso; cuando el dueño (u otro jugador en una competencia) abre la
-  página, el JS corre en su navegador (robo de sesión/estadísticas, phishing).
-- **Mitigación:** escapar HTML los caracteres `< > & " '` (o usar entidades) al
-  renderizar `user_name`. En este dispositivo sin sesiones el impacto es acotado,
-  pero es el hallazgo más claro de validación de salida.
+- **Estado:** **RESUELTO** en v0.1.3. Se agregó `html_escape()` (`web_ui.cpp`) para
+  escapar `< > & " '` en los campos controlados por el usuario (nombre, SSID,
+  contraseña). Además, la página `/player` (que exponía el campo `name`) fue
+  **eliminada** en v0.4.0; el campo interno `user_name` ya no es editable por web.
+- **Historial (v0.1.1):** `web_server.cpp` guardaba `name` en `cfg.user_name` y lo
+  inyectaba en el HTML sin escapar, permitiendo XSS almacenado (CWE-79). El escape
+  de salida y la eliminación de la ruta cierran el vector.
 
 ### 3.2 🟠 Endpoints sin autenticación ni rate-limiting
 
@@ -78,19 +73,23 @@ desborde de búfer del DNS fue corregido (búfer `resp[160]` + chequeo defensivo
 - **Mitigación:** token/PIN (header `Authorization` o cookie) para los verbos de
   control, y un contador simple de peticiones por ventana de tiempo.
 
-### 3.3 🟠 Credenciales Wi-Fi (STA) compiladas en el firmware
+### 3.3 🟠 Credenciales Wi-Fi (STA) en texto plano (parcialmente resuelto)
 
-- **Código:** `web_server.hpp:29-34` — `WIFI_SSID "TU_RED_WIFI"` y
-  `WIFI_PASSWORD "TU_PASSWORD"` son macros de compilación.
-- **Impacto:** las credenciales de la red del usuario quedan en texto plano en el
-  binario (`.elf`/`.uf2`), extraíbles con `strings` o volcando la Flash. Además,
-  obliga a recompilar para cambiar de red. CWE-798 (hardcoded credentials).
-- **Mitigación:** guardarlas en el sector de Flash (cifradas si es posible) y
-  configurarlas desde el AP la primera vez.
+- **Estado (v0.4.x):** ya **no** es necesario recompilar: el SSID/password se
+  editan desde `/wifi` y se **persisten en Flash** (configurables desde el AP).
+- **Código:** los *defaults* siguen siendo macros (`WIFI_SSID_DEFAULT` /
+  `WIFI_PASSWORD_DEFAULT` en `include/config.hpp`) y las credenciales se guardan
+  **en texto plano** en el sector Flash.
+- **Impacto:** las credenciales de la red del usuario quedan en claro en la Flash,
+  extraíbles con un volcado físico. CWE-798 / CWE-311 (sin cifrado).
+- **Mitigación:** cifrar el campo en Flash (AES de `pico_mbedtls`) con clave
+  derivada del RUID, o al menos evitar exponerlas en el binario.
 
 ### 3.4 🟠 Contraseña del Access Point por defecto `12345678`
 
-- **Código:** `web_server.cpp:53-54` — `AP_PASSWORD "12345678"` fija.
+- **Código:** `web_server.cpp` — `AP_PASSWORD "12345678"` fija (WPA2, canal 1).
+  Entre v0.2.5 y v0.4.3 el AP estuvo **abierto** (sin clave) por un falso positivo
+  de compatibilidad; en v0.4.4 volvió a **WPA2**.
 - **Impacto:** cualquier persona conoce la clave del AP de respaldo; si el
   dispositivo queda en modo AP, entra sin autenticación. CWE-521 (contraseña
   débil/por defecto).

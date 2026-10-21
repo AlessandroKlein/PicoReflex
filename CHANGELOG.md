@@ -4,6 +4,16 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.4.5] - 2026-10-20
+
+### Documentado
+- **Código**: encabezados Doxygen y comentarios "qué + por qué" completados en todo
+  el código, especialmente en `dhcpserver.h/.c` (protocolo DORA, opciones RFC 2132,
+  campos del mensaje BOOTP) y corrección de comentarios obsoletos en `web_ui`.
+- **Wiki/Docs**: actualizados a v0.4.4 (AP WPA2, DHCP, stack del Core 1, `url_decode`
+  corta en `&`, `/player` y escaneo retirados). Nuevas decisiones §24–§26 y
+  dificultades del informe.
+
 ## [0.4.4] - 2026-10-20
 
 ### Cambiado

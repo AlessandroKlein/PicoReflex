@@ -25,7 +25,6 @@
 | `GET /game` | Dificultad, modo, velocidad, duración de ronda, cuenta regresiva | `difficulty`, `mode`, `smin`, `smax`, `round`, `delay` |
 | `GET /display` | Habilitar/deshabilitar el OLED | `oled` |
 | `GET /wifi` | Credenciales Wi-Fi (SSID/password) | `ssid`, `pass` |
-| `GET /scan` | Lista de SSIDs detectados (JSON) | — |
 
 ### Rutas de control (devuelven el Home)
 
@@ -35,9 +34,13 @@
 | `GET /stop` | Detiene la ronda (`STOP_ROUND`) |
 | `GET /reset` | Reinicia estadísticas (`RESET_STATS`) |
 
-> **Nota sobre `/scan`:** el escaneo Wi-Fi es asíncrono. La primera llamada puede
-> devolver `[]` (el bucle principal dispara el escaneo ~200 ms después); la web
-> hace *poll* de `/scan` (hasta 6 intentos, 700 ms) hasta recibir el array de SSIDs.
+> **Rutas retiradas/reservadas:**
+> - `GET /player` — **eliminada** en v0.4.0 (no había modo multijugador; el campo
+>   interno `user_name` queda con el valor por defecto "JUGADOR").
+> - `GET /scan` — **reservada/interna** (v0.4.0): devolvía un array JSON de SSIDs
+>   detectados, pero el botón "Buscar redes" del frontend se **eliminó** en v0.4.3
+>   porque el escaneo del CYW43 no era fiable. El endpoint sigue en el backend sin
+>   uso visible (solo documentado, no expuesto en la interfaz).
 
 ## Parámetros
 
@@ -65,7 +68,6 @@ GET /seed?seed=12345
 GET /game?difficulty=2&mode=1&smin=400&smax=900&round=30&delay=3
 GET /display?oled=0
 GET /wifi?ssid=MiRed&pass=clave123
-GET /scan  →  ["MiRed","OtraRed"]
 ```
 
 ## Respuesta
@@ -91,7 +93,9 @@ Wi-Fi, se activa además `g_wifi_reconnect` para reconectar en el bucle del Core
 
 ## Versionado / cambios de contrato
 
-- **v0.4.0:** nueva ruta `GET /scan` (SSIDs en JSON); eliminada `GET /player`.
+- **v0.4.0:** eliminada `GET /player`; ruta `GET /scan` (SSIDs en JSON) reservada.
+- **v0.4.3:** frontend de `/scan` (botón "Buscar redes") eliminado; `/scan` queda
+  como endpoint interno sin uso visible.
 - **v0.2.0:** separación frontend/backend; rutas por página (`/seed`, `/game`,
   `/display`, `/wifi`, `/player`); nuevos parámetros `delay`, `oled`, `ssid`, `pass`.
 - **v0.1.x:** ruta única `GET /config` (quedó **reemplazada** por las rutas por página).

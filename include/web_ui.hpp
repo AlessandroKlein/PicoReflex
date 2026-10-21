@@ -12,7 +12,7 @@
  *   "/seed"    -> Configuración de la semilla.
  *   "/game"    -> Dificultad, modo, velocidad, duración de ronda, cuenta regresiva.
  *   "/display" -> Habilitar/deshabilitar el OLED.
- *   "/wifi"    -> Credenciales Wi-Fi (SSID/contraseña + búsqueda de redes).
+ *   "/wifi"    -> Credenciales Wi-Fi (SSID/contraseña + mostrar/ocultar contraseña).
  */
 
 #ifndef PICO_REFLEX_WEB_UI_HPP
