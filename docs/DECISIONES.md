@@ -365,16 +365,14 @@ Documentación oficial de referencia (carpeta raíz):
   responder"). Como la web de configuración necesita la red siempre viva, se evitó
   el conflicto condicionando el sueño al estado de red.
 
-## 23. FreeRTOS: análisis hecho, integración revertida
+## 23. FreeRTOS: integrado (SMP, 2 núcleos)
 
-- **Decisión:** se analizó e intentó FreeRTOS (SMP, 2 núcleos) en v0.3.0, pero
-  **rompía el arranque del Wi-Fi**, así que se revirtió en v0.3.1 al dual-core
-  manual (`multicore_launch_core1`). El análisis completo queda en
-  [`Freertos.md`](Freertos.md).
-- **Por qué (causa):** con `pico_cyw43_arch_lwip_sys_freertos`, `cyw43_arch_init()`
-  debe ejecutarse en `main()` **antes** de `vTaskStartScheduler()` (y no dentro de
-  una tarea, como quedó en el primer intento). Pendiente re-integrarlo con esa
-  corrección y verificarlo en hardware.
+- **Decisión:** se integró **FreeRTOS SMP** en v0.5.0 (`game_task` + `network_task`
+  con `vTaskStartScheduler()`). El primer intento (v0.3.0) falló y se revirtió; la
+  causa real fue el stack/patrón, no la ubicación de `cyw43_arch_init()`.
+- **Patrón correcto:** `cyw43_arch_init()` se llama **dentro de la tarea de red**
+  (`web::init()`), como en los ejemplos oficiales `pico_w/wifi/freertos` (NO en
+  `main()` antes del scheduler). Ver [`Freertos.md`](Freertos.md).
 
 ## 24. Stack del Core 1 ampliado a 4 KB (fix de *hard fault*)
 
@@ -406,4 +404,30 @@ Documentación oficial de referencia (carpeta raíz):
 - **Por qué:** el escaneo del CYW43 (`cyw43_wifi_scan`) no devolvía redes de forma
   fiable en el modo *threadsafe background* (y menos en modo AP), así que no
   aportaba valor. Se prefiere que el usuario escriba el SSID a mano.
+
+## 27. Modo Simón Dice (secuencia de memoria creciente)
+
+- **Decisión:** se agrega `GameMode::SIMON_SAYS` (v0.6.0): una **secuencia de LEDs
+  que crece** (validación clásica de "Simon Says").
+  - Correcto: se agrega un elemento aleatorio al final y se repite la secuencia.
+  - Incorrecto (o timeout): Game Over + señal de error + reinicio a longitud 1.
+- **Velocidad según dificultad:** la presentación va de 700 ms (Fácil) a 300 ms
+  (Difícil); cada LED tiene su **tono** (escala pentatónica).
+- **Semilla determinista:** la secuencia la genera el mismo `xorshift32` sembrado
+  con la semilla, así que **una misma semilla produce siempre la misma secuencia**
+  (útil para practicar/aprender patrones y medir progreso). Con `seed=0` es
+  aleatoria (entropía del hardware).
+- **Referencia:** el juego clásico "Simon Says" (secuencia + memoria + velocidad).
+
+## 28. LEDs: abstracción GPIO / WS2812 (NeoPixel)
+
+- **Decisión:** se crea el módulo `led_driver` con DOS implementaciones
+  seleccionables en compilación con la macro `PICOREFLEX_WS2812`:
+  - `0` (por defecto): 5 LEDs GPIO con resistencia (encendido simple).
+  - `1`: WS2812 (NeoPixel) por **PIO** en GPIO28, con color por LED y **efectos de
+    luces** al ganar (verde) y perder (rojo).
+- **Por qué:** permite reemplazar los LEDs discretos por una tira direccionable sin
+  tocar el motor del juego (la interfaz `led::` es la misma). Referencia del PIO:
+  [pico-examples/pio/ws2812](https://github.com/raspberrypi/pico-examples/tree/master/pio/ws2812).
+
 

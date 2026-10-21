@@ -48,6 +48,11 @@ La fuente de verdad de los pines está en [`include/pin_defs.hpp`](https://githu
 | Medición de batería | GPIO26 = ADC0 | ADC (0..3.3 V) | Divisor R1=10 kΩ / R2=22 kΩ |
 | LED onboard (estado Wi-Fi) | Interno CYW43 | — | — (integrado en el módulo) |
 
+> **Alternativa WS2812 (NeoPixel):** en lugar de los 5 LEDs GPIO, se puede usar una
+> tira de LEDs direccionables **WS2812** en **GPIO28** (controlada por PIO). Se
+> habilita con la macro `PICOREFLEX_WS2812 1` en `include/config.hpp`. Permite color
+> por LED y efectos de luces al ganar/perder. Ver `docs/DECISIONES.md` §28.
+
 ---
 
 ## 3. Detalle por subsistema

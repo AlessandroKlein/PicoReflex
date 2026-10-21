@@ -4,6 +4,14 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.6.1] - 2026-10-20
+
+### Documentado
+- `DECISIONES.md`: nuevas decisiones §27 (modo Simón Dice) y §28 (LEDs GPIO/WS2812);
+  corregida §23 (FreeRTOS ahora integrado, no revertido).
+- `ESQUEMATICO.md`: nota de la alternativa WS2812 (GPIO28 por PIO, macro
+  `PICOREFLEX_WS2812`).
+
 ## [0.6.0] - 2026-10-20
 
 ### Añadido
