@@ -4,6 +4,15 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.4.7] - 2026-10-20
+
+### Documentado
+- **Docs (wiki) completo y en verde**: actualizado `AlessandroKlein/Docs` con la
+  navegación completa (agregados `Esquematico` y `Freertos`), portada `Home.md`
+  corregida (firmware v0.4.6, batería ADC0/GPIO26 en vez de VSYS/3, AP WPA2+DHCP)
+  y enlaces rotos corregidos (`pin_defs.hpp`, `web_server.hpp` → GitHub,
+  `FREERTOS.md` → `Freertos.md`). El build de MkDocs pasa en verde.
+
 ## [0.4.6] - 2026-10-20
 
 ### Documentado
