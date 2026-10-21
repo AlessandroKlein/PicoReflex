@@ -4,6 +4,15 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.5.1] - 2026-10-20
+
+### Documentado
+- **Referencias completas** (`docs/REFERENCIAS.md`): URLs oficiales del Pico SDK
+  (hardware/runtime/networking/third-party), ejemplos de pico-examples corroborados
+  (`access_point`, `access_point_wifi_provisioning`, `freertos`) y lista de ejemplos
+  `pico_w/wifi`.
+- `COMPILAR.md`: requisito de **FreeRTOS-Kernel** (clonarlo) documentado.
+
 ## [0.5.0] - 2026-10-20
 
 ### Añadido

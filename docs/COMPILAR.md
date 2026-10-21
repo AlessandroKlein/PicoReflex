@@ -6,6 +6,15 @@
   (instala automáticamente el SDK, el toolchain `arm-none-eabi-gcc`, CMake, Ninja
   y `picotool` en `~/.pico-sdk`).
 - Una Raspberry Pi **Pico W**.
+- **FreeRTOS-Kernel** (obligatorio desde v0.5.0): el proyecto usa FreeRTOS SMP,
+  que no viene incluido en el SDK. Clonarlo una vez:
+
+  ```powershell
+  git clone --branch V11.1.0 https://github.com/FreeRTOS/FreeRTOS-Kernel.git %USERPROFILE%\.pico-sdk\FreeRTOS-Kernel
+  ```
+
+  El `CMakeLists.txt` lo localiza vía `FreeRTOS_Kernel_import.cmake` (variable
+  `FREERTOS_KERNEL_PATH`). Ver `docs/FREERTOS.md` para el detalle.
 
 ## Configurar las credenciales Wi-Fi (STA)
 
