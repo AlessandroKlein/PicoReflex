@@ -45,6 +45,7 @@
 #include "audio.hpp"
 #include "flash_storage.hpp"
 #include "pin_defs.hpp"
+#include "led_driver.hpp"
 
 namespace game {
 
@@ -83,6 +84,11 @@ static uint     g_dma_chan = 0;                       ///< Canal DMA del log.
 // is_round_active(), así que debe leerse de memoria cada vez.
 static volatile bool g_round_active = false;
 static uint32_t g_round_start_us = 0;
+
+// Estado de Simón Dice (secuencia de memoria creciente).
+#define SIMON_MAX_SEQ 64u            ///< Longitud máxima de la secuencia.
+static uint8_t g_sequence[SIMON_MAX_SEQ];  ///< Secuencia de LEDs (índices 0..4).
+static uint8_t g_seq_length = 1;     ///< Longitud actual de la secuencia.
 
 // Datos persistentes (récords, nombre, semilla).
 static flash::PersistentData g_persist;
@@ -171,16 +177,14 @@ static void gpio_irq_callback(uint gpio, uint32_t events) {
 }
 
 // -----------------------------------------------------------------------------
-// LEDs
+// LEDs (delegado al driver común: GPIO o WS2812 según PICOREFLEX_WS2812)
 // -----------------------------------------------------------------------------
 static void leds_off() {
-    for (uint i = 0; i < LED_COUNT; i++) {
-        gpio_put(g_led_pins[i], false);
-    }
+    led::off_all();
 }
 
 static void led_on(uint i) {
-    gpio_put(g_led_pins[i], true);
+    led::set(i, true);
 }
 
 // -----------------------------------------------------------------------------
@@ -341,6 +345,12 @@ static void start_round(const GameConfig& cfg) {
     g_persist_dirty = true;
     g_rng.set_seed(cfg.seed != 0u ? cfg.seed : get_rand_32());
 
+    // En Simón Dice, la secuencia arranca con un único elemento.
+    if (cfg.mode == GameMode::SIMON_SAYS) {
+        g_seq_length = 1;
+        g_sequence[0] = (uint8_t)g_rng.next_range(LED_COUNT);
+    }
+
     g_round_active = true;
     g_round_start_us = time_us_32();
 }
@@ -351,6 +361,100 @@ static void end_round() {
     audio::play_game_over();
     g_last_activity_us = time_us_32();
     persist_if_dirty();
+}
+
+// =============================================================================
+// Simón Dice (secuencia de memoria creciente)
+// =============================================================================
+// Validación (igual que el juego clásico "Simon Says"):
+//   - Correcto: si el jugador reproduce la secuencia entera, se agrega un elemento
+//     aleatorio al final y se vuelve a mostrar la secuencia (un paso más larga).
+//   - Incorrecto: botón equivocado (o timeout) -> Game Over + señal de error y la
+//     secuencia se reinicia a longitud 1.
+// La secuencia la genera el PRNG xorshift32 sembrado con la semilla, por lo que es
+// DETERMINISTA: una misma semilla produce siempre la misma secuencia.
+
+// Frecuencia (Hz) del tono de cada LED (notas de la escala, como Simón Dice).
+static uint32_t simon_tone(uint i) {
+    static const uint32_t tones[LED_COUNT] = {262u, 330u, 392u, 523u, 659u};
+    return tones[i % LED_COUNT];
+}
+
+// Intervalo de presentación de la secuencia según dificultad (ms).
+// Cuanto mayor la dificultad, más rápido se muestra ("aceleran los patrones").
+static uint32_t simon_show_interval_ms(Difficulty d) {
+    switch (d) {
+        case Difficulty::EASY:   return 700u;
+        case Difficulty::HARD:   return 300u;
+        default:                 return 450u;   // NORMAL
+    }
+}
+
+// Muestra la secuencia completa (enciende cada LED + su tono).
+static void simon_show_sequence(const GameConfig& cfg) {
+    uint32_t interval = simon_show_interval_ms(cfg.difficulty);
+    for (uint i = 0; i < g_seq_length; i++) {
+        led::set(g_sequence[i], true);
+        audio::play_tone(simon_tone(g_sequence[i]), interval * 2u / 3u);
+        led::set(g_sequence[i], false);
+        vTaskDelay(pdMS_TO_TICKS(interval / 3u));
+    }
+}
+
+// Espera la pulsación de UN elemento y devuelve true si coincide con `expected`.
+static bool simon_wait_input(const GameConfig& cfg, uint8_t expected) {
+    // Timeout por elemento (generoso, basado en la dificultad).
+    uint32_t timeout_ms = difficulty_tolerance_ms(cfg.difficulty) * 6u + 2000u;
+    uint32_t t0 = time_us_32();
+    while (g_round_active) {
+        if (g_button_pending) {
+            g_button_pending = false;
+            uint8_t btn = g_button_index;
+            // Feedback visual breve del botón presionado.
+            led::set(btn, true);
+            vTaskDelay(pdMS_TO_TICKS(90));
+            led::set(btn, false);
+            return (btn == expected);
+        }
+        if ((time_us_32() - t0) > timeout_ms * 1000u) {
+            return false;   // Timeout.
+        }
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+    return false;
+}
+
+// Ronda de Simón Dice: muestra y valida la secuencia en bucle hasta el fallo.
+static void simon_says_round(const GameConfig& cfg) {
+    while (g_round_active) {
+        simon_show_sequence(cfg);
+
+        // El jugador reproduce la secuencia.
+        bool ok = true;
+        for (uint i = 0; i < g_seq_length && ok; i++) {
+            ok = simon_wait_input(cfg, g_sequence[i]);
+        }
+
+        if (!ok) {
+            // Game Over: error + reinicio a longitud 1.
+            audio::play_game_over();
+            led::effect_lose();
+            stats_record(0u, false, false, cfg.seed, cfg.difficulty);
+            g_seq_length = 1;
+            g_sequence[0] = (uint8_t)g_rng.next_range(LED_COUNT);
+            end_round();
+            return;
+        }
+
+        // Secuencia completa correcta: crece y repite.
+        led::effect_win();
+        stats_record(g_seq_length, true, false, cfg.seed, cfg.difficulty);
+        if (g_seq_length < SIMON_MAX_SEQ) {
+            g_sequence[g_seq_length] = (uint8_t)g_rng.next_range(LED_COUNT);
+            g_seq_length++;
+        }
+        vTaskDelay(pdMS_TO_TICKS(600));   // Pausa entre secuencias.
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -417,7 +521,13 @@ void run() {
             continue;
         }
 
-        // --- 3) Estado RUNNING: presenta un estímulo. ---
+        // --- 3) Modo SIMÓN DICE: secuencia de memoria creciente. ---
+        if (cfg.mode == GameMode::SIMON_SAYS) {
+            simon_says_round(cfg);
+            continue;
+        }
+
+        // --- 4) Estado RUNNING (reacción): presenta un estímulo. ---
         // Apaga todos los LEDs y espera un intervalo aleatorio entre estímulos.
         leds_off();
         uint32_t span = cfg.stimulus_max_ms - cfg.stimulus_min_ms + 1u;

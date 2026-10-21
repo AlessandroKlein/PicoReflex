@@ -32,6 +32,18 @@
 #include "pin_defs.hpp"
 
 // =============================================================================
+// Tipo de LEDs (selección en tiempo de compilación)
+// =============================================================================
+// 0 = LEDs GPIO (por defecto): 5 LEDs con resistencia en GPIO2..6, encendido
+//     simple (HIGH = encendido).
+// 1 = WS2812 (NeoPixel): tira/diodos direccionables RGB en un único pin de datos
+//     (GPIO28), controlados por PIO. Permite efectos de color al ganar/perder.
+// Se deja la posibilidad de ambos tipos: cambiando esta macro y el cableado.
+#ifndef PICOREFLEX_WS2812
+#define PICOREFLEX_WS2812 0
+#endif
+
+// =============================================================================
 // Credenciales Wi-Fi por defecto (compilación)
 // =============================================================================
 // Se usan para inicializar GameConfig; pueden cambiarse desde la web y persisten
@@ -54,7 +66,11 @@ enum class GameMode : uint8_t {
     TIMED = 1,
     // Muerte súbita: un único fallo (o timeout) termina la ronda de inmediato.
     SUDDEN_DEATH = 2,
-    MODE_COUNT = 3
+    // Simón Dice: secuencia de LEDs que crece. El jugador reproduce la secuencia;
+    // al acertar se agrega un elemento y se repite; al fallar, Game Over y reinicio
+    // a longitud 1. La secuencia es determinista según la semilla.
+    SIMON_SAYS = 3,
+    MODE_COUNT = 4
 };
 
 // =============================================================================

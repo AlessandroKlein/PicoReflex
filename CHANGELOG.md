@@ -4,6 +4,19 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.6.0] - 2026-10-20
+
+### Añadido
+- **Modo Simón Dice** (`GameMode::SIMON_SAYS`): secuencia de LEDs que crece. El
+  jugador la reproduce; al acertar se agrega un elemento aleatorio y se repite
+  (más larga); al fallar, Game Over + reinicio a longitud 1. La velocidad de
+  presentación depende de la dificultad (Fácil 700 ms → Difícil 300 ms).
+- **Semilla determinista en Simón Dice**: la secuencia la genera el PRNG xorshift32
+  sembrado con la semilla; una misma semilla produce siempre la misma secuencia.
+- **LEDs WS2812 (NeoPixel)** opcionales: nuevo driver `led_driver` con dos
+  implementaciones (GPIO por defecto y WS2812 por PIO, seleccionadas con la macro
+  `PICOREFLEX_WS2812`). Efectos de luces al ganar (verde) y perder (rojo).
+
 ## [0.5.1] - 2026-10-20
 
 ### Documentado

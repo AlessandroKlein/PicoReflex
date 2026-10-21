@@ -168,6 +168,7 @@ const char* game_mode_name(GameMode m) {
         case GameMode::FREE_PLAY:    return "LIBRE";
         case GameMode::TIMED:        return "CONTRA";
         case GameMode::SUDDEN_DEATH: return "MUERTE";
+        case GameMode::SIMON_SAYS:   return "SIMON";
         default:                     return "?";
     }
 }

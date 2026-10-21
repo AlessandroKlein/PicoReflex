@@ -1,0 +1,15 @@
+; Programa PIO para WS2812 (NeoPixel) — estándar de pico-examples.
+; Genera la señal de 800 kHz: bit '1' = pulso largo en alto, bit '0' = pulso corto.
+; Referencia: https://github.com/raspberrypi/pico-examples/tree/master/pio/ws2812
+
+.program ws2812
+.side_set 1
+
+.wrap_target
+bitloop:
+    out x, 1        side 0 [2]   ; saca 1 bit a x; side 0
+    jmp !x do_zero  side 1 [1]   ; si es 0 -> do_zero; side 1
+    jmp bitloop     side 1 [4]   ; si es 1 -> sigue; side 1
+do_zero:
+    nop             side 0 [4]   ; pulso corto
+.wrap

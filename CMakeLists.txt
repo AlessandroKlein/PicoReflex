@@ -69,10 +69,14 @@ add_executable(PicoReflex
     src/web_ui.cpp
     src/captive_portal.cpp
     src/dhcpserver.c
+    src/led_driver.cpp
 )
 
+# Programa PIO para WS2812 (solo se usa si PICOREFLEX_WS2812 == 1).
+pico_generate_pio_header(PicoReflex ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
+
 pico_set_program_name(PicoReflex "PicoReflex")
-pico_set_program_version(PicoReflex "0.5.1")
+pico_set_program_version(PicoReflex "0.6.0")
 
 # Salida de depuración (printf): USB (CDC) y UART0 (GPIO0=TX, GPIO1=RX, 115200).
 # El USB es el más cómodo (conectar la Pico y abrir el puerto COM a 115200).
@@ -111,6 +115,7 @@ target_link_libraries(PicoReflex
     hardware_timer
     hardware_flash
     hardware_clocks
+    hardware_pio
 )
 
 pico_add_extra_outputs(PicoReflex)
