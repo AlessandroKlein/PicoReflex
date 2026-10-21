@@ -19,7 +19,7 @@ Documentación oficial de referencia (carpeta raíz):
 ## 1. Lenguaje y estándar: C++17
 
 - **Decisión:** Código en C++17 (`.cpp`/`.hpp`), compilado con `arm-none-eabi-g++`.
-- **Por qué:** La consigna (Idea.md) pide "C/C++" y estructura el proyecto en
+- **Por qué:** La consigna (docs/Idea.md) pide "C/C++" y estructura el proyecto en
   `main.cpp` + módulos `.cpp`/`.hpp`. C++17 permite `enum class`, `static_assert`
   y estructuras limpias sin costo de runtime adicional.
 - **Referencia:** [CMakeLists / pico_sdk_init en "Getting started"](https://www.raspberrypi.com/documentation/pico-sdk/index_doxygen.html)
@@ -28,7 +28,7 @@ Documentación oficial de referencia (carpeta raíz):
 
 ## 2. Mapa de pines (GPIO)
 
-- **Decisión:** Se respeta la asignación de Idea.md §4:
+- **Decisión:** Se respeta la asignación de docs/Idea.md §4:
 
   | Periférico | Pin | Detalle |
   |---|---|---|
@@ -58,7 +58,7 @@ Documentación oficial de referencia (carpeta raíz):
   **no expone una función para fijar la semilla** (se auto-siembra con ROSC,
   timer, RAM hash, etc.). Para lograr una secuencia **idéntica en cada reinicio**
   con `SEED = 12345`, se implementa un generador software trivial y sin estado
-  oculto (Marsaglia, "Xorshift RNGs", 2003). La propia Idea.md acepta
+  oculto (Marsaglia, "Xorshift RNGs", 2003). La propia docs/Idea.md acepta
   "pico_rand **o** xorshift/LCG en C++".
 - **Referencia:**
   - [pico_rand](https://www.raspberrypi.com/documentation/pico-sdk/high_level.html#pico_rand)

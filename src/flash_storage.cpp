@@ -45,6 +45,7 @@ void set_default(PersistentData* d) {
     std::strncpy(d->wifi_password, WIFI_PASSWORD_DEFAULT, sizeof(d->wifi_password) - 1u);
     d->oled_enabled = 1;
     d->start_delay_s = 3;
+    d->batt_calib = BatteryCalibration{};   // Curva por defecto (4200/3700/3000, sin comp.).
     update_checksum(d);
 }
 
@@ -60,6 +61,36 @@ void update_checksum(PersistentData* d) {
         sum += p[i];
     }
     d->checksum = sum;
+}
+
+// -----------------------------------------------------------------------------
+// Clave por defecto del AP (derivada del RUID de la Flash)
+// -----------------------------------------------------------------------------
+namespace {
+
+// Callback de flash_safe_execute: lee el identificador único de la Flash (RUID).
+void do_read_ruid(void* param) {
+    flash_get_unique_id(static_cast<uint8_t*>(param));
+}
+
+} // namespace
+
+// Deriva una clave única por placa a partir del RUID (8 bytes = 16 nibbles).
+// Se usan 15 nibbles (60 bits) para que quepan en ap_password[16] (15 + '\0').
+// Se ejecuta dentro de flash_safe_execute porque flash_get_unique_id() suspende
+// el XIP (no es seguro con IRQs/otro núcleo ejecutando desde Flash).
+void ap_password_default(char* out, size_t n) {
+    if (n == 0) return;
+    static const char hex[] = "0123456789abcdef";
+    uint8_t id[FLASH_UNIQUE_ID_SIZE_BYTES] = {0};
+    flash_safe_execute(do_read_ruid, id, 1000);
+
+    size_t chars = (n >= 16u) ? 15u : (n - 1u);
+    for (size_t i = 0; i < chars; i++) {
+        uint8_t nib = (i & 1u) ? (id[i >> 1] & 0x0Fu) : (id[i >> 1] >> 4u);
+        out[i] = hex[nib];
+    }
+    out[chars] = '\0';
 }
 
 // -----------------------------------------------------------------------------
@@ -110,16 +141,41 @@ void do_write(void* param) {
 } // namespace
 
 bool save(const PersistentData& d) {
-    // Copia los datos a un buffer de página alineado (256 bytes, cero-padded).
-    static uint8_t page[FLASH_PAGE_SIZE];
-    std::memset(page, 0xFF, sizeof(page));  // La Flash borrada se lee 0xFF.
+    // Copia los datos a un buffer alineado a sector y rellenado con 0xFF (así se
+    // lee la Flash borrada). La estructura puede superar una página, por lo que el
+    // tamaño a programar se redondea a un múltiplo de FLASH_PAGE_SIZE (256 B).
+    static uint8_t page[FLASH_SECTOR_SIZE];
+    std::memset(page, 0xFF, sizeof(page));
     std::memcpy(page, &d, sizeof(d));
 
-    WriteJob job = {FLASH_TARGET_OFFSET, page, FLASH_PAGE_SIZE};
+    size_t count = (sizeof(d) + FLASH_PAGE_SIZE - 1u) & ~(size_t)(FLASH_PAGE_SIZE - 1u);
+    WriteJob job = {FLASH_TARGET_OFFSET, page, count};
 
     // Ejecuta la escritura de forma segura entre núcleos.
     // 1000 ms es holgado para borrar+programar un sector/página.
     int rc = flash_safe_execute(do_write, &job, 1000);
+    return (rc == PICO_OK);
+}
+
+// -----------------------------------------------------------------------------
+// OTA: escrituras seguras en Flash (imagen candidata + metadatos)
+// -----------------------------------------------------------------------------
+// Reutiliza do_write (erase + program) dentro de flash_safe_execute. La imagen
+// candidata se graba sector a sector (4096 B); los metadatos, en una página.
+bool ota_write_sector(uint32_t offset, const uint8_t* data) {
+    // `data` debe apuntar a 4096 bytes en RAM (el sector completo ya rellenado).
+    WriteJob job = {offset, data, FLASH_SECTOR_SIZE};
+    int rc = flash_safe_execute(do_write, &job, 5000);
+    return (rc == PICO_OK);
+}
+
+bool ota_write_metadata(const ota_metadata_t* meta) {
+    static uint8_t page[FLASH_PAGE_SIZE];
+    std::memset(page, 0xFF, sizeof(page));
+    std::memcpy(page, meta, sizeof(*meta));
+
+    WriteJob job = {OTA_METADATA_OFFSET, page, FLASH_PAGE_SIZE};
+    int rc = flash_safe_execute(do_write, &job, 5000);
     return (rc == PICO_OK);
 }
 

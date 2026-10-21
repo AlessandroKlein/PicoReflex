@@ -28,6 +28,7 @@ struct GameConfig {
     bool oled_enabled = true;
     char wifi_ssid[33] = "TU_RED_WIFI";
     char wifi_password[65] = "TU_PASSWORD";
+    char ap_password[16] = "";
 };
 
 struct HistoryEntry {

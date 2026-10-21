@@ -3,11 +3,11 @@
  * @brief  Mapa de pines del proyecto PicoReflex (Raspberry Pi Pico W).
  *
  * Concentra TODA la asignación de pines en un único lugar para que sea fácil de
- * verificar contra el esquema de hardware (Idea.md, sección 4) y contra el
+ * verificar contra el esquema de hardware (docs/Idea.md, sección 4) y contra el
  * datasheet de la Raspberry Pi Pico W.
  *
  * Decisión de diseño (ver docs/DECISIONES.md):
- *  - Se usa la asignación propuesta en Idea.md, que no entra en conflicto entre sí.
+ *  - Se usa la asignación propuesta en docs/Idea.md, que no entra en conflicto entre sí.
  *  - El display usa I2C1 (GPIO14/GPIO15); el buzzer usa GPIO16 en PWM.
  *
  * Referencias de documentación oficial:
@@ -31,7 +31,7 @@
 // -----------------------------------------------------------------------------
 // 5 LEDs conectados a GPIO 2..6. Cada LED corresponde al botón del mismo índice.
 // Se asume lógica "LED encendido = GPIO en nivel ALTO" (cátodo a masa vía
-// resistencia limitadora). Ver Idea.md sección 4.
+// resistencia limitadora). Ver docs/Idea.md sección 4.
 #define LED_COUNT 5u                 ///< Cantidad de LEDs / botones del juego.
 #define LED_PINS {2u, 3u, 4u, 5u, 6u} ///< Pines de los 5 LEDs (índice 0..4).
 
@@ -42,13 +42,15 @@
 // La interrupción de reacción se configura por FLANCO DE BAJADA.
 #define BUTTON_PINS {7u, 8u, 9u, 10u, 11u} ///< Pines de los 5 pulsadores.
 
-// Debounce software: tiempo mínimo entre dos flancos válidos de un pulsador.
-// Documentación: gpio_set_irq_enabled_with_callback()
-// https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_gpio
-#define BUTTON_DEBOUNCE_US 5000u   ///< Debounce de 5 ms en microsegundos.
+// Debounce por PIO: cada pulsador tiene su propia state machine PIO (programa
+// button_debounce.pio) que muestrea el pin y emite el flanco ya filtrado. El
+// lockout de rebote (~5 ms) está codificado en el programa (5 bucles de ~1024
+// ciclos); esta macro fija el reloj de muestreo de esas máquinas:
+//   1 MHz -> resolución de flanco de 1 µs (igual que time_us_32()).
+#define BUTTON_DEBOUNCE_SAMPLE_HZ 1000000u   ///< Reloj de muestreo PIO (1 MHz).
 
 // -----------------------------------------------------------------------------
-// Display I2C (OLED SSD1306 de 128x64 píxeles)
+// Display I2C (OLED SSD1306/SH1106 de 128x64 píxeles)
 // -----------------------------------------------------------------------------
 // I2C1 en GPIO14 (SDA) y GPIO15 (SCL). En RP2040, I2C1 admite estos pines.
 #define I2C_DISPLAY      i2c1        ///< Instancia de I2C usada por el display.

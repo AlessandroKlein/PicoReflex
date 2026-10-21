@@ -2,7 +2,7 @@
 
 > **Alcance:** firmware C/C++ (Pico SDK 2.3.0) de un juego de reacción en Raspberry
 > Pi Pico W, con servidor web lwIP (HTTP + DNS captive portal) y conectividad
-> Wi-Fi STA/SoftAP. **Fecha:** 2026-10-20 · **Firmware auditado:** v0.4.4 (revisado)
+> Wi-Fi STA/SoftAP. **Fecha:** 2026-10-21 · **Firmware auditado:** v0.7.0 (revisado)
 >
 > **Modelo de amenaza:** el dispositivo opera en una red local (SoftAP propio o
 > Wi-Fi de confianza), no expuesto directamente a internet. Aun así se audita con
@@ -14,7 +14,9 @@
 > - ✅ `smin`/`smax` acotados y ordenados (clamp 50..60000 ms).
 > - ✅ Credenciales STA ya no son solo macros: se configuran desde la web y se
 >   persisten en Flash (siguen en texto plano, ver 3.3).
-> - 🔄 AP volvió a **WPA2** (clave `12345678` por defecto, ver 3.4).
+> - ✅ **Clave del AP por defecto `12345678` eliminada** (v0.7.0): se deriva del
+>   RUID de la Flash o se configura desde `/wifi` y se persiste (ver 3.4).
+> - ✅ **Autenticación PIN + rate-limiting** en los endpoints de control (ver 3.2).
 
 ---
 
@@ -23,9 +25,9 @@
 | Severidad | Hallazgo | Ubicación |
 |---|---|---|
 | 🔴 Alta | Reflected/Stored XSS vía parámetro `name` sin escapar | `web_server.cpp:268` |
-| 🟠 Media | Endpoints sin autenticación ni rate-limiting | `web_server.cpp:329-335` |
+| ✅ Resuelta | Endpoints sin autenticación ni rate-limiting | `web_server.cpp` (v0.7.0) |
 | 🟠 Media | Credenciales Wi-Fi (STA) compiladas en el firmware | `web_server.hpp:30,33` |
-| 🟠 Media | Contraseña del AP por defecto `12345678` | `web_server.cpp:54` |
+| ✅ Resuelta | Contraseña del AP por defecto `12345678` | derivada del RUID (v0.7.0) |
 | 🟡 Baja | Sin TLS (HTTP plano) en el panel web | `web_server.cpp` |
 | 🟡 Baja | `smin`/`smax` sin cota superior ni `smin ≤ smax` | `web_server.cpp:165-168` |
 | 🟡 Baja | Flash sin cifrar + checksum no criptográfico | `flash_storage.cpp` |
@@ -62,16 +64,18 @@ desborde de búfer del DNS fue corregido (búfer `resp[160]` + chequeo defensivo
   inyectaba en el HTML sin escapar, permitiendo XSS almacenado (CWE-79). El escape
   de salida y la eliminación de la ruta cierran el vector.
 
-### 3.2 🟠 Endpoints sin autenticación ni rate-limiting
+### 3.2 ✅ Resuelto — Endpoints sin autenticación ni rate-limiting
 
-- **Código:** `web_server.cpp:329-335` — `/start`, `/stop`, `/reset` y `/config`
-  ejecutan acciones (encolar eventos de control, cambiar configuración) sin
-  verificar identidad ni limitar la frecuencia.
-- **Impacto:** cualquiera en la red (AP o STA) puede reiniciar el juego, detener
-  una ronda o dejar la configuración inservible (DoS lógico). No hay límite de
-  conexiones simultáneas ni de peticiones/segundo.
-- **Mitigación:** token/PIN (header `Authorization` o cookie) para los verbos de
-  control, y un contador simple de peticiones por ventana de tiempo.
+- **Estado:** **RESUELTO** en v0.7.0. Los endpoints de control/configuración
+  (`/start`, `/stop`, `/reset`, `/seed`, `/game`, `/display`, `/wifi`, `/battery`,
+  `/config`, `/ota`) exigen autenticación por **PIN** (`WEB_PIN`, por defecto
+  `1234`, sobrescribible con `-DWEB_PIN`).
+- **Mecanismo:** login por cookie `pr_auth` (token FNV-1a) o cabecera
+  `Authorization: Bearer <pin>`; comparación en **tiempo constante**. Además se
+  aplica **rate-limiting** global (60 req/s) y anti fuerza bruta en el login
+  (5 intentos/s).
+- **Impacto residual:** el PIN por defecto es conocido (`1234`); conviene
+  recompilar con `-DWEB_PIN` propio si se usa en una red con terceros.
 
 ### 3.3 🟠 Credenciales Wi-Fi (STA) en texto plano (parcialmente resuelto)
 
@@ -85,16 +89,18 @@ desborde de búfer del DNS fue corregido (búfer `resp[160]` + chequeo defensivo
 - **Mitigación:** cifrar el campo en Flash (AES de `pico_mbedtls`) con clave
   derivada del RUID, o al menos evitar exponerlas en el binario.
 
-### 3.4 🟠 Contraseña del Access Point por defecto `12345678`
+### 3.4 ✅ Resuelto — Contraseña del Access Point por defecto `12345678`
 
-- **Código:** `web_server.cpp` — `AP_PASSWORD "12345678"` fija (WPA2, canal 1).
-  Entre v0.2.5 y v0.4.3 el AP estuvo **abierto** (sin clave) por un falso positivo
-  de compatibilidad; en v0.4.4 volvió a **WPA2**.
-- **Impacto:** cualquier persona conoce la clave del AP de respaldo; si el
-  dispositivo queda en modo AP, entra sin autenticación. CWE-521 (contraseña
-  débil/por defecto).
-- **Mitigación:** derivar la clave de un identificador único (Flash RUID) o
-  permitir cambiarla desde la web y persistirla.
+- **Estado:** **RESUELTO** en v0.7.0. Ya **no hay clave hardcodeada**: si el campo
+  `ap_password` está vacío, la clave WPA2 del AP de respaldo se deriva del **RUID
+  de la Flash** (identificador único por placa, 15 caracteres hex) mediante
+  `flash::ap_password_default()`.
+- **Configuración:** desde `/wifi` se puede fijar una clave propia (8..15
+  caracteres), que se persiste en Flash (`PersistentData.ap_password`). La clave
+  se muestra en el display en modo AP para poder conectarse.
+- **Historial:** entre v0.2.5 y v0.4.3 el AP estuvo abierto (sin clave) por un
+  falso positivo de compatibilidad; en v0.4.4 volvió a WPA2 con `12345678`.
+  v0.7.0 elimina la clave fija (CWE-521 / CWE-798 cerradas).
 
 ### 3.5 🟡 HTTP sin TLS (texto plano)
 
@@ -203,18 +209,19 @@ Revisión punto por punto (`web_server.cpp:151-178`):
 
 ### Esfuerzo medio
 
-5. **Contraseña del AP configurable**, derivada del Flash RUID o editable por web
-   y persistida; eliminar `12345678`.
-6. **Autenticación mínima (PIN/token)** en los endpoints de control
-   (`/start`, `/stop`, `/reset`, `/config`).
+5. ~~**Contraseña del AP configurable**~~ ✅ **HECHO en v0.7.0** — derivada del
+   RUID o editable desde `/wifi` y persistida (ver 3.4).
+6. ~~**Autenticación mínima (PIN/token)**~~ ✅ **HECHO en v0.7.0** — PIN + cookie/
+   Bearer en los endpoints de control (ver 3.2).
 7. **Mover credenciales STA a Flash** (configurables desde el AP) en lugar de
-   macros de compilación.
+   macros de compilación — ✅ **HECHO en v0.2.0** (ver 3.3).
 
 ### Esfuerzo alto
 
 8. **HTTPS con `pico_mbedtls`** para el panel web (certificado autofirmado o
    precargado). Ref: [mbedTLS en Pico SDK](https://www.raspberrypi.com/documentation/pico-sdk/third_party.html).
-9. **Rate-limiting** y límite de conexiones concurrentes en el servidor lwIP.
+9. ~~**Rate-limiting**~~ ✅ **HECHO en v0.7.0** — 60 req/s global + 5 login/s
+   (ver 3.2). Queda pendiente el límite de conexiones TCP concurrentes.
 10. **Cifrado/autenticación de los datos en Flash** (AES-GCM) si se almacenan
     datos sensibles; **secure boot / firmware firmado** si se comercializa.
 

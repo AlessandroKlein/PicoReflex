@@ -18,6 +18,8 @@
 
 #include "pico/stdlib.h"
 
+#include "config.hpp"   // BatteryCalibration (curva de descarga configurable).
+
 namespace battery {
 
 // Inicializa el ADC. Debe llamarse UNA vez (idealmente en el Core 0).
@@ -33,6 +35,13 @@ uint8_t voltage_to_percent(uint32_t voltage_mv);
 
 // Devuelve true si la batería está baja (< 15 %) y debe mostrarse una alerta.
 bool is_low_battery(uint8_t percent);
+
+// Aplica una calibración de curva (tabla por tramos + compensación de carga).
+// Los valores se validan internamente para mantener un rango sano.
+void set_calibration(const BatteryCalibration& calib);
+
+// Devuelve la calibración activa.
+BatteryCalibration calibration();
 
 } // namespace battery
 

@@ -4,6 +4,45 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.7.0] - 2026-10-21
+
+### Añadido
+- **Watchdog hardware** (`hardware_watchdog`): `watchdog_enable(8000 ms,
+  pause_on_debug=true)` al arrancar y `watchdog_update()` en ambos bucles de
+  tarea; diagnóstico del último reinicio (`watchdog_caused_reboot()`).
+- **Debounce de pulsadores por PIO** (`button_debounce.pio`): una state machine por
+  botón que filtra el rebote en hardware (~5 ms de lockout) y notifica el flanco.
+- **Soporte de display SH1106**: `display::init(Controller)` con offset de columna
+  +2; selección por macro `PICOREFLEX_DISPLAY_CONTROLLER`.
+- **Calibración de la curva de batería** (`BatteryCalibration`): 3 puntos (mV) +
+  compensación de carga, configurable desde `/battery` y persistida en Flash.
+- **Reconexión Wi-Fi en caliente (STA→AP)**: `sta_link_watchdog()` vigila el enlace
+  cada 1 s; reintenta con backoff exponencial (1..15 s) y degrada a SoftAP tras 3 fallos.
+- **mDNS `picoreflex.local`** (solo STA): `mdns_resp_add_netif()` + servicio `_http`
+  (`pico_lwip_mdns`, `LWIP_MDNS_RESPONDER=1`, `LWIP_IGMP=1`).
+- **Autenticación PIN + rate-limiting**: cookie `pr_auth` / `Authorization: Bearer`,
+  PIN de compilación `WEB_PIN` (por defecto `1234`), límite global 60 req/s y 5 login/s.
+- **Contraseña del AP configurable**: sin clave por defecto conocida; se deriva del
+  RUID de la Flash (única por placa) o se configura desde `/wifi` (8..15 chars) y se persiste.
+- **OTA A/B con bootloader de segundo nivel**: partición A/B + staging + metadatos;
+  `POST /ota/upload` con CRC32 y *rollback* automático.
+- **CI endurecido**: análisis estático `cppcheck` (falla el CI ante error/warning) y
+  reporte de tamaño (`cmake --build build --target size` → `build/size-report.txt`).
+
+### Cambiado
+- `PersistentData` versión 3 (clave del AP) y 4 (calibración de batería): el primer
+  arranque tras la actualización **resetea la configuración persistida** (récords,
+  Wi-Fi, OLED y cuenta regresiva vuelven a sus valores por defecto).
+
+### Documentado
+- `docs/SEGURIDAD.md`: §3.2 (PIN + rate-limit) y §3.4 (clave del AP) resueltos;
+  hallazgos `12345678` y "sin autenticación" cerrados.
+- `docs/ROADMAP.md`: base actualizada a v0.7.0; ítems 1.1/1.3/1.4/1.5/1.6/1.7 y
+  2.1/2.2/2.3 marcados como completados.
+- `docs/API.md` (endpoints `/wifi`, `/battery`, `/ota` + autenticación PIN) y
+  `docs/COMPILAR.md` (macros `PICOREFLEX_WS2812`/`PICOREFLEX_DISPLAY_CONTROLLER`/`WEB_PIN`);
+  sitio MkDocs de `Docs.git` reescrito a v0.7.0.
+
 ## [0.6.1] - 2026-10-20
 
 ### Documentado
@@ -63,7 +102,7 @@ sigue [Semantic Versioning](https://semver.org/) (SemVer).
 ## [0.4.6] - 2026-10-20
 
 ### Documentado
-- **Esquemático / diagrama circuital** (`docs/ESQUEMATICO.md` + `docs/esquematico.svg`):
+- **Esquemático / diagrama circuital** (`docs/ESQUEMATICO.md` + `docs/img/esquematico.svg`):
   diagrama de bloques, tabla de conexiones, detalle por subsistema (LEDs con
   cálculo de resistencia, pulsadores, I2C, buzzer con driver, divisor de batería
   10 k/22 k, alimentación) y mapa de pines completo.

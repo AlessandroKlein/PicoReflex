@@ -1,9 +1,9 @@
 /**
  * @file   display_driver.hpp
- * @brief  Driver del display OLED SSD1306 (128x64) por I2C1.
+ * @brief  Driver del display OLED SSD1306/SH1106 (128x64) por I2C1.
  *
- * El SSD1306 es un controlador OLED monocromo. Se comunica por I2C con un
- * protocolo sencillo:
+ * El SSD1306 y el SH1106 son controladores OLED monocromo. Se comunican por I2C
+ * con un protocolo sencillo:
  *  - Byte de control 0x00 seguido de bytes de COMANDO.
  *  - Byte de control 0x40 seguido de bytes de DATOS (framebuffer).
  *
@@ -21,10 +21,21 @@
 #include "pico/stdlib.h"
 #include <stdarg.h>
 
+#include "config.hpp"   // PICOREFLEX_DISPLAY_CONTROLLER (controlador por defecto)
+
 namespace display {
 
-// Inicializa I2C1 y el controlador SSD1306. Debe llamarse una vez.
-bool init();
+// Controlador de display soportado.
+enum class Controller : uint8_t {
+    SSD1306 = 0,  ///< SSD1306 128x64 (sin offset de columna).
+    SH1106  = 1,  ///< SH1106 132x64 (offset de columna +2).
+};
+
+// Inicializa I2C1 y el controlador OLED. Debe llamarse una vez.
+// `controller` selecciona el chip: SSD1306 (por defecto) o SH1106. Para SH1106
+// se aplica el offset de columna +2 (0x21, 0x02, 0x7F) y la config COM 0x02.
+bool init(Controller controller =
+    (PICOREFLEX_DISPLAY_CONTROLLER != 0) ? Controller::SH1106 : Controller::SSD1306);
 
 // Enciende (true) o apaga (false) el display (comando SSD1306 0xAF / 0xAE).
 void set_power(bool on);

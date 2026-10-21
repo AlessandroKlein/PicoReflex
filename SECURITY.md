@@ -4,7 +4,8 @@
 
 | Versión | Soportada          |
 | ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| 0.7.x   | :white_check_mark: |
+| < 0.7   | :x:                |
 
 ## Reportar una vulnerabilidad
 
@@ -26,10 +27,15 @@ Incluí:
 
 ## Buenas prácticas de despliegue
 
-- Cambiá la contraseña del Access Point (`AP_PASSWORD` en `src/web_server.cpp`) y
-  las credenciales Wi-Fi (`WIFI_SSID` / `WIFI_PASSWORD` en `include/web_server.hpp`)
-  antes de usar el dispositivo fuera del aula.
+- La contraseña del Access Point ya **no es fija**: se deriva del RUID de la Flash
+  (única por placa) o se configura desde `/wifi` (8..15 caracteres) y se persiste.
+  Las credenciales Wi-Fi (STA) también se configuran desde `/wifi`; las macros
+  `WIFI_SSID_DEFAULT` / `WIFI_PASSWORD_DEFAULT` (`include/config.hpp`) son solo el
+  valor inicial.
+- El panel web ya exige **PIN** (`WEB_PIN`, por defecto `1234`, sobrescribible con
+  `-DWEB_PIN=...`) y aplica **rate-limiting** en los endpoints de control (ver
+  `docs/SEGURIDAD.md` §3.2 y §3.4).
 - No expongas el dispositivo directamente a internet: está pensado para redes
   locales (SoftAP propio o Wi-Fi de confianza).
-- Para entornos con terceros en la red, habilitá autenticación del panel web y
-  TLS (ver `docs/SEGURIDAD.md` y `docs/ROADMAP.md`).
+- Para entornos con terceros en la red, considerá además TLS en el panel web
+  (mejora futura; ver `docs/SEGURIDAD.md` §3.5 y `docs/ROADMAP.md`).

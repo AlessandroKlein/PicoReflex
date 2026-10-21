@@ -44,6 +44,17 @@
 #endif
 
 // =============================================================================
+// Controlador del display OLED (selección en tiempo de compilación)
+// =============================================================================
+// 0 = SSD1306 128x64 (por defecto): sin offset de columna.
+// 1 = SH1106 132x64: el área visible de 128 px empieza en la columna 2, por lo
+//     que el driver aplica un offset de columna +2 (0x21, 0x02, 0x7F) y la
+//     configuración de pines COM 0x02 (0xDA, 0x02).
+#ifndef PICOREFLEX_DISPLAY_CONTROLLER
+#define PICOREFLEX_DISPLAY_CONTROLLER 0
+#endif
+
+// =============================================================================
 // Credenciales Wi-Fi por defecto (compilación)
 // =============================================================================
 // Se usan para inicializar GameConfig; pueden cambiarse desde la web y persisten
@@ -81,6 +92,20 @@ enum class Difficulty : uint8_t {
     NORMAL = 1,  ///< Tolerancia  500 ms.
     HARD   = 2,  ///< Tolerancia  250 ms.
     DIFF_COUNT = 3
+};
+
+// =============================================================================
+// Calibración de la batería (curva de descarga + compensación de carga)
+// =============================================================================
+// Curva de descarga LiPo/Li-Ion de 1 celda definida por 3 puntos (tabla por
+// tramos con interpolación lineal): tensión a 100 %, 50 % y 0 % de carga.
+// `load_comp_mv` es una corrección por corriente estimada (caída resistiva /
+// IR drop) que se suma a la tensión medida cuando el consumo (Wi-Fi) está activo.
+struct BatteryCalibration {
+    uint32_t v_full_mv   = 4200;   ///< Tensión (mV) con 100 % de carga.
+    uint32_t v_mid_mv    = 3700;   ///< Tensión (mV) con 50 % de carga (inflexión).
+    uint32_t v_empty_mv  = 3000;   ///< Tensión (mV) con 0 % de carga (corte).
+    uint32_t load_comp_mv = 0;     ///< Compensación por carga (mV) sumada a la lectura.
 };
 
 // =============================================================================
@@ -122,6 +147,15 @@ struct GameConfig {
     // Credenciales Wi-Fi (configurables desde la web; persistidas en Flash).
     char wifi_ssid[33]     = WIFI_SSID_DEFAULT;
     char wifi_password[65] = WIFI_PASSWORD_DEFAULT;
+
+    // Contraseña del Access Point de respaldo (modo AP). Vacía = se deriva del
+    // identificador único de la Flash (RUID), por lo que no hay clave por defecto
+    // conocida. Configurable desde /wifi y persistida en Flash (8..15 caracteres).
+    char ap_password[16]   = "";
+
+    // Calibración de la curva de descarga de batería (configurable desde /battery
+    // y persistida en Flash).
+    BatteryCalibration batt_calib;
 };
 
 // =============================================================================

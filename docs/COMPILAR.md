@@ -6,6 +6,9 @@
   (instala automáticamente el SDK, el toolchain `arm-none-eabi-gcc`, CMake, Ninja
   y `picotool` en `~/.pico-sdk`).
 - Una Raspberry Pi **Pico W**.
+- **Placa y toolchain:** `PICO_BOARD=pico_w` (fijado en `CMakeLists.txt`) con el
+  toolchain oficial `arm-none-eabi-gcc` del **Pico SDK 2.3.0** (C/C++). No se usa
+  Arduino ni MicroPython.
 - **FreeRTOS-Kernel** (obligatorio desde v0.5.0): el proyecto usa FreeRTOS SMP,
   que no viene incluido en el SDK. Clonarlo una vez:
 
@@ -27,7 +30,9 @@ Hay dos formas de definir la red Wi-Fi:
    no hace falta recompilar.
 
 Si la conexión a la red falla en 10 s, el dispositivo pasa automáticamente a
-modo **Access Point** (`PicoW-ReactionGame` / `12345678`, IP `192.168.4.1`).
+modo **Access Point** (`PicoW-ReactionGame`, IP `192.168.4.1`). La clave del AP
+ya **no es fija**: se deriva del RUID de la Flash o se configura desde `/wifi`
+(ver "Credenciales del Access Point" más abajo).
 
 ## Compilar
 
@@ -47,19 +52,81 @@ cmake -G Ninja -B build -S .
 cmake --build build
 ```
 
-> **Stack del Core 1 (importante):** el servidor web corre en el Core 1 y necesita
-> **4 KB** de stack (`PICO_CORE1_STACK_SIZE=0x1000`). Ya está definido en
-> `CMakeLists.txt` con `add_compile_definitions(PICO_CORE1_STACK_SIZE=0x1000)`; el
-> valor por defecto del SDK es 2 KB y provocaba *hard fault* al reconectar/escanear.
+> **Stack de la tarea de red (importante):** el servidor web corre en la tarea de
+> red (`network_task`) y necesita **4 KB** de stack (`PICO_CORE1_STACK_SIZE=0x1000`).
+> Ya está definido en `CMakeLists.txt` con
+> `add_compile_definitions(PICO_CORE1_STACK_SIZE=0x1000)`; el valor por defecto
+> del SDK es 2 KB y provocaba *hard fault* al reconectar/escanear.
+
+## Opciones de compilación (macros)
+
+El firmware se compila con el **Pico SDK oficial (C/C++)** y el toolchain
+`arm-none-eabi-gcc` para la placa **Raspberry Pi Pico W** (`PICO_BOARD=pico_w`,
+fijado en `CMakeLists.txt`). Estas macros seleccionan variantes de hardware y
+seguridad (se definen por `#ifndef` en `include/config.hpp`, salvo `WEB_PIN`):
+
+| Macro | Valor por defecto | Efecto |
+|---|---|---|
+| `PICOREFLEX_WS2812` | `0` | `1` = LEDs direccionables WS2812 (NeoPixel) en GPIO28 por PIO; `0` = 5 LEDs GPIO 2..6 |
+| `PICOREFLEX_DISPLAY_CONTROLLER` | `0` | `0` = SSD1306; `1` = SH1106 (offset de columna +2) |
+| `WEB_PIN` | `"1234"` | PIN de autenticación del panel web (endpoints de control) |
+| `WIFI_SSID_DEFAULT` / `WIFI_PASSWORD_DEFAULT` | `""` | Credenciales STA iniciales (editables desde `/wifi`) |
+
+```powershell
+# Ejemplo: activar WS2812 y cambiar el PIN
+cmake -B build -S . -DCMAKE_CXX_FLAGS="-DPICOREFLEX_WS2812=1 -DWEB_PIN=\"9876\""
+```
 
 ## Flashear
 
+La primera vez (o tras un borrado total de la Flash) hay que grabar **dos**
+imágenes: el **bootloader** de segundo nivel y la **aplicación**. A partir de ahí,
+las actualizaciones se hacen **por aire** (ver
+[Actualización por aire (OTA)](#actualización-por-aire-ota)), sin USB.
+
 1. Mantener pulsado **BOOTSEL** y conectar el USB (o reconectar). La Pico aparece
    como unidad de almacenamiento USB (`RPI-RP2`).
-2. Copiar `build/PicoReflex.uf2` a la unidad, o usar:
+2. Grabar el **bootloader** y luego la **aplicación** (en este orden):
    ```powershell
+   picotool load build/PicoReflex_bootloader.uf2 -f
    picotool load build/PicoReflex.uf2 -f
    ```
+   (O copiar cada `.uf2` a la unidad `RPI-RP2`, reiniciando en BOOTSEL entre uno
+   y otro.)
+
+## Actualización por aire (OTA)
+
+El firmware se puede actualizar desde la web **sin USB**, con verificación de
+integridad (CRC32) y *rollback* automático a la imagen anterior si la verificación
+falla.
+
+### Mapa de la Flash (2 MB)
+
+| Offset      | Tamaño | Uso |
+|---|---|---|
+| `0x000000` | 64 KB   | Bootloader de segundo nivel |
+| `0x010000` | 896 KB  | Slot de aplicación (imagen en ejecución) |
+| `0x0F0000` | 896 KB  | Slot de *staging* (imagen descargada, aún no conmutada) |
+| `0x1E0000` | 4 KB    | Metadatos OTA (estado de commit + CRC) |
+| `0x1FF000` | 4 KB    | Datos persistentes (récords/ajustes) |
+
+### Flujo de actualización
+
+1. Abrir la web en la página **OTA** (`/ota`).
+2. Seleccionar `build/PicoReflex.bin` (la imagen de aplicación) y pulsar
+   **Actualizar**. El navegador calcula el CRC32 y lo envía en la cabecera
+   `X-CRC32`.
+3. La Pico descarga el binario al slot de *staging* sector a sector, calculando el
+   CRC32 en caliente. Si el CRC no coincide, **rechaza** la actualización y sigue
+   con la imagen actual.
+4. Si el CRC coincide, escribe los metadatos de *commit* y se **reinicia**.
+5. El bootloader verifica de nuevo el CRC del *staging* y, si es correcto, lo copia
+   al slot de aplicación y arranca la nueva imagen. Si algo falla, arranca la
+   imagen anterior (**rollback**).
+
+> La imagen que se sube es el binario de **aplicación** (`build/PicoReflex.bin`),
+> enlazado en `0x10010000`. El bootloader no se actualiza por OTA (es estable y
+> pequeño); si se modifica, se reflashea por USB.
 
 ## Usar
 
@@ -70,13 +137,16 @@ Cuando la Pico W no logra conectarse a la red STA, levanta su propio Access Poin
 | Campo | Valor |
 |---|---|
 | **Red (SSID)** | `PicoW-ReactionGame` |
-| **Seguridad** | **WPA2** (clave `12345678`) |
+| **Seguridad** | **WPA2** (clave derivada del RUID o configurable desde `/wifi`) |
 | **IP del panel** | `192.168.4.1` |
 | **Canal** | `1` (fijo) |
 
-> El AP usa **WPA2** con clave `12345678` y canal fijo 1. El **servidor DHCP
-> integrado** (`src/dhcpserver.c`) asigna IPs `192.168.4.16`–`192.168.4.23` a los
-> clientes; sin ese DHCP el teléfono se asociaba pero nunca recibía IP.
+> El AP usa **WPA2** con canal fijo 1. La clave **no es fija**: si no se configuró
+> una, se deriva del **RUID de la Flash** (única por placa, 15 caracteres hex) y
+> se muestra en el display al entrar en modo AP; también puede fijarse desde
+> `/wifi` (8..15 caracteres) y se persiste en Flash. El **servidor DHCP integrado**
+> (`src/dhcpserver.c`) asigna IPs `192.168.4.16`–`192.168.4.23` a los clientes; sin
+> ese DHCP el teléfono se asociaba pero nunca recibía IP.
 
 1. Conectar a la red `PicoW-ReactionGame` (si quedó en AP) o a la IP que se
    muestre en el display (modo STA).
@@ -99,7 +169,7 @@ Cuando la Pico W no logra conectarse a la red STA, levanta su propio Access Poin
    a 115200 baud. El firmware imprime:
    - `[game] Boton 0 presionado al arrancar -> forzando modo AP`
    - `[web] Intentando STA: ...` o `[web] STA omitido (forzar AP)`
-   - `[web] Modo AP: PicoW-ReactionGame / clave 12345678 / IP 192.168.4.1`
+   - `[web] Modo AP: PicoW-ReactionGame / clave <derivada del RUID> / IP 192.168.4.1`
    - `[web] Conectado a STA, IP ...`
 3. **Esperar:** si no se fuerza AP, la Pico intenta STA durante **10 s** antes de
    levantar el AP. Esperá ~12-15 s desde el encendido.
@@ -123,7 +193,7 @@ python tools\gen_font.py   # regenera include/font5x7.hpp
 
 ### ¿Qué es la fuente 5x7?
 
-Es la **tipografía de mapa de bits** que usa el display OLED (SSD1306) para
+Es la **tipografía de mapa de bits** que usa el display OLED (SSD1306/SH1106) para
 dibujar texto. Cada carácter ocupa una celda de **5 columnas × 7 filas** de
 píxeles. Es la fuente clásica de los OLED monocromos: compacta, legible y fácil
 de almacenar.

@@ -23,6 +23,9 @@
 #include "pico/stdlib.h"
 #include "hardware/flash.h"
 
+#include "ota.h"   // ota_metadata_t (escritura de metadatos OTA).
+#include "config.hpp"   // BatteryCalibration (persistida en Flash).
+
 namespace flash {
 
 // Nombre de usuario máximo (incluye el terminador '\0').
@@ -30,10 +33,11 @@ namespace flash {
 // Cantidad de récords en el ranking (top mejores tiempos).
 #define RANKING_SIZE  5u
 // Versión del formato de PersistentData (se incrementa al cambiar la estructura).
-#define PERSISTENT_VERSION 2u
+#define PERSISTENT_VERSION 4u
 
 // -----------------------------------------------------------------------------
-// Datos persistentes (debe caber en UNA página de 256 bytes)
+// Datos persistentes (deben caber en el sector reservado de 4 KB; el guardado
+// redondea el tamaño a un múltiplo de FLASH_PAGE_SIZE = 256 B)
 // -----------------------------------------------------------------------------
 struct PersistentData {
     uint32_t magic;              ///< Identificador de validez (PERSISTENT_MAGIC).
@@ -53,15 +57,19 @@ struct PersistentData {
     // Configuración persistida (v0.2.0+): red y preferencias.
     char     wifi_ssid[33];      ///< SSID Wi-Fi (STA).
     char     wifi_password[65];  ///< Contraseña Wi-Fi (STA).
+    char     ap_password[16];    ///< Clave del AP de respaldo (vacío = derivar del RUID).
     uint8_t  oled_enabled;       ///< 1 = OLED habilitado, 0 = apagado.
     uint32_t start_delay_s;      ///< Retardo de cuenta regresiva (segundos).
+
+    // Calibración de la curva de descarga de batería (tabla por tramos + comp. de carga).
+    BatteryCalibration batt_calib;
 
     uint32_t checksum;           ///< Suma simple de todos los bytes previos.
 };
 
-// Asegura en tiempo de compilación que quepa en una página de Flash.
-static_assert(sizeof(PersistentData) <= FLASH_PAGE_SIZE,
-              "PersistentData debe caber en 256 bytes (FLASH_PAGE_SIZE)");
+// Asegura en tiempo de compilación que quepa en el sector reservado (4 KB).
+static_assert(sizeof(PersistentData) <= FLASH_SECTOR_SIZE,
+              "PersistentData debe caber en el sector de Flash reservado");
 
 // Valor mágico que identifica datos válidos ("REFL" en little-endian).
 #define PERSISTENT_MAGIC 0x5245464Cu
@@ -82,6 +90,24 @@ bool save(const PersistentData& d);
 
 // Calcula y actualiza el checksum de la estructura.
 void update_checksum(PersistentData* d);
+
+// Deriva la clave por defecto del Access Point a partir del identificador único
+// de la Flash (RUID, 8 bytes -> 15 caracteres hexadecimales + '\0'). Es única por
+// placa y se usa cuando ap_password está vacío. `n` debe ser >= 16.
+void ap_password_default(char* out, size_t n);
+
+// -----------------------------------------------------------------------------
+// OTA (actualización de firmware por aire) — escrituras seguras en Flash
+// -----------------------------------------------------------------------------
+// Escribe un sector completo (4096 B) en Flash: borra el sector destino y
+// programa los 4096 bytes de `data` (debe apuntar a RAM). Usado para grabar la
+// imagen candidata en el slot de staging, sector a sector.
+// `offset` debe estar alineado a FLASH_SECTOR_SIZE.
+bool ota_write_sector(uint32_t offset, const uint8_t* data);
+
+// Escribe los metadatos OTA (una página de 256 B en el sector reservado).
+// `meta` debe tener el checksum calculado (ota_meta_finalize).
+bool ota_write_metadata(const ota_metadata_t* meta);
 
 } // namespace flash
 

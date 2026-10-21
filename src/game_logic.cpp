@@ -3,9 +3,9 @@
  * @brief  Motor del juego de reacción (Core 0).
  *
  * Responsabilidades:
- *  - Configurar LEDs (salidas) y pulsadores (entradas + IRQ por flanco de bajada).
+ *  - Configurar LEDs (salidas) y pulsadores (entradas con debounce por PIO).
  *  - Medir la reacción con resolución de microsegundos:
- *      * El timestamp lo captura la IRQ GPIO con time_us_32() (hardware_timer),
+ *      * El timestamp lo captura la IRQ del PIO con time_us_32() (hardware_timer),
  *        dentro de la propia interrupción, para minimizar latencia/jitter.
  *      * La resta sin signo `t_final - t_inicio` es segura ante el "wrap" del
  *        contador de 32 bits (~71.6 min).
@@ -17,8 +17,8 @@
  *  - Persistir récords en Flash (flash_storage) desde este núcleo.
  *
  * Referencias:
- *  - hardware_gpio / gpio_set_irq_enabled_with_callback:
- *    https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_gpio
+ *  - hardware_pio / pio_sm_init (debounce de pulsadores en PIO):
+ *    https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_pio
  *  - hardware_timer / time_us_32:
  *    https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_timer
  *  - hardware_dma / channel_config_set_ring / channel_config_set_dreq:
@@ -37,6 +37,7 @@
 #include "hardware/dma.h"
 #include "hardware/timer.h"
 #include "hardware/pwm.h"
+#include "hardware/watchdog.h"
 #include "hardware/structs/sio.h"
 #include "pico/time.h"
 #include "pico/rand.h"
@@ -46,6 +47,12 @@
 #include "flash_storage.hpp"
 #include "pin_defs.hpp"
 #include "led_driver.hpp"
+
+#include "hardware/pio.h"
+#include "hardware/clocks.h"
+#include "hardware/irq.h"
+
+#include "button_debounce.pio.h"
 
 namespace game {
 
@@ -66,9 +73,6 @@ static XorShift32 g_rng;
 static volatile bool     g_button_pending = false; ///< true si hay una pulsación.
 static volatile uint32_t g_button_ts_us   = 0;     ///< Timestamp (us) del flanco.
 static volatile uint8_t  g_button_index   = 0;     ///< Índice de botón (0..4).
-
-// Timestamp del último flanco por botón, para el debounce software.
-static uint32_t g_last_edge_us[LED_COUNT] = {0};
 
 // -----------------------------------------------------------------------------
 // DMA: trace hardware de los 5 pulsadores (buffer en anillo)
@@ -147,34 +151,42 @@ static bool enter_dormant() {
 }
 
 // -----------------------------------------------------------------------------
-// Callback de interrupción GPIO (pulsadores)
+// Debounce de pulsadores por PIO (ver button_debounce.pio)
 // -----------------------------------------------------------------------------
-// Se dispara por FLANCO DE BAJADA (botón presionado = nivel bajo por el pull-up).
-// Solo registra el timestamp y el índice; el procesamiento se hace en el bucle.
-static void gpio_irq_callback(uint gpio, uint32_t events) {
-    if (!(events & GPIO_IRQ_EDGE_FALL)) {
-        return; // No nos interesan los flancos de subida.
-    }
+// Cada pulsador tiene su propia state machine PIO que muestrea el pin y emite el
+// flanco ya limpio. La CPU NO filtra: la IRQ solo captura time_us_32() y guarda
+// índice/timestamp, tal como hacía la antigua IRQ GPIO, pero sin el chequeo de
+// g_last_edge_us (ese rebote lo absorbe ahora el PIO).
+//
+// Mapeo PIO: botones 0..3 -> pio1 SM0..SM3; botón 4 -> pio0 SM1 (pio0 SM0 queda
+// libre para el driver WS2812 cuando PICOREFLEX_WS2812 == 1).
+static PIO  g_btn_pio[LED_COUNT];   ///< PIO de cada botón.
+static uint g_btn_sm [LED_COUNT];   ///< State machine de cada botón.
 
-    // Traduce GPIO -> índice de botón.
-    int idx = -1;
-    for (uint i = 0; i < LED_COUNT; i++) {
-        if (gpio == g_button_pins[i]) { idx = (int)i; break; }
-    }
-    if (idx < 0) return;
-
+// Handler común para las IRQ de los dos bloques PIO (se registra por separado en
+// PIO0_IRQ_0 y PIO1_IRQ_0; distingue el bloque por el parámetro `pio`).
+static void pio_button_irq(PIO pio) {
+    // Captura el timestamp UNA vez, lo más cerca posible del flanco.
     uint32_t now = time_us_32();
 
-    // Debounce: ignora rebotes dentro de la ventana BUTTON_DEBOUNCE_US.
-    if ((now - g_last_edge_us[idx]) < BUTTON_DEBOUNCE_US) {
-        return;
-    }
-    g_last_edge_us[idx] = now;
+    // Limpia el flag de IRQ 0 antes de drenar. No se pierde ningún dato: el índice
+    // viaja por el RX FIFO de cada SM; un flanco nuevo durante el drenado vuelve a
+    // subir el flag y dispara otra IRQ.
+    pio_interrupt_clear(pio, 0);
 
-    g_button_index = (uint8_t)idx;
-    g_button_ts_us = now;
-    g_button_pending = true;
+    for (uint i = 0; i < LED_COUNT; i++) {
+        if (g_btn_pio[i] != pio) continue;
+        while (!pio_sm_is_rx_fifo_empty(pio, g_btn_sm[i])) {
+            uint8_t idx = (uint8_t)pio_sm_get(pio, g_btn_sm[i]);
+            g_button_index   = idx;
+            g_button_ts_us   = now;
+            g_button_pending = true;
+        }
+    }
 }
+
+static void pio0_button_irq(void) { pio_button_irq(pio0); }
+static void pio1_button_irq(void) { pio_button_irq(pio1); }
 
 // -----------------------------------------------------------------------------
 // LEDs (delegado al driver común: GPIO o WS2812 según PICOREFLEX_WS2812)
@@ -198,8 +210,11 @@ static void apply_persist_to_config() {
     cfg.wifi_ssid[sizeof(cfg.wifi_ssid) - 1u] = '\0';
     std::strncpy(cfg.wifi_password, g_persist.wifi_password, sizeof(cfg.wifi_password) - 1u);
     cfg.wifi_password[sizeof(cfg.wifi_password) - 1u] = '\0';
+    std::strncpy(cfg.ap_password, g_persist.ap_password, sizeof(cfg.ap_password) - 1u);
+    cfg.ap_password[sizeof(cfg.ap_password) - 1u] = '\0';
     cfg.oled_enabled = (g_persist.oled_enabled != 0);
     cfg.start_delay_s = g_persist.start_delay_s;
+    cfg.batt_calib = g_persist.batt_calib;
     std::strncpy(cfg.user_name, g_persist.user_name, sizeof(cfg.user_name) - 1u);
     cfg.user_name[sizeof(cfg.user_name) - 1u] = '\0';
     config_set(cfg);
@@ -212,8 +227,11 @@ static void sync_config_to_persist() {
     g_persist.wifi_ssid[sizeof(g_persist.wifi_ssid) - 1u] = '\0';
     std::strncpy(g_persist.wifi_password, cfg.wifi_password, sizeof(g_persist.wifi_password) - 1u);
     g_persist.wifi_password[sizeof(g_persist.wifi_password) - 1u] = '\0';
+    std::strncpy(g_persist.ap_password, cfg.ap_password, sizeof(g_persist.ap_password) - 1u);
+    g_persist.ap_password[sizeof(g_persist.ap_password) - 1u] = '\0';
     g_persist.oled_enabled = cfg.oled_enabled ? 1 : 0;
     g_persist.start_delay_s = cfg.start_delay_s;
+    g_persist.batt_calib = cfg.batt_calib;
     std::strncpy(g_persist.user_name, cfg.user_name, sizeof(g_persist.user_name) - 1u);
     g_persist.user_name[sizeof(g_persist.user_name) - 1u] = '\0';
     g_persist_dirty = true;
@@ -230,14 +248,49 @@ void init() {
         gpio_put(g_led_pins[i], false);
     }
 
-    // --- Pulsadores: entradas con pull-up + IRQ por flanco de bajada. ---
+    // --- Pulsadores: entradas con pull-up; debounce por PIO. ---
+    // Los pines siguen siendo entradas GPIO normales (gpio_get sigue funcionando
+    // para el disparador de dos botones y el trace DMA). La ruta de ENTRADA del PIO
+    // lee el pad directamente sin tocar el mux GPIO, por lo que NO se llama
+    // pio_gpio_init(): basta con gpio_init + pull-up + sm_config_set_in_pins().
+    const float sm_div = (float)clock_get_hz(clk_sys) / (float)BUTTON_DEBOUNCE_SAMPLE_HZ;
+
+    // El programa ocupa 26 de las 32 instrucciones del bloque: se carga UNA vez por
+    // bloque PIO y todas sus máquinas comparten el mismo offset.
+    const uint pio0_offset = pio_add_program(pio0, &button_debounce_program);
+    const uint pio1_offset = pio_add_program(pio1, &button_debounce_program);
+
     for (uint i = 0; i < LED_COUNT; i++) {
         gpio_init(g_button_pins[i]);
         gpio_set_dir(g_button_pins[i], GPIO_IN);
         gpio_pull_up(g_button_pins[i]);
-        gpio_set_irq_enabled_with_callback(g_button_pins[i], GPIO_IRQ_EDGE_FALL,
-                                           true, &gpio_irq_callback);
+
+        PIO  pio;
+        uint sm;
+        uint offset;
+        if (i < 4) { pio = pio1; sm = i; offset = pio1_offset; }
+        else       { pio = pio0; sm = 1; offset = pio0_offset; }
+        g_btn_pio[i] = pio;
+        g_btn_sm[i]  = sm;
+
+        pio_sm_claim(pio, sm);
+
+        pio_sm_config c = button_debounce_program_get_default_config(offset);
+        sm_config_set_in_pins(&c, g_button_pins[i]);  // "pin 0" del programa = este pin.
+        sm_config_set_clkdiv(&c, sm_div);             // Reloj de muestreo ~1 MHz.
+        pio_sm_init(pio, sm, offset, &c);
+
+        pio_sm_put(pio, sm, i);              // Índice de botón -> TX FIFO (lo lee `pull`).
+        pio_sm_set_enabled(pio, sm, true);   // Arranca la state machine.
     }
+
+    // Interrupciones de los bloques PIO (IRQ flag 0, una por bloque).
+    pio_set_irq0_source_enabled(pio0, pis_interrupt0, true);
+    pio_set_irq0_source_enabled(pio1, pis_interrupt0, true);
+    irq_set_exclusive_handler(PIO0_IRQ_0, pio0_button_irq);
+    irq_set_exclusive_handler(PIO1_IRQ_0, pio1_button_irq);
+    irq_set_enabled(PIO0_IRQ_0, true);
+    irq_set_enabled(PIO1_IRQ_0, true);
 
     // --- "Forzar AP": si el botón 0 se mantiene presionado durante el arranque,
     // se salta STA y la Pico arranca directo en modo Access Point. ---
@@ -329,9 +382,11 @@ static void start_with_countdown(const GameConfig& cfg) {
     uint delay = cfg.start_delay_s;
     if (delay > 10u) delay = 10u;   // Límite de seguridad del conteo.
     for (uint i = 0; i < delay; i++) {
+        watchdog_update();       // Cuenta regresiva (hasta ~10 s): refresca el watchdog.
         audio::play_tone(440u, 90u);   // Beep de conteo (1 por segundo).
         vTaskDelay(pdMS_TO_TICKS(910u));
     }
+    watchdog_update();
     audio::play_tone(880u, 200u);      // "Ya".
     start_round(cfg);
 }
@@ -394,6 +449,7 @@ static uint32_t simon_show_interval_ms(Difficulty d) {
 static void simon_show_sequence(const GameConfig& cfg) {
     uint32_t interval = simon_show_interval_ms(cfg.difficulty);
     for (uint i = 0; i < g_seq_length; i++) {
+        watchdog_update();   // Presentación larga de la secuencia: refresca el watchdog.
         led::set(g_sequence[i], true);
         audio::play_tone(simon_tone(g_sequence[i]), interval * 2u / 3u);
         led::set(g_sequence[i], false);
@@ -420,6 +476,7 @@ static bool simon_wait_input(const GameConfig& cfg, uint8_t expected) {
             return false;   // Timeout.
         }
         vTaskDelay(pdMS_TO_TICKS(5));
+        watchdog_update();   // Espera de pulsación: refresca el watchdog.
     }
     return false;
 }
@@ -462,6 +519,8 @@ static void simon_says_round(const GameConfig& cfg) {
 // -----------------------------------------------------------------------------
 void run() {
     while (true) {
+        watchdog_update();   // Alimenta el watchdog del sistema desde el Core 0.
+
         // --- 1) Procesa eventos de control (enviados por la web, Core 1). ---
         ControlEvent ev;
         while (control_try_pop(&ev)) {
@@ -586,6 +645,8 @@ void run() {
                 if (ev2 == ControlEvent::STOP_ROUND) { end_round(); break; }
                 if (ev2 == ControlEvent::RESET_STATS) { stats_reset(); }
             }
+
+            watchdog_update();   // Espera de pulsación (FREE_PLAY puede ser indefinida).
         }
 
         // Si la ronda terminó durante la espera, vuelve al inicio del bucle.

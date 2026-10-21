@@ -1,0 +1,62 @@
+; button_debounce.pio — Debounce de pulsadores por PIO (PicoReflex).
+;
+; Una instancia (state machine) por pulsador. Cada pulsador es activo en BAJO
+; (pull-up interno): "presionado" = pin en 0.
+;
+; Flujo por pulsación:
+;   1. `wait 1 pin 0`  -> se arma cuando el botón está suelto (pin alto).
+;   2. `wait 0 pin 0`  -> detecta el PRIMER flanco de bajada (la pulsación).
+;   3. `push` + `irq`  -> notifica a la CPU DE INMEDIATO. El timestamp lo captura
+;                         la IRQ con time_us_32(), así que el timing de reacción
+;                         en µs se conserva respecto de la antigua IRQ GPIO
+;                         (se mide el primer contacto, no el flanco ya asentado).
+;   4. 5 bucles de retardo (~1024 ciclos c/u) -> lockout de ~5 ms que suprime el
+;                         rebote mecánico posterior.
+;   5. `wait 1 pin 0` (vía .wrap) -> espera a soltar antes de re-armarse.
+;
+; Parámetro por instancia: el índice de botón (0..4) se inyecta por el TX FIFO con
+; pio_sm_put() y se lee con `pull` en OSR (una sola vez, antes del .wrap_target).
+; Así X e Y quedan libres para los bucles de retardo.
+;
+; Reloj de muestreo: 1 MHz (clkdiv = clk_sys / 1e6) -> resolución de flanco de
+; 1 µs, igual que la resolución de time_us_32(). El lockout total es
+; 5 * 1024 ciclos = 5.12 ms (~ el antiguo BUTTON_DEBOUNCE_US = 5000 µs).
+
+.program button_debounce
+
+    pull                    ; OSR = índice de botón (inyectado por la CPU).
+
+.wrap_target
+    wait 1 pin 0            ; Armar: esperar a que el botón esté suelto (alto).
+    wait 0 pin 0            ; Primer flanco de bajada = pulsación.
+    mov isr, osr            ; ISR = índice de botón.
+    push noblock            ; Enviar índice al CPU (RX FIFO).
+    irq set 0               ; Notificar al CPU (captura time_us_32()).
+
+    ; --- Lockout de rebote (~5.12 ms a 1 MHz) -------------------------------
+    set x, 31               ; Bloque 1 (~1024 ciclos).
+d0: set y, 31
+d1: jmp y-- d1
+    jmp x-- d0
+
+    set x, 31               ; Bloque 2.
+d2: set y, 31
+d3: jmp y-- d3
+    jmp x-- d2
+
+    set x, 31               ; Bloque 3.
+d4: set y, 31
+d5: jmp y-- d5
+    jmp x-- d4
+
+    set x, 31               ; Bloque 4.
+d6: set y, 31
+d7: jmp y-- d7
+    jmp x-- d6
+
+    set x, 31               ; Bloque 5.
+d8: set y, 31
+d9: jmp y-- d9
+    jmp x-- d8
+
+.wrap                       ; Vuelve a `wait 1 pin 0` = esperar soltar y re-armar.

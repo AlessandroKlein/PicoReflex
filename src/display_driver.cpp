@@ -1,8 +1,8 @@
 /**
  * @file   display_driver.cpp
- * @brief  Driver del OLED SSD1306 128x64 por I2C1 con framebuffer y texto 5x7.
+ * @brief  Driver del OLED SSD1306/SH1106 128x64 por I2C1 con framebuffer y texto 5x7.
  *
- * Protocolo I2C del SSD1306:
+ * Protocolo I2C (compartido por SSD1306 y SH1106):
  *  - Toda transacción comienza con un "byte de control":
  *      * 0x00  ->  los bytes siguientes son COMANDOS.
  *      * 0x40  ->  los bytes siguientes son DATOS (GDDRAM / framebuffer).
@@ -20,6 +20,7 @@
 #include "display_driver.hpp"
 
 #include <cstdio>
+#include <cstring>
 #include "hardware/i2c.h"
 
 #include "pin_defs.hpp"
@@ -33,6 +34,7 @@ namespace display {
 static uint8_t g_fb[OLED_PAGES * OLED_WIDTH]; ///< Framebuffer (8 páginas x 128).
 static bool    g_ready = false;               ///< true si el display inicializó.
 static uint8_t g_oled_addr = OLED_ADDR;       ///< Dirección I2C detectada.
+static Controller g_controller = Controller::SSD1306;  ///< Controlador del panel.
 
 // -----------------------------------------------------------------------------
 // Escáner I2C (auto-detección de la dirección del OLED)
@@ -67,7 +69,9 @@ static int send_commands(const uint8_t* cmds, size_t n) {
 // -----------------------------------------------------------------------------
 // Inicialización
 // -----------------------------------------------------------------------------
-bool init() {
+bool init(Controller controller) {
+    g_controller = controller;
+
     // Configura I2C1 en los pines GPIO14/GPIO15 a 400 kHz.
     i2c_init(I2C_DISPLAY, I2C_BAUDRATE);
     gpio_set_function(I2C_DISPLAY_SDA, GPIO_FUNC_I2C);
@@ -78,7 +82,7 @@ bool init() {
     // Detecta la dirección I2C del panel (0x3C o 0x3D).
     detect_address();
 
-    // Secuencia de inicialización del SSD1306 (128x64).
+    // Secuencia de inicialización del controlador OLED (128x64).
     // Cada par (0xXX, 0xYY) es un comando con argumento.
     static const uint8_t init_seq[] = {
         0xAE,        // 1. Display OFF.
@@ -90,7 +94,7 @@ bool init() {
         0x20, 0x00,  // 7. Modo de direccionamiento: horizontal.
         0xA1,        // 8. Segment remap (col 127 -> SEG0).
         0xC8,        // 9. Dirección de scan COM (remap).
-        0xDA, 0x12,  // 10. Configuración de pines COM (alternativa).
+        0xDA, 0x12,  // 10. Configuración de pines COM (alternativa, SSD1306).
         0x81, 0xCF,  // 11. Contraste (0xCF = alto).
         0xD9, 0xF1,  // 12. Periodo de pre-carga.
         0xDB, 0x40,  // 13. Nivel VCOMH deselect.
@@ -99,7 +103,19 @@ bool init() {
         0xAF,        // 16. Display ON.
     };
 
-    int rc = send_commands(init_seq, sizeof(init_seq));
+    // El SH1106 difiere del SSD1306 únicamente en el argumento del comando 0xDA:
+    // 0x02 (configuración COM secuencial) en lugar de 0x12 (alternativa).
+    int rc;
+    if (g_controller == Controller::SH1106) {
+        uint8_t sh_seq[sizeof(init_seq)];
+        std::memcpy(sh_seq, init_seq, sizeof(init_seq));
+        for (size_t i = 0; i + 1 < sizeof(sh_seq); i++) {
+            if (sh_seq[i] == 0xDA) { sh_seq[i + 1] = 0x02; break; }
+        }
+        rc = send_commands(sh_seq, sizeof(sh_seq));
+    } else {
+        rc = send_commands(init_seq, sizeof(init_seq));
+    }
     g_ready = (rc != PICO_ERROR_GENERIC);
 
     if (g_ready) {
@@ -127,12 +143,23 @@ void clear() {
 void show() {
     if (!g_ready) return;
 
-    // Establece la ventana de direccionamiento: columnas 0..127, páginas 0..7.
-    static const uint8_t window[] = {
-        0x21, 0x00, OLED_WIDTH - 1u,   // Column address range.
-        0x22, 0x00, OLED_PAGES - 1u,   // Page address range.
-    };
-    send_commands(window, sizeof(window));
+    // Establece la ventana de direccionamiento (columnas y páginas).
+    if (g_controller == Controller::SH1106) {
+        // SH1106 (132 columnas): el área visible de 128 px empieza en la
+        // columna 2, por lo que se aplica un offset de columna +2.
+        static const uint8_t window[] = {
+            0x21, 0x02, OLED_WIDTH - 1u,   // Column address: 2..127 (offset +2).
+            0x22, 0x00, OLED_PAGES - 1u,   // Page address range.
+        };
+        send_commands(window, sizeof(window));
+    } else {
+        // SSD1306 (128 columnas): columnas 0..127, páginas 0..7.
+        static const uint8_t window[] = {
+            0x21, 0x00, OLED_WIDTH - 1u,   // Column address: 0..127.
+            0x22, 0x00, OLED_PAGES - 1u,   // Page address range.
+        };
+        send_commands(window, sizeof(window));
+    }
 
     // Vuelca el framebuffer completo. Con direccionamiento horizontal, el
     // controlador auto-incrementa columna/página tras cada byte.

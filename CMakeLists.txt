@@ -6,11 +6,13 @@
 #   2. cmake -B build && cmake --build build
 #
 # Librerías enlazadas y su justificación (ver docs/DECISIONES.md):
-#   pico_cyw43_arch_lwip_threadsafe_background -> Wi-Fi + lwIP (multi-núcleo)
-#   pico_multicore    -> dual-core (multicore_launch_core1)
+#   pico_cyw43_arch_lwip_sys_freertos -> Wi-Fi + lwIP (NO_SYS=0, tarea tcpip)
+#   pico_lwip_mdns    -> mDNS picoreflex.local (apps/mdns del lwIP)
+#   FreeRTOS-Kernel-Heap4 -> scheduler SMP (2 núcleos, heap_4)
 #   pico_flash        -> flash_safe_execute (escritura segura entre núcleos)
 #   pico_rand         -> get_rand_32 (semilla aleatoria)
-#   hardware_*        -> GPIO, ADC, PWM, I2C, DMA, Timer, Flash, Clocks
+#   pico_bootrom      -> reset_usb_boot (bootloader OTA)
+#   hardware_*        -> GPIO, ADC, PWM, I2C, DMA, Timer, Flash, Clocks, PIO
 
 cmake_minimum_required(VERSION 3.13)
 
@@ -70,13 +72,15 @@ add_executable(PicoReflex
     src/captive_portal.cpp
     src/dhcpserver.c
     src/led_driver.cpp
+    src/ota.c
 )
 
-# Programa PIO para WS2812 (solo se usa si PICOREFLEX_WS2812 == 1).
+# Programas PIO.
 pico_generate_pio_header(PicoReflex ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
+pico_generate_pio_header(PicoReflex ${CMAKE_CURRENT_LIST_DIR}/button_debounce.pio)
 
 pico_set_program_name(PicoReflex "PicoReflex")
-pico_set_program_version(PicoReflex "0.6.1")
+pico_set_program_version(PicoReflex "0.7.0")
 
 # Salida de depuración (printf): USB (CDC) y UART0 (GPIO0=TX, GPIO1=RX, 115200).
 # El USB es el más cómodo (conectar la Pico y abrir el puerto COM a 115200).
@@ -102,6 +106,8 @@ target_link_libraries(PicoReflex
     FreeRTOS-Kernel-Heap4
     # Red (Wi-Fi + lwIP), modo sys_freertos (lwIP en NO_SYS=0 con tarea tcpip)
     pico_cyw43_arch_lwip_sys_freertos
+    # mDNS (picoreflex.local): fuentes apps/mdns del lwIP (requiere LWIP_MDNS_RESPONDER)
+    pico_lwip_mdns
     # Almacenamiento
     pico_flash
     pico_rand
@@ -119,3 +125,64 @@ target_link_libraries(PicoReflex
 )
 
 pico_add_extra_outputs(PicoReflex)
+
+# ---------------------------------------------------------------------------
+# OTA: bootloader de segundo nivel + relocalización de la aplicación
+# ---------------------------------------------------------------------------
+# La aplicación se enlaza SIEMPRE en el slot de aplicación (0x10010000, 896 KB)
+# para que el bootloader pueda conmutar/volver atrás entre imágenes sin re-vincular.
+# El fichero linker/pico_flash_region.ld sobreescribe la región FLASH del SDK
+# (por defecto ORIGIN=0x10000000, 2 MB). Ver include/ota.h para el mapa completo.
+pico_add_linker_script_override_path(PicoReflex
+    ${CMAKE_CURRENT_LIST_DIR}/linker
+    FILES pico_flash_region.ld
+)
+
+# Bootloader de segundo nivel (0x10000000, mononúcleo, sin FreeRTOS/lwIP/CYW43):
+# verifica el CRC de la imagen en staging y, si es correcta, la copia al slot de
+# aplicación y salta a ella; si está corrupta, arranca la imagen anterior
+# (rollback). Comparte src/ota.c (CRC32 + metadatos) con la aplicación.
+add_executable(PicoReflex_bootloader
+    src/bootloader.c
+    src/ota.c
+)
+
+target_include_directories(PicoReflex_bootloader PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/include
+)
+
+target_link_libraries(PicoReflex_bootloader
+    pico_stdlib
+    hardware_flash
+    pico_bootrom   # reset_usb_boot (modo BOOTSEL por USB si no hay app válida)
+)
+
+pico_add_extra_outputs(PicoReflex_bootloader)
+
+# ---------------------------------------------------------------------------
+# Reporte de tamaño de imagen (.text/.rodata/.data/.bss) como artefacto de CI.
+#
+# `cmake --build build --target size` genera build/size-report.txt usando la
+# herramienta arm-none-eabi-size del toolchain. El workflow de CI ejecuta este
+# mismo objetivo y publica el fichero como artefacto (ver .github/workflows/ci.yml).
+# ---------------------------------------------------------------------------
+get_filename_component(_PICOREFLEX_TOOLCHAIN_BIN "${CMAKE_C_COMPILER}" DIRECTORY)
+if(CMAKE_HOST_WIN32)
+    set(_PICOREFLEX_SIZE_SUFFIX ".exe")
+else()
+    set(_PICOREFLEX_SIZE_SUFFIX "")
+endif()
+set(PICOREFLEX_SIZE_TOOL "${_PICOREFLEX_TOOLCHAIN_BIN}/arm-none-eabi-size${_PICOREFLEX_SIZE_SUFFIX}")
+
+add_custom_target(size
+    COMMAND ${CMAKE_COMMAND}
+        -DSIZE_TOOL=${PICOREFLEX_SIZE_TOOL}
+        -DAPP_ELF=$<TARGET_FILE:PicoReflex>
+        -DBOOT_ELF=$<TARGET_FILE:PicoReflex_bootloader>
+        -DOUT=${CMAKE_BINARY_DIR}/size-report.txt
+        -P ${CMAKE_CURRENT_LIST_DIR}/tools/size_report.cmake
+    DEPENDS PicoReflex PicoReflex_bootloader
+    COMMENT "Generando reporte de tamaño (size-report.txt)"
+    VERBATIM
+)

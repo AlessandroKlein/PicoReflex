@@ -8,10 +8,10 @@
  *   - `network_task`: Wi-Fi (`cyw43_arch` sys_freertos), servidor HTTP (lwIP),
  *     display OLED, batería.
  *
- * PUNTO CLAVE: `cyw43_arch_init()` se ejecuta en `main()` **ANTES** de
- * `vTaskStartScheduler()`. Con `pico_cyw43_arch_lwip_sys_freertos`, esto crea la
- * tarea `tcpip` de lwIP; si se llamara dentro de una tarea (después del scheduler)
- * el Wi-Fi no arranca.
+ * PUNTO CLAVE: `cyw43_arch_init()` se ejecuta DENTRO de `network_task` (vía
+ * `web::init()`), es decir DESPUÉS de `vTaskStartScheduler()`. Con
+ * `pico_cyw43_arch_lwip_sys_freertos` (NO_SYS=0), esto crea la tarea `tcpip` de
+ * lwIP. Es el patrón oficial de pico-examples (pico_w/wifi/freertos).
  *
  * Sincronización: un semáforo binario garantiza que `game::init()` (que detecta el
  * "forzar AP" por botón 0) termine antes de que la red intente conectarse.
@@ -21,11 +21,14 @@
  *  - pico_cyw43_arch_lwip_sys_freertos
  */
 
+#include <cstdio>
+
 #include "FreeRTOS.h"
 #include "task.h"
 #include "semphr.h"
 
 #include "pico/stdlib.h"
+#include "hardware/watchdog.h"
 
 #include "config.hpp"
 #include "game_logic.hpp"
@@ -34,6 +37,12 @@
 
 // Semáforo binario: game_task lo da tras init; network_task lo toma antes de red.
 static SemaphoreHandle_t g_game_init_sem;
+
+// Timeout del hardware watchdog (ms). Máximo en RP2040: 8388 ms (errata RP2040-E1).
+// Se elige 8000 ms: mayor que cualquier operación bloqueante de un solo núcleo
+// (p. ej. la conexión STA de 10 s en el Core 1 mientras el Core 0 sigue
+// refrescando), y suficiente para reiniciar ante un cuelgue TOTAL de ambos núcleos.
+#define WATCHDOG_TIMEOUT_MS 8000u
 
 // -----------------------------------------------------------------------------
 // Tarea del juego (equivale al antiguo Core 0)
@@ -57,6 +66,25 @@ static void network_task(void*) {
 // -----------------------------------------------------------------------------
 int main() {
     stdio_init_all();
+
+    // Diagnóstico de la causa del último reinicio ANTES de re-habilitar el
+    // watchdog: watchdog_enable_caused_reboot() distingue un reinicio por timeout
+    // del watchdog (habilitado en el arranque previo) de un arranque normal por
+    // alimentación o botón RUN. watchdog_caused_reboot() confirma el origen.
+    if (watchdog_caused_reboot()) {
+        if (watchdog_enable_caused_reboot()) {
+            printf("[main] Reinicio por timeout del hardware watchdog\n");
+        } else {
+            printf("[main] Reinicio por watchdog (force/reboot, no por timeout)\n");
+        }
+    }
+
+    // Habilita el hardware watchdog: si NINGÚN núcleo llama watchdog_update()
+    // dentro de WATCHDOG_TIMEOUT_MS, el chip se reinicia automáticamente.
+    // pause_on_debug=true detiene el contador mientras hay un debugger conectado
+    // (no falsea reinicios durante la depuración).
+    watchdog_enable(WATCHDOG_TIMEOUT_MS, true);
+
     shared_state_init();
 
     // Buzzer PWM (se configura una sola vez antes del scheduler).

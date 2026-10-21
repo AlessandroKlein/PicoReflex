@@ -122,7 +122,7 @@ void init() {
     g_dns_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
     if (!g_dns_pcb) return;
 
-    // NO_SYS=1: se llama en el contexto del Core 1 (donde corre lwIP).
+    // Se llama desde la tarea de red (network_task), con lwIP ya en marcha.
     if (udp_bind(g_dns_pcb, IP_ADDR_ANY, DNS_PORT) != ERR_OK) {
         udp_remove(g_dns_pcb);
         g_dns_pcb = nullptr;

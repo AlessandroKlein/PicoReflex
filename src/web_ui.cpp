@@ -13,6 +13,7 @@
  *   "/game"    -> Dificultad, modo, velocidad, duración de ronda y cuenta regresiva.
  *   "/display" -> Habilitar/deshabilitar el OLED.
  *   "/wifi"    -> Credenciales Wi-Fi (SSID/contraseña + mostrar/ocultar contraseña).
+ *   "/battery" -> Calibración de la curva de descarga de batería.
  *
  * Seguridad: todo texto controlado por el usuario (nombre, SSID, contraseña) se
  * escapa con html_escape() antes de insertarse en el HTML (prevención de XSS).
@@ -163,6 +164,9 @@ void render_nav(Builder& b, const char* active) {
         {"Juego",   "/game"},
         {"Display", "/display"},
         {"Wi-Fi",   "/wifi"},
+        {"Batería", "/battery"},
+        {"PIN",     "/login"},
+        {"OTA",     "/ota"},
     };
 
     b.append("<nav>");
@@ -253,6 +257,7 @@ void render_home(Builder& b) {
     b.append("<a href='/start'><button>Iniciar</button></a>");
     b.append("<a href='/stop'><button class='stop'>Detener</button></a>");
     b.append("<a href='/reset'><button>Reiniciar stats</button></a>");
+    b.append("<p class='muted'>Requiere PIN (ver <a href='/login'>Acceso</a>).</p>");
     b.append("</div>");
 
     render_footer(b);
@@ -368,8 +373,10 @@ void render_wifi(Builder& b) {
     // Escapa las credenciales antes de insertarlas en el HTML (anti-XSS).
     char ssid_esc[200];
     char pass_esc[400];
+    char ap_esc[80];
     html_escape(cfg.wifi_ssid, ssid_esc, sizeof(ssid_esc));
     html_escape(cfg.wifi_password, pass_esc, sizeof(pass_esc));
+    html_escape(cfg.ap_password, ap_esc, sizeof(ap_esc));
 
     render_head(b, "Wi-Fi");
     b.append("<h1>Wi-Fi</h1>");
@@ -386,10 +393,135 @@ void render_wifi(Builder& b) {
     b.append("<button type='submit'>Guardar</button></form>");
     b.append("</div>");
 
+    b.append("<div class='card'><h3>Access Point de respaldo</h3>");
+    b.append("<p class='muted'>Clave WPA2 del AP (cuando el modo Station no "
+             "conecta). Vacía = clave automática derivada del identificador único "
+             "de la placa (visible en la pantalla OLED cuando el AP está activo). "
+             "Mínimo 8 caracteres.</p>");
+    b.append("<form method='get' action='/wifi'>");
+    b.printf("<label>Clave AP:</label><input type='password' id='ap-pass' name='ap_pass' "
+             "value='%s' autocomplete='off'><br>", ap_esc);
+    b.append("<label class='muted'><input type='checkbox' id='show-ap-pass' "
+             "onchange='toggleApPass()'> Mostrar contraseña</label><br>");
+    b.append("<button type='submit'>Guardar</button></form>");
+    b.append("</div>");
+
     // JavaScript: toggle de contraseña (mostrar/ocultar).
     b.append("<script>");
     b.append("function togglePass(){var p=document.getElementById('pass');"
              "p.type=(p.type==='password')?'text':'password';}");
+    b.append("function toggleApPass(){var p=document.getElementById('ap-pass');"
+             "p.type=(p.type==='password')?'text':'password';}");
+    b.append("</script>");
+
+    render_footer(b);
+}
+
+// --- "/battery" -------------------------------------------------------------
+void render_battery(Builder& b) {
+    GameConfig   cfg = config_get();
+    SystemStatus sys = system_status_get();
+
+    render_head(b, "Batería");
+    b.append("<h1>Calibración de batería</h1>");
+    render_nav(b, "/battery");
+
+    // Lectura actual (publicada por el Core 1 ~1 vez por segundo).
+    b.append("<div class='card'><h3>Lectura actual</h3>");
+    b.printf("<p>Tensión: <b>%u mV</b> &nbsp; Carga: <b>%u%%</b></p>",
+             (unsigned)sys.battery_mv, (unsigned)sys.battery_pct);
+    if (sys.battery_pct < 15u) {
+        b.append("<p><span class='bad'>Batería baja (&lt; 15 %)</span></p>");
+    }
+    b.append("</div>");
+
+    // Curva de descarga (tabla por tramos) + compensación de carga.
+    b.append("<div class='card'><h3>Curva de descarga (tabla por tramos)</h3>");
+    b.append("<p class='muted'>Tensión (mV) para el 100 %, 50 % y 0 % de carga. "
+             "Por defecto 4200 / 3700 / 3000 mV (LiPo/Li-Ion 1S); la interpolación "
+             "entre puntos es lineal. El divisor externo (10k/22k en GPIO26) no se "
+             "modifica.</p>");
+    b.append("<form method='get' action='/battery'>");
+    b.printf("<label>100 %% (mV):</label><input name='vfull' value='%u' "
+             "inputmode='numeric' pattern='[0-9]*'><br>", (unsigned)cfg.batt_calib.v_full_mv);
+    b.printf("<label>50 %% (mV):</label><input name='vmid' value='%u' "
+             "inputmode='numeric' pattern='[0-9]*'><br>", (unsigned)cfg.batt_calib.v_mid_mv);
+    b.printf("<label>0 %% (mV):</label><input name='vempty' value='%u' "
+             "inputmode='numeric' pattern='[0-9]*'><br>", (unsigned)cfg.batt_calib.v_empty_mv);
+    b.printf("<label>Comp. carga (mV):</label><input name='loadcomp' value='%u' "
+             "inputmode='numeric' pattern='[0-9]*'><br>", (unsigned)cfg.batt_calib.load_comp_mv);
+    b.append("<button type='submit'>Guardar</button></form>");
+    b.append("<p class='muted'>Comp. carga: compensa la caída resistiva (IR drop) "
+             "cuando el Wi-Fi está activo; se suma a la lectura. 0 = sin corrección "
+             "(máx. 500 mV). Alerta de batería baja: &lt; 15 %.</p>");
+    b.append("</div>");
+
+    render_footer(b);
+}
+
+// --- "/login" (autenticación PIN) -------------------------------------------
+void render_login(Builder& b) {
+    render_head(b, "Acceso");
+    b.append("<h1>Acceso PIN</h1>");
+    render_nav(b, "/login");
+
+    b.append("<div class='card'><h3>Autenticación</h3>");
+    b.append("<p class='muted'>Los controles (iniciar/detener/reiniciar) y las "
+             "páginas de configuración requieren el PIN. Tras validarlo, el "
+             "servidor guarda una cookie de sesión.</p>");
+    b.append("<form method='get' action='/login'>");
+    b.append("<label>PIN:</label><input type='password' name='pin' "
+             "inputmode='numeric' pattern='[0-9]*' maxlength='8' "
+             "autocomplete='off'>");
+    b.append("<br><button type='submit'>Entrar</button></form>");
+    b.append("</div>");
+
+    b.append("<div class='card'><h3>Salir</h3>");
+    b.append("<p class='muted'>Cierra la sesión actual (borra la cookie).</p>");
+    b.append("<a href='/logout'><button class='stop'>Salir</button></a>");
+    b.append("</div>");
+
+    render_footer(b);
+}
+
+// --- "/ota" (actualización de firmware por aire) -----------------------------
+void render_ota(Builder& b) {
+    render_head(b, "Actualización");
+    b.append("<h1>Actualización de firmware (OTA)</h1>");
+    render_nav(b, "/ota");
+
+    b.append("<div class='card'><h3>Subir firmware</h3>");
+    b.append("<p class='muted'>Selecciona el binario compilado "
+             "(<b>build/PicoReflex.bin</b>). Se verifica su integridad (CRC32) "
+             "antes de conmutar; si la verificación falla, se mantiene la imagen "
+             "anterior (rollback).</p>");
+    b.append("<input type='file' id='fw' accept='.bin'><br>");
+    b.append("<button onclick='doUpload()'>Actualizar</button>");
+    b.append("<p id='ota-status' class='muted'>Sin subida en curso.</p>");
+    b.append("</div>");
+
+    b.append("<div class='card'><h3>Proceso</h3><ul>");
+    b.append("<li>El binario se descarga a un área de <b>staging</b> verificando su CRC32.</li>");
+    b.append("<li>Al reiniciar, el <b>bootloader</b> verifica de nuevo y copia la imagen "
+             "al slot activo.</li>");
+    b.append("<li>Si la verificación falla, se conserva el firmware anterior.</li>");
+    b.append("</ul></div>");
+
+    // CRC32 (IEEE 802.3) + subida por fetch con la cabecera X-CRC32.
+    b.append("<script>");
+    b.append("function crc32(u){var c=0xFFFFFFFF;for(var i=0;i<u.length;i++){c^=u[i];"
+             "for(var k=0;k<8;k++){c=(c>>>1)^(0xEDB88320&(-(c&1)));}}"
+             "return (c^0xFFFFFFFF)>>>0;}");
+    b.append("async function doUpload(){var f=document.getElementById('fw').files[0];"
+             "var s=document.getElementById('ota-status');"
+             "if(!f){s.textContent='Selecciona un archivo .bin';return;}"
+             "var u=new Uint8Array(await f.arrayBuffer());"
+             "var c=crc32(u);var h=c.toString(16).padStart(8,'0');"
+             "s.textContent='Subiendo '+f.name+' ('+u.length+' B, CRC32 '+h+')...';"
+             "try{var r=await fetch('/ota/upload',{method:'POST',"
+             "headers:{'Content-Type':'application/octet-stream','X-CRC32':h},body:u});"
+             "var t=await r.text();s.textContent=(r.ok?'OK: ':'Error: ')+t;}"
+             "catch(e){s.textContent='Error de red: '+e;}}");
     b.append("</script>");
 
     render_footer(b);
@@ -418,6 +550,12 @@ bool render(const char* path, char* out, size_t out_len) {
         render_display(b);
     } else if (std::strcmp(path, "/wifi") == 0) {
         render_wifi(b);
+    } else if (std::strcmp(path, "/battery") == 0) {
+        render_battery(b);
+    } else if (std::strcmp(path, "/login") == 0) {
+        render_login(b);
+    } else if (std::strcmp(path, "/ota") == 0) {
+        render_ota(b);
     } else {
         return false;   // Ruta desconocida.
     }

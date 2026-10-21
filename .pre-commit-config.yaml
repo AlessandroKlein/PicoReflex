@@ -1,0 +1,32 @@
+# Hooks OPCIONALES de pre-commit para PicoReflex.
+#
+# No son necesarios para compilar: el CI (.github/workflows/ci.yml) ejecuta las
+# mismas comprobaciones en cada push/PR. Instálalos solo si quieres el análisis
+# estático de forma local antes de hacer commit:
+#
+#     pip install pre-commit
+#     pre-commit install
+#
+# Requiere cppcheck en el PATH (misma versión y supresiones que el CI).
+repos:
+  - repo: local
+    hooks:
+      - id: cppcheck
+        name: cppcheck (análisis estático)
+        description: Falla si cppcheck detecta hallazgos error/warning en src/ e include/.
+        entry: cppcheck
+        language: system
+        types_or: [c, c++]
+        pass_filenames: true
+        args:
+          - --enable=warning,performance,portability
+          - --std=c11
+          - --std=c++17
+          - --inline-suppr
+          - --error-exitcode=1
+          - --suppress=missingIncludeSystem
+          - --suppress=missingInclude
+          - --suppress=unusedFunction
+          - --suppress=uninitMemberVarNoCtor
+          - -Iinclude
+          - -I.

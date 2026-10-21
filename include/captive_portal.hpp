@@ -8,7 +8,7 @@
  * consulta DNS con la IP del dispositivo (192.168.4.1), de modo que cualquier
  * URL que abra el usuario termina mostrando la página de configuración.
  *
- * Implementación: API raw UDP de lwIP (NO_SYS=1). Se crea un PCB UDP en el
+ * Implementación: API raw UDP de lwIP (NO_SYS=0 / sys_freertos). Se crea un PCB UDP en el
  * puerto 53 y se responde a cada query con un registro A que apunta a 192.168.4.1.
  *
  * Referencias:

@@ -11,7 +11,9 @@
 
 - **Modo AP:** `http://192.168.4.1`
 - **Modo STA:** la IP que asigna el DHCP (visible en el display).
-- **Método:** todos los endpoints usan `GET` (sin cuerpo).
+- **Método:** `GET` para páginas/control; `POST` para la carga OTA (`/ota/upload`).
+- **Autenticación (v0.7.0):** los endpoints de control/configuración exigen PIN
+  (cookie `pr_auth` o cabecera `Authorization: Bearer <pin>`). Ver `docs/SEGURIDAD.md`.
 - **Codificación:** los parámetros de texto van *URL-encoded* (espacio = `+` o `%20`).
 
 ## Endpoints
@@ -24,7 +26,9 @@
 | `GET /seed` | Semilla del PRNG | `seed` |
 | `GET /game` | Dificultad, modo, velocidad, duración de ronda, cuenta regresiva | `difficulty`, `mode`, `smin`, `smax`, `round`, `delay` |
 | `GET /display` | Habilitar/deshabilitar el OLED | `oled` |
-| `GET /wifi` | Credenciales Wi-Fi (SSID/password) | `ssid`, `pass` |
+| `GET /wifi` | Credenciales Wi-Fi (SSID/password) + clave del AP | `ssid`, `pass`, `ap_pass` |
+| `GET /battery` | Calibración de la curva de descarga | `vfull`, `vmid`, `vempty`, `loadcomp` |
+| `GET /ota` | Página de actualización por aire (subir firmware) | — |
 
 ### Rutas de control (devuelven el Home)
 
@@ -33,6 +37,7 @@
 | `GET /start` | Inicia la cuenta regresiva y luego la ronda (`START_ROUND`) |
 | `GET /stop` | Detiene la ronda (`STOP_ROUND`) |
 | `GET /reset` | Reinicia estadísticas (`RESET_STATS`) |
+| `POST /ota/upload` | Recibe el binario de aplicación (CRC32 en `X-CRC32`) para OTA A/B |
 
 > **Rutas retiradas/reservadas:**
 > - `GET /player` — **eliminada** en v0.4.0 (no había modo multijugador; el campo
@@ -48,7 +53,7 @@
 |---|---|---|---|---|
 | `seed` | `/seed` | entero | 0..2³²-1 (0 = aleatoria) | Semilla del PRNG |
 | `difficulty` | `/game` | entero | 0=EASY, 1=NORMAL, 2=HARD | Dificultad (tolerancia 1000/500/250 ms) |
-| `mode` | `/game` | entero | 0=FREE_PLAY, 1=TIMED, 2=SUDDEN_DEATH | Modo de juego |
+| `mode` | `/game` | entero | 0=FREE_PLAY, 1=TIMED, 2=SUDDEN_DEATH, 3=SIMON_SAYS | Modo de juego |
 | `smin` | `/game` | entero | 50..60000 ms | Intervalo mínimo entre estímulos |
 | `smax` | `/game` | entero | ≥ `smin`, ≤ 60000 ms | Intervalo máximo entre estímulos |
 | `round` | `/game` | entero | 1..3600 s | Duración de ronda (solo TIMED) |
@@ -56,6 +61,11 @@
 | `oled` | `/display` | entero | 0 = apagado, 1 = encendido | Habilita/deshabilita el OLED |
 | `ssid` | `/wifi` | texto | ≤ 32 chars | SSID de la red Wi-Fi (STA) |
 | `pass` | `/wifi` | texto | ≤ 64 chars | Contraseña de la red Wi-Fi (STA) |
+| `ap_pass` | `/wifi` | texto | 8..15 chars (vacío = derivar del RUID) | Clave del AP de respaldo (WPA2) |
+| `vfull` | `/battery` | entero | mV | Tensión de batería al 100 % (def. 4200) |
+| `vmid` | `/battery` | entero | mV | Tensión al 50 % (def. 3700) |
+| `vempty` | `/battery` | entero | mV | Tensión al 0 % (def. 3000) |
+| `loadcomp` | `/battery` | entero | mV | Compensación por carga sumada a la lectura (def. 0) |
 
 > Los valores numéricos fuera de rango se acotan automáticamente (`smin`/`smax` a
 > 50..60000 ms con `smin ≤ smax`, `round` a 1..3600 s, `delay` a 0..10 s). Los
@@ -81,18 +91,22 @@ GET /wifi?ssid=MiRed&pass=clave123
 ## Semántica de control (interna)
 
 Los endpoints de control encolan eventos en la cola `queue_t` del estado
-compartido (`control_send`), que el Core 0 consume en su bucle:
+compartido (`control_send`), que la tarea de juego (`game_task`) consume en su bucle:
 
 - `/start` → `ControlEvent::START_ROUND` (pasa por la cuenta regresiva)
 - `/stop` → `ControlEvent::STOP_ROUND`
 - `/reset` → `ControlEvent::RESET_STATS`
 
 Las páginas de configuración aplican sus parámetros con `config_set()` y envían
-`ControlEvent::CONFIG_CHANGED` para que el Core 0 persista en Flash. Si cambió el
-Wi-Fi, se activa además `g_wifi_reconnect` para reconectar en el bucle del Core 1.
+`ControlEvent::CONFIG_CHANGED` para que la tarea de juego persista en Flash. Si cambió el
+Wi-Fi, se activa además `g_wifi_reconnect` para reconectar en el bucle de la tarea de red.
 
 ## Versionado / cambios de contrato
 
+- **v0.7.0:** autenticación PIN (cookie/Bearer) + rate-limiting; nuevos endpoints
+  `/battery` (calibración) y `POST /ota/upload` + página `/ota` (OTA A/B);
+  parámetro `ap_pass` en `/wifi`.
+- **v0.6.0:** modo `SIMON_SAYS` (`mode=3`) añadido.
 - **v0.4.0:** eliminada `GET /player`; ruta `GET /scan` (SSIDs en JSON) reservada.
 - **v0.4.3:** frontend de `/scan` (botón "Buscar redes") eliminado; `/scan` queda
   como endpoint interno sin uso visible.

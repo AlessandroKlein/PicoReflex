@@ -50,6 +50,12 @@
 #define LWIP_TCP                    1
 #define LWIP_UDP                    1
 #define LWIP_DNS                    1
+// mDNS (hostname picoreflex.local). Requiere IGMP para el multicast IPv4
+// (224.0.0.251), un slot de client-data por netif (el responder guarda ahí el
+// struct mdns_host) y el módulo pico_lwip_mdns enlazado en CMakeLists.txt.
+#define LWIP_IGMP                   1
+#define LWIP_MDNS_RESPONDER         1
+#define LWIP_NUM_NETIF_CLIENT_DATA  1
 #define LWIP_TCP_KEEPALIVE          1
 #define LWIP_NETIF_TX_SINGLE_PBUF   1
 #define DHCP_DOES_ARP_CHECK         0
