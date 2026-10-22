@@ -47,7 +47,7 @@ las siguientes características concretas:
 - **Almacenamiento no volátil** en Flash (récords/ranking, semilla, credenciales
   Wi-Fi y preferencias).
 - **Doble núcleo:** Core 0 (juego) y Core 1 (red + display).
-- **Display OLED SSD1306** (I2C1) para mostrar tiempo, semilla, modo, batería y
+- **Display OLED SSD1306/SH1106** (I2C1) para mostrar tiempo, semilla, modo, batería y
   dirección IP.
 
 **Límites / fuera de alcance:** no se implementa control de sonido polifónico
@@ -64,7 +64,7 @@ consumo en hardware (ver `docs/DECISIONES.md` §13 y §22).
 
 - LEDs ánodo a GPIO 2–6 (resistencia limitadora 220–470 Ω), cátodo a GND.
 - Pulsadores entre GPIO 7–11 y GND (pull-up interno de la RP2040).
-- Display SSD1306 a I2C1 (SDA=GPIO14, SCL=GPIO15) con pull-ups de 4.7 kΩ.
+- Display SSD1306/SH1106 a I2C1 (SDA=GPIO14, SCL=GPIO15) con pull-ups de 4.7 kΩ.
 - Buzzer pasivo a GPIO16 (PWM).
 - Medición de batería en GPIO26 (ADC0) mediante divisor externo 10 kΩ/22 kΩ
   (R1 entre batería y pin, R2 entre pin y GND).
@@ -87,7 +87,7 @@ y el Pico SDK. Los puntos clave son:
   externo `×32/22`.
 - `flash_storage.cpp` persiste récords y configuración (Wi-Fi, OLED, cuenta
   regresiva) con `flash_safe_execute()` (estructura `PersistentData` v2).
-- `display_driver.cpp` dibuja texto 5×7 en el SSD1306 y permite apagarlo
+- `display_driver.cpp` dibuja texto 5×7 en el SSD1306/SH1106 y permite apagarlo
   (`set_power`).
 - `audio.cpp` genera tonos PWM.
 - `shared_state.cpp` sincroniza configuración/estadísticas/historial entre núcleos

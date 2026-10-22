@@ -195,6 +195,9 @@ Documentación oficial de referencia (carpeta raíz):
 - **Referencia:**
   - [hardware_i2c](https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_i2c)
   - Datasheet SSD1306 (Solomon Systech) — secuencia de inicialización.
+- **Nota (v0.7.0):** la decisión se extendió para soportar también **SH1106**
+  (OLED 1.3", RAM 132×64, offset de columna +2): el controlador se elige en
+  runtime desde `/display` (`?controller=0|1`) y se persiste en Flash.
 
 ---
 
@@ -429,5 +432,29 @@ Documentación oficial de referencia (carpeta raíz):
 - **Por qué:** permite reemplazar los LEDs discretos por una tira direccionable sin
   tocar el motor del juego (la interfaz `led::` es la misma). Referencia del PIO:
   [pico-examples/pio/ws2812](https://github.com/raspberrypi/pico-examples/tree/master/pio/ws2812).
+
+## 29. Linker script autocontenido (fix de `memmap_default.incl` en Windows)
+
+- **Problema:** en Windows, el driver `g++` de la toolchain ARM **descarta las
+  flags `-L`** (`-Wl,-L`, `-Xlinker -L` o `@rsp`) cuando los objetos se pasan por
+  fichero de respuesta `@rsp` (lo que hace Ninja al enlazar cientos de objetos).
+  `ld` usa esas `-L` para resolver las directivas `INCLUDE "..."` del linker
+  script del SDK (`memmap_default.ld` → `memmap_default.incl` → …), así que el
+  enlace falla con `cannot open linker script file memmap_default.incl`. En Linux
+  no ocurre (g++ conserva `-L`), por eso el CI pasaba y el build local no.
+- **Decisión:** generar, por target, un **linker script autocontenido** donde todas
+  las directivas `INCLUDE "..."` quedan resueltas e insertadas en línea, y pasarlo
+  a `ld` por `-T` (ruta absoluta, que no depende de `-L`). Lo genera
+  `tools/generate_linker_script.py` en tiempo de configuración (ver
+  `picoreflex_self_contained_linker_script` en `CMakeLists.txt`), replicando el
+  orden de búsqueda de `-L`: rutas de override primero y luego `script_include`.
+  El script se escribe en `build/<target>_memmap.ld` y se inyecta mediante la
+  propiedad `PICO_TARGET_LINKER_SCRIPT` del SDK.
+- **Detalle:** el generador es consciente de comentarios `/* … */`; los `INCLUDE`
+  que aparecen *dentro* de un comentario (p. ej. el ejemplo de `memory_extra.incl`)
+  se conservan tal cual, igual que hace `ld`, para no romper el anidado de bloques.
+- **Consecuencia:** el mapa de memoria (app en `0x10010000`, bootloader en
+  `0x10000000`) queda idéntico al del mecanismo previo de override por `-L`; solo
+  cambia *cómo* se resuelven los `INCLUDE`.
 
 

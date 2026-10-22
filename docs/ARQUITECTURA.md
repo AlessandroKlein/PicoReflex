@@ -30,7 +30,7 @@ batería, almacenamiento no volátil y doble núcleo.
        +---------+   |   +---------+       |
        v             v             v       v
     GPIO 2..6    GPIO 7..11    GPIO 16   GPIO 14/15
-     (LEDs)     (pulsadores)   (buzzer)   (I2C1 SSD1306)
+     (LEDs)     (pulsadores)   (buzzer)   (I2C1 SSD1306/SH1106)
                           \      /
                            ADC0 (GPIO26) -> divisor externo 10k/22k (batería)
 ```
@@ -47,7 +47,7 @@ PicoReflex/
 │   ├── config.hpp            # Config/estadísticas + estado compartido (API)
 │   ├── game_logic.hpp        # Motor del juego + PRNG
 │   ├── audio.hpp             # Buzzer PWM
-│   ├── display_driver.hpp    # OLED SSD1306
+│   ├── display_driver.hpp    # OLED SSD1306/SH1106
 │   ├── battery_monitor.hpp   # ADC batería
 │   ├── flash_storage.hpp     # Persistencia en Flash
 │   ├── web_server.hpp        # Servidor HTTP + Wi-Fi (backend)
@@ -164,7 +164,7 @@ Rutas HTTP:
 |---|---|---|
 | LED 0..4 | 2..6 | Ánodo por GPIO (con resistencia ~220–470 Ω) |
 | Botón 0..4 | 7..11 | Pull-up interno, cierra a GND al pulsar |
-| SSD1306 SDA/SCL | 14/15 | I2C1, 400 kHz, dirección 0x3C |
+| SSD1306/SH1106 SDA/SCL | 14/15 | I2C1, 400 kHz, dirección 0x3C/0x3D |
 | Buzzer pasivo | 16 | PWM (onda cuadrada) |
 | Batería | 26 (ADC0) | Divisor externo 10 kΩ/22 kΩ |
 | LED onboard | CYW43 | Estado de red (fijo=STA, blink=AP) |

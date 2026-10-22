@@ -68,7 +68,7 @@ seguridad (se definen por `#ifndef` en `include/config.hpp`, salvo `WEB_PIN`):
 | Macro | Valor por defecto | Efecto |
 |---|---|---|
 | `PICOREFLEX_WS2812` | `0` | `1` = LEDs direccionables WS2812 (NeoPixel) en GPIO28 por PIO; `0` = 5 LEDs GPIO 2..6 |
-| `PICOREFLEX_DISPLAY_CONTROLLER` | `0` | `0` = SSD1306; `1` = SH1106 (offset de columna +2) |
+| `PICOREFLEX_DISPLAY_CONTROLLER` | `0` | Solo fija el controlador **por defecto** (`0` = SSD1306, `1` = SH1106); se elige en runtime desde `/display` y se persiste en Flash |
 | `WEB_PIN` | `"1234"` | PIN de autenticación del panel web (endpoints de control) |
 | `WIFI_SSID_DEFAULT` / `WIFI_PASSWORD_DEFAULT` | `""` | Credenciales STA iniciales (editables desde `/wifi`) |
 

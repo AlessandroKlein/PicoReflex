@@ -10,9 +10,21 @@
  * El framebuffer (1024 bytes) se mantiene en RAM y se vuelca completo al display
  * con show(), lo que simplifica el dibujado de texto.
  *
+ * Diferencias de inicialización entre controladores:
+ *  - SSD1306: charge-pump interno (0x8D,0x14), addressing horizontal (0x20,0x00)
+ *    y configuración COM 0x12.
+ *  - SH1106 (módulos 1.3" 132x64): convertidor DC-DC interno (0xAD,0x8B),
+ *    addressing por PÁGINA (0x20,0x02), contraste máximo (0x81,0xFF) y
+ *    configuración COM 0x02. Además aplica un offset de columna +2 en show().
+ *
+ * La selección del controlador puede cambiar en tiempo de ejecución: init() puede
+ * llamarse de nuevo con otro `Controller` sin re-configurar I2C1 (solo se
+ * reenvía la secuencia de inicialización correspondiente).
+ *
  * Referencias:
  *  - I2C (hardware_i2c): https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_i2c
- *  - Datasheet SSD1306 (Solomon Systech) para la secuencia de inicialización.
+ *  - Datasheet SSD1306 (Solomon Systech).
+ *  - Datasheet SH1106 (Sinowealth).
  */
 
 #ifndef PICO_REFLEX_DISPLAY_DRIVER_HPP
@@ -27,15 +39,20 @@ namespace display {
 
 // Controlador de display soportado.
 enum class Controller : uint8_t {
-    SSD1306 = 0,  ///< SSD1306 128x64 (sin offset de columna).
-    SH1106  = 1,  ///< SH1106 132x64 (offset de columna +2).
+    SSD1306 = 0,  ///< SSD1306 128x64 (charge-pump interno, sin offset de columna).
+    SH1106  = 1,  ///< SH1106 132x64 (DC-DC interno, offset de columna +2).
 };
 
-// Inicializa I2C1 y el controlador OLED. Debe llamarse una vez.
-// `controller` selecciona el chip: SSD1306 (por defecto) o SH1106. Para SH1106
-// se aplica el offset de columna +2 (0x21, 0x02, 0x7F) y la config COM 0x02.
+// Inicializa I2C1 y el controlador OLED. Puede llamarse de nuevo para re-inicializar
+// con otro controlador (al cambiar de chip en runtime): la configuración de I2C1
+// solo se aplica la primera vez, para no duplicar el estado del periférico.
+// `controller` selecciona el chip: SSD1306 (charge-pump) o SH1106 (DC-DC interno,
+// addressing por página y offset de columna +2).
 bool init(Controller controller =
     (PICOREFLEX_DISPLAY_CONTROLLER != 0) ? Controller::SH1106 : Controller::SSD1306);
+
+// Devuelve el controlador actualmente activo (SSD1306 o SH1106).
+Controller controller();
 
 // Enciende (true) o apaga (false) el display (comando SSD1306 0xAF / 0xAE).
 void set_power(bool on);

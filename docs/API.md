@@ -25,7 +25,7 @@
 | `GET /` | Home: red, batería, resumen de stats y tabla de tiempos de reacción | — |
 | `GET /seed` | Semilla del PRNG | `seed` |
 | `GET /game` | Dificultad, modo, velocidad, duración de ronda, cuenta regresiva | `difficulty`, `mode`, `smin`, `smax`, `round`, `delay` |
-| `GET /display` | Habilitar/deshabilitar el OLED | `oled` |
+| `GET /display` | Habilitar/deshabilitar el OLED y elegir controlador | `oled`, `controller` |
 | `GET /wifi` | Credenciales Wi-Fi (SSID/password) + clave del AP | `ssid`, `pass`, `ap_pass` |
 | `GET /battery` | Calibración de la curva de descarga | `vfull`, `vmid`, `vempty`, `loadcomp` |
 | `GET /ota` | Página de actualización por aire (subir firmware) | — |
@@ -59,6 +59,7 @@
 | `round` | `/game` | entero | 1..3600 s | Duración de ronda (solo TIMED) |
 | `delay` | `/game` | entero | 0..10 s | Cuenta regresiva antes de arrancar |
 | `oled` | `/display` | entero | 0 = apagado, 1 = encendido | Habilita/deshabilita el OLED |
+| `controller` | `/display` | entero | 0 = SSD1306 (0.96"), 1 = SH1106 (1.3") | Controlador de display (se persiste en Flash) |
 | `ssid` | `/wifi` | texto | ≤ 32 chars | SSID de la red Wi-Fi (STA) |
 | `pass` | `/wifi` | texto | ≤ 64 chars | Contraseña de la red Wi-Fi (STA) |
 | `ap_pass` | `/wifi` | texto | 8..15 chars (vacío = derivar del RUID) | Clave del AP de respaldo (WPA2) |
@@ -77,6 +78,7 @@
 GET /seed?seed=12345
 GET /game?difficulty=2&mode=1&smin=400&smax=900&round=30&delay=3
 GET /display?oled=0
+GET /display?controller=1
 GET /wifi?ssid=MiRed&pass=clave123
 ```
 
@@ -105,7 +107,7 @@ Wi-Fi, se activa además `g_wifi_reconnect` para reconectar en el bucle de la ta
 
 - **v0.7.0:** autenticación PIN (cookie/Bearer) + rate-limiting; nuevos endpoints
   `/battery` (calibración) y `POST /ota/upload` + página `/ota` (OTA A/B);
-  parámetro `ap_pass` en `/wifi`.
+  parámetros `ap_pass` en `/wifi` y `controller` en `/display` (SSD1306/SH1106).
 - **v0.6.0:** modo `SIMON_SAYS` (`mode=3`) añadido.
 - **v0.4.0:** eliminada `GET /player`; ruta `GET /scan` (SSIDs en JSON) reservada.
 - **v0.4.3:** frontend de `/scan` (botón "Buscar redes") eliminado; `/scan` queda

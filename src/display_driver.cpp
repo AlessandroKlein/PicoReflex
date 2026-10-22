@@ -72,19 +72,31 @@ static int send_commands(const uint8_t* cmds, size_t n) {
 bool init(Controller controller) {
     g_controller = controller;
 
-    // Configura I2C1 en los pines GPIO14/GPIO15 a 400 kHz.
-    i2c_init(I2C_DISPLAY, I2C_BAUDRATE);
-    gpio_set_function(I2C_DISPLAY_SDA, GPIO_FUNC_I2C);
-    gpio_set_function(I2C_DISPLAY_SCL, GPIO_FUNC_I2C);
-    gpio_pull_up(I2C_DISPLAY_SDA);
-    gpio_pull_up(I2C_DISPLAY_SCL);
+    // Configura I2C1 UNA sola vez. Al cambiar de controlador en runtime se vuelve
+    // a llamar a init(), y no hay que re-configurar el periférico I2C (ni perder
+    // su estado), así que se guarda con un flag estático.
+    static bool i2c_configured = false;
+    if (!i2c_configured) {
+        i2c_init(I2C_DISPLAY, I2C_BAUDRATE);
+        gpio_set_function(I2C_DISPLAY_SDA, GPIO_FUNC_I2C);
+        gpio_set_function(I2C_DISPLAY_SCL, GPIO_FUNC_I2C);
+        gpio_pull_up(I2C_DISPLAY_SDA);
+        gpio_pull_up(I2C_DISPLAY_SCL);
+        i2c_configured = true;
+    }
 
     // Detecta la dirección I2C del panel (0x3C o 0x3D).
     detect_address();
 
-    // Secuencia de inicialización del controlador OLED (128x64).
+    // Secuencias de inicialización separadas por controlador (128x64).
     // Cada par (0xXX, 0xYY) es un comando con argumento.
-    static const uint8_t init_seq[] = {
+    //   - SSD1306: byte-idéntica a la secuencia histórica (charge-pump 0x8D,0x14,
+    //     addressing horizontal 0x20,0x00, COM 0xDA,0x12). CERO regresión.
+    //   - SH1106 (módulos 1.3"): convertidor DC-DC interno (0xAD,0x8B) en lugar
+    //     del charge-pump, addressing por PÁGINA (0x20,0x02), contraste máximo
+    //     (0x81,0xFF) y COM secuencial (0xDA,0x02). El offset de columna +2 se
+    //     aplica en show() (0x21,0x02,0x7F).
+    static const uint8_t kInitSSD1306[] = {
         0xAE,        // 1. Display OFF.
         0xD5, 0x80,  // 2. Divisor de reloj / frecuencia del oscilador.
         0xA8, 0x3F,  // 3. Multiplex ratio = 63 (64 líneas).
@@ -102,20 +114,29 @@ bool init(Controller controller) {
         0xA6,        // 15. Display normal (no invertido).
         0xAF,        // 16. Display ON.
     };
+    static const uint8_t kInitSH1106[] = {
+        0xAE,        // 1. Display OFF.
+        0xD5, 0x80,  // 2. Divisor de reloj / frecuencia del oscilador.
+        0xA8, 0x3F,  // 3. Multiplex ratio = 63 (64 líneas).
+        0xD3, 0x00,  // 4. Display offset = 0.
+        0x40,        // 5. Línea de inicio = 0.
+        0xAD, 0x8B,  // 6. Convertidor DC-DC interno ON (SH1106, no charge-pump).
+        0x20, 0x02,  // 7. Modo de direccionamiento: por PÁGINA (1.3" ignora el horizontal).
+        0xA1,        // 8. Segment remap (col 127 -> SEG0).
+        0xC8,        // 9. Dirección de scan COM (remap).
+        0xDA, 0x02,  // 10. Configuración de pines COM (secuencial, SH1106).
+        0x81, 0xFF,  // 11. Contraste máximo (SH1106 1.3").
+        0xD9, 0xF1,  // 12. Periodo de pre-carga.
+        0xDB, 0x40,  // 13. Nivel VCOMH deselect.
+        0xA4,        // 14. Contenido desde GDDRAM (no "all on").
+        0xA6,        // 15. Display normal (no invertido).
+        0xAF,        // 16. Display ON.
+    };
 
-    // El SH1106 difiere del SSD1306 únicamente en el argumento del comando 0xDA:
-    // 0x02 (configuración COM secuencial) en lugar de 0x12 (alternativa).
-    int rc;
-    if (g_controller == Controller::SH1106) {
-        uint8_t sh_seq[sizeof(init_seq)];
-        std::memcpy(sh_seq, init_seq, sizeof(init_seq));
-        for (size_t i = 0; i + 1 < sizeof(sh_seq); i++) {
-            if (sh_seq[i] == 0xDA) { sh_seq[i + 1] = 0x02; break; }
-        }
-        rc = send_commands(sh_seq, sizeof(sh_seq));
-    } else {
-        rc = send_commands(init_seq, sizeof(init_seq));
-    }
+    const uint8_t* seq = (g_controller == Controller::SH1106) ? kInitSH1106 : kInitSSD1306;
+    size_t         len = (g_controller == Controller::SH1106) ? sizeof(kInitSH1106) : sizeof(kInitSSD1306);
+
+    int rc = send_commands(seq, len);
     g_ready = (rc != PICO_ERROR_GENERIC);
 
     if (g_ready) {
@@ -123,6 +144,10 @@ bool init(Controller controller) {
         show();
     }
     return g_ready;
+}
+
+Controller controller() {
+    return g_controller;
 }
 
 // -----------------------------------------------------------------------------

@@ -80,7 +80,7 @@ pico_generate_pio_header(PicoReflex ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
 pico_generate_pio_header(PicoReflex ${CMAKE_CURRENT_LIST_DIR}/button_debounce.pio)
 
 pico_set_program_name(PicoReflex "PicoReflex")
-pico_set_program_version(PicoReflex "0.7.0")
+pico_set_program_version(PicoReflex "0.8.0")
 
 # Salida de depuración (printf): USB (CDC) y UART0 (GPIO0=TX, GPIO1=RX, 115200).
 # El USB es el más cómodo (conectar la Pico y abrir el puerto COM a 115200).
@@ -159,6 +159,75 @@ target_link_libraries(PicoReflex_bootloader
 )
 
 pico_add_extra_outputs(PicoReflex_bootloader)
+
+# ---------------------------------------------------------------------------
+# Linker script autocontenido (workaround para g++ en Windows)
+# ---------------------------------------------------------------------------
+# El driver g++ de la toolchain ARM en Windows DESCARTa las flags -L
+# (-Wl,-L, -Xlinker -L o @rsp) cuando los objetos se pasan mediante fichero de
+# respuesta @rsp (lo que hace Ninja al enlazar cientos de objetos). ld usa esas
+# -L para resolver las directivas INCLUDE del linker script del SDK, por lo que
+# el enlace falla con "cannot open linker script file memmap_default.incl".
+# En Linux no falla (g++ conserva -L), pero para que el build sea reproducible
+# en Windows generamos, por target, un linker script con todos los INCLUDE
+# resueltos en línea y lo pasamos por -T (ruta absoluta, sin depender de -L).
+# Ver tools/generate_linker_script.py.
+#
+# NOTA: el script se genera en tiempo de CONFIGURACIÓN; si cambias
+# linker/pico_flash_region.ld (o el SDK), reconfigura CMake para regenerarlo.
+set(_picoreflex_platform ${PICO_SDK_PATH}/src/rp2040/pico_platform)
+set(_picoreflex_linker_common_dirs
+    ${_picoreflex_platform}/script_include
+    ${PICO_SDK_PATH}/src/rp2_common/pico_standard_link/script_include
+    ${CMAKE_BINARY_DIR}/pico-sdk/src/rp2_common/pico_standard_link
+)
+
+find_package(Python3 QUIET COMPONENTS Interpreter)
+
+function(picoreflex_self_contained_linker_script TARGET)
+    # Rutas de override (pico_add_linker_script_override_path) van PRIMERO,
+    # replicando el orden de búsqueda -L de ld.
+    get_target_property(_override_dirs ${TARGET} PICO_TARGET_LINKER_SCRIPT_OVERRIDE_PATHS)
+    if(_override_dirs STREQUAL "_override_dirs-NOTFOUND")
+        set(_override_dirs "")
+    endif()
+
+    set(_search_dirs ${_override_dirs} ${_picoreflex_linker_common_dirs})
+    string(JOIN "|" _search_str ${_search_dirs})
+    set(_out ${CMAKE_BINARY_DIR}/${TARGET}_memmap.ld)
+
+    if(NOT Python3_EXECUTABLE)
+        message(FATAL_ERROR
+            "PicoReflex requiere Python3 para generar el linker script autocontenido "
+            "(tools/generate_linker_script.py). Instala Python3 o añádelo al PATH.")
+    endif()
+
+    execute_process(
+        COMMAND ${Python3_EXECUTABLE}
+            ${CMAKE_CURRENT_LIST_DIR}/tools/generate_linker_script.py
+            --entry ${_picoreflex_platform}/memmap_default.ld
+            --search ${_search_str}
+            --out ${_out}
+        RESULT_VARIABLE _gen_result
+        OUTPUT_VARIABLE _gen_output
+        ERROR_VARIABLE _gen_error
+    )
+
+    if(NOT _gen_result EQUAL 0)
+        message(FATAL_ERROR
+            "No se pudo generar el linker script autocontenido para ${TARGET}: "
+            "${_gen_output} ${_gen_error}")
+    endif()
+
+    # PICO_TARGET_LINKER_SCRIPT es la propiedad que el SDK usa como -T (ver
+    # pico_standard_link/CMakeLists.txt: $<TARGET_PROPERTY:PICO_TARGET_LINKER_SCRIPT>).
+    set_target_properties(${TARGET} PROPERTIES PICO_TARGET_LINKER_SCRIPT ${_out})
+    # Re-enlazar si cambia el script generado.
+    set_property(TARGET ${TARGET} APPEND PROPERTY LINK_DEPENDS ${_out})
+endfunction()
+
+picoreflex_self_contained_linker_script(PicoReflex)
+picoreflex_self_contained_linker_script(PicoReflex_bootloader)
 
 # ---------------------------------------------------------------------------
 # Reporte de tamaño de imagen (.text/.rodata/.data/.bss) como artefacto de CI.

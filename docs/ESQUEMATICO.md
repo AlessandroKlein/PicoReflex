@@ -43,7 +43,7 @@ La fuente de verdad de los pines está en [`include/pin_defs.hpp`](https://githu
 | :--- | :--- | :--- | :--- |
 | LED 1..5 | GPIO 2..6 | Salida digital (alto = encendido) | Resistor limitador 330 Ω en serie |
 | Pulsador 1..5 | GPIO 7..11 | Entrada digital, pull-up interno (~50 kΩ), activo en BAJO | Pulsador a GND |
-| Display OLED SSD1306 | SDA = GPIO14, SCL = GPIO15 | I2C1, 400 kHz, dirección 0x3C/0x3D | Pull-up 4.7 kΩ a 3V3 |
+| Display OLED SSD1306/SH1106 | SDA = GPIO14, SCL = GPIO15 | I2C1, 400 kHz, dirección 0x3C/0x3D | Pull-up 4.7 kΩ a 3V3 |
 | Buzzer pasivo | GPIO16 | PWM (tonos) | Driver a transistor (ver §3.4) |
 | Medición de batería | GPIO26 = ADC0 | ADC (0..3.3 V) | Divisor R1=10 kΩ / R2=22 kΩ |
 | LED onboard (estado Wi-Fi) | Interno CYW43 | — | — (integrado en el módulo) |
@@ -79,13 +79,16 @@ La fuente de verdad de los pines está en [`include/pin_defs.hpp`](https://githu
 - No requiere resistencia externa (se usa el pull-up interno de ~50 kΩ). Si se desea
   más robustez, puede agregarse un pull-up externo de 10 kΩ.
 
-### 3.3 Display OLED SSD1306 (I2C1, GPIO14/GPIO15)
+### 3.3 Display OLED SSD1306/SH1106 (I2C1, GPIO14/GPIO15)
 
 - **SDA** = GPIO14, **SCL** = GPIO15 (periférico **I2C1**).
 - Velocidad: **400 kHz** (fast mode).
 - Dirección I2C: **0x3C** (o 0x3D en clones).
 - Alimentación: 3V3 y GND.
 - **Pull-ups de 4.7 kΩ** en SDA y SCL hacia 3V3 (obligatorios en I2C).
+- **Controlador:** SSD1306 (0.96") o SH1106 (1.3"), seleccionable en runtime desde
+  `/display` (`?controller=0|1`) y persistido en Flash; la macro
+  `PICOREFLEX_DISPLAY_CONTROLLER` solo fija el valor por defecto.
 
 ### 3.4 Buzzer pasivo (GPIO16, PWM)
 

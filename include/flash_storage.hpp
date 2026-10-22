@@ -33,7 +33,7 @@ namespace flash {
 // Cantidad de récords en el ranking (top mejores tiempos).
 #define RANKING_SIZE  5u
 // Versión del formato de PersistentData (se incrementa al cambiar la estructura).
-#define PERSISTENT_VERSION 4u
+#define PERSISTENT_VERSION 5u
 
 // -----------------------------------------------------------------------------
 // Datos persistentes (deben caber en el sector reservado de 4 KB; el guardado
@@ -63,6 +63,8 @@ struct PersistentData {
 
     // Calibración de la curva de descarga de batería (tabla por tramos + comp. de carga).
     BatteryCalibration batt_calib;
+
+    uint8_t  display_controller; ///< 0 = SSD1306, 1 = SH1106 (controlador del OLED).
 
     uint32_t checksum;           ///< Suma simple de todos los bytes previos.
 };

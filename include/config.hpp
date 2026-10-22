@@ -44,12 +44,16 @@
 #endif
 
 // =============================================================================
-// Controlador del display OLED (selección en tiempo de compilación)
+// Controlador del display OLED (valor POR DEFECTO de compilación)
 // =============================================================================
 // 0 = SSD1306 128x64 (por defecto): sin offset de columna.
 // 1 = SH1106 132x64: el área visible de 128 px empieza en la columna 2, por lo
-//     que el driver aplica un offset de columna +2 (0x21, 0x02, 0x7F) y la
-//     configuración de pines COM 0x02 (0xDA, 0x02).
+//     que el driver aplica un offset de columna +2 (0x21, 0x02, 0x7F), usa el
+//     convertidor DC-DC interno (0xAD, 0x8B) y la configuración COM 0x02.
+//
+// Desde v0.4.0 esta macro solo define el valor INICIAL del campo persistido
+// `GameConfig::display_controller`; en tiempo de ejecución manda el valor
+// configurado desde la web (/display) y persistido en Flash.
 #ifndef PICOREFLEX_DISPLAY_CONTROLLER
 #define PICOREFLEX_DISPLAY_CONTROLLER 0
 #endif
@@ -143,6 +147,11 @@ struct GameConfig {
     // Habilitar/deshabilitar el display OLED. Toda la información también se
     // muestra en la web, así que se puede apagar para ahorrar energía.
     bool oled_enabled = true;
+
+    // Controlador del display OLED en tiempo de ejecución: 0 = SSD1306,
+    // 1 = SH1106. La macro PICOREFLEX_DISPLAY_CONTROLLER solo fija el valor
+    // inicial (compilación); este campo es el que manda y se persiste en Flash.
+    uint8_t display_controller = PICOREFLEX_DISPLAY_CONTROLLER;
 
     // Credenciales Wi-Fi (configurables desde la web; persistidas en Flash).
     char wifi_ssid[33]     = WIFI_SSID_DEFAULT;

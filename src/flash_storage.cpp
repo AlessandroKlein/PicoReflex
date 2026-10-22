@@ -46,6 +46,7 @@ void set_default(PersistentData* d) {
     d->oled_enabled = 1;
     d->start_delay_s = 3;
     d->batt_calib = BatteryCalibration{};   // Curva por defecto (4200/3700/3000, sin comp.).
+    d->display_controller = PICOREFLEX_DISPLAY_CONTROLLER;   // SSD1306 o SH1106.
     update_checksum(d);
 }
 

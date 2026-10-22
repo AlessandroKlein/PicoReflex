@@ -27,7 +27,8 @@ tags:
 > **Nuevo en v0.7.0 (tareas t1–t10):**
 > - **Watchdog hardware** (1.1) — `watchdog_enable(8000 ms)` + `watchdog_update()`.
 > - **Debounce por PIO** (2.1) — `button_debounce.pio`, una state machine por botón.
-> - **Soporte SH1106** (1.6) — macro `PICOREFLEX_DISPLAY_CONTROLLER`.
+> - **Soporte SH1106** (1.6) — selección en runtime desde `/display` y persistencia
+>   (`PICOREFLEX_DISPLAY_CONTROLLER` solo fija el valor por defecto).
 > - **Calibración de batería** (1.7) — `BatteryCalibration` configurable desde `/battery`.
 > - **Reconexión STA→AP en caliente** (1.3 y 2.3) — `sta_link_watchdog()`.
 > - **mDNS `picoreflex.local`** (1.4) — `LWIP_MDNS_RESPONDER` + `pico_lwip_mdns`.

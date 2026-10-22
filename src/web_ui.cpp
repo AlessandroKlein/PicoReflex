@@ -363,6 +363,21 @@ void render_display(Builder& b) {
              "disponible en esta web.</p>");
     b.append("</div>");
 
+    // Selector del controlador del panel (0=SSD1306, 1=SH1106). Cambiar de chip
+    // re-inicializa el display en caliente y el valor se persiste en Flash.
+    b.append("<div class='card'><h3>Controlador del panel</h3>");
+    b.append("<p class='muted'>SSD1306 (128x64, charge-pump) o SH1106 "
+             "(módulos 1.3\" 132x64, DC-DC interno). El cambio se aplica al guardar.</p>");
+    b.append("<form method='get' action='/display'>");
+    b.append("<select name='controller'>");
+    b.printf("<option value='0'%s>SSD1306 (128x64)</option>",
+             (cfg.display_controller == 0) ? " selected" : "");
+    b.printf("<option value='1'%s>SH1106 (1.3\" 128x64)</option>",
+             (cfg.display_controller == 1) ? " selected" : "");
+    b.append("</select><br>");
+    b.append("<button type='submit'>Guardar</button></form>");
+    b.append("</div>");
+
     render_footer(b);
 }
 

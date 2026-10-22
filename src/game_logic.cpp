@@ -213,6 +213,7 @@ static void apply_persist_to_config() {
     std::strncpy(cfg.ap_password, g_persist.ap_password, sizeof(cfg.ap_password) - 1u);
     cfg.ap_password[sizeof(cfg.ap_password) - 1u] = '\0';
     cfg.oled_enabled = (g_persist.oled_enabled != 0);
+    cfg.display_controller = g_persist.display_controller;
     cfg.start_delay_s = g_persist.start_delay_s;
     cfg.batt_calib = g_persist.batt_calib;
     std::strncpy(cfg.user_name, g_persist.user_name, sizeof(cfg.user_name) - 1u);
@@ -230,6 +231,7 @@ static void sync_config_to_persist() {
     std::strncpy(g_persist.ap_password, cfg.ap_password, sizeof(g_persist.ap_password) - 1u);
     g_persist.ap_password[sizeof(g_persist.ap_password) - 1u] = '\0';
     g_persist.oled_enabled = cfg.oled_enabled ? 1 : 0;
+    g_persist.display_controller = cfg.display_controller;
     g_persist.start_delay_s = cfg.start_delay_s;
     g_persist.batt_calib = cfg.batt_calib;
     std::strncpy(g_persist.user_name, cfg.user_name, sizeof(g_persist.user_name) - 1u);

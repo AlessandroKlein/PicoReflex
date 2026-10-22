@@ -4,6 +4,30 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.8.0] - 2026-10-22
+
+### Añadido
+- **Soporte de display SH1106 1.3" (runtime)**: dos controladores OLED 128×64 por I2C
+  (SSD1306 0.96" y SH1106 1.3") con secuencias de init separadas; selección en
+  runtime desde `/display` (`?controller=0|1`) persistida en Flash. La macro
+  `PICOREFLEX_DISPLAY_CONTROLLER` solo fija el valor por defecto.
+
+### Cambiado
+- `PersistentData` versión 5 (controlador de display): el primer arranque tras la
+  actualización resetea la configuración persistida.
+
+### Arreglado
+- **Linker script autocontenido**: en Windows el driver g++ descarta las flags `-L`
+  cuando los objetos se pasan por fichero de respuesta (`@rsp`), por lo que `ld`
+  no resolvía los `INCLUDE` del linker script del SDK (`memmap_default.incl`).
+  Nuevo `tools/generate_linker_script.py` genera un linker script autocontenido por
+  target (ver `docs/DECISIONES.md` §29).
+
+### Documentado
+- `docs/API.md` (`/display` + parámetro `controller`) y `docs/COMPILAR.md`:
+  soporte SH1106 con selección en runtime y persistencia (macro solo como valor
+  por defecto).
+
 ## [0.7.0] - 2026-10-21
 
 ### Añadido

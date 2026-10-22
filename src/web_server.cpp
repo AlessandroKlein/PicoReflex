@@ -450,6 +450,11 @@ static void handle_config(const char* path, const char* query) {
     } else if (std::strncmp(path, "/display", 8) == 0) {
         int oled = get_int_param(query, "oled", cfg.oled_enabled ? 1 : 0);
         cfg.oled_enabled = (oled != 0);
+
+        // Controlador del panel: 0 = SSD1306, 1 = SH1106 (validado a 0..1).
+        int ctrl = get_int_param(query, "controller", (int)cfg.display_controller);
+        cfg.display_controller = (ctrl == 1) ? 1 : 0;
+
         changed = true;
     } else if (std::strncmp(path, "/wifi", 5) == 0) {
         const char* ssid = find_param(query, "ssid");
@@ -1270,9 +1275,16 @@ void refresh_display() {
         return;
     }
 
+    // Selecciona el controlador desde la config (persistido/editable en /display)
+    // y re-inicializa el panel si el chip cambió en runtime.
+    display::Controller ctrl = (cfg.display_controller == 1)
+                                   ? display::Controller::SH1106
+                                   : display::Controller::SSD1306;
+    static display::Controller last_ctrl = display::Controller::SSD1306;
     static bool initialized = false;
-    if (!initialized) {
-        initialized = display::init();
+    if (!initialized || ctrl != last_ctrl) {
+        initialized = display::init(ctrl);
+        last_ctrl = ctrl;
     }
     display::set_power(true);
 

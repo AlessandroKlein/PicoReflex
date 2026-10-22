@@ -60,7 +60,8 @@
 - **Resolución (implementada):** `display_driver.cpp` incluye un **escáner I2C** en
   `init()` que prueba `0x3C` y `0x3D` y usa la que responde (ACK), evitando
   fallos de bus. Diferencia SSD1306 vs SH1106: el SH1106 tiene RAM 132×64 (2 px
-  de desfase); el driver actual apunta a SSD1306.
+  de desfase); desde v0.7.0 el driver soporta **ambos** (SSD1306 y SH1106),
+  seleccionables en runtime desde `/display` y persistidos en Flash.
 
 ## 5. Mapeo de botones por DMA
 
