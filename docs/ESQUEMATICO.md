@@ -162,6 +162,7 @@ La fuente de verdad de los pines está en [`include/pin_defs.hpp`](https://githu
 
 ## 5. Referencias
 
+- [Pinout oficial Raspberry Pi Pico W (A4, RP-008315-DS-1)](https://pip-assets.raspberrypi.com/categories/686-raspberry-pi-pico-w/documents/RP-008315-DS-1-PicoW-A4-Pinout.pdf)
 - Asignación de funciones de pines (GPIO function select):
   <https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_gpio>
 - ADC (GPIO26..29 → ADC0..ADC3):

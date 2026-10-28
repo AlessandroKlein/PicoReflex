@@ -41,7 +41,7 @@ static void __attribute__((noreturn)) jump_to_app(void) {
     uint32_t msp   = vt[0];
     uint32_t reset = vt[1];
 
-    bool msp_ok   = (msp >= 0x20000000u) && (msp < 0x20042000u); // RAM (264 KB).
+    bool msp_ok   = (msp >= 0x20000000u) && (msp <= 0x20042000u); // RAM (264 KB), tope incluido.
     bool reset_ok = ((reset & 0xFF000000u) == 0x10000000u);      // Flash XIP.
 
     if (!msp_ok || !reset_ok) {

@@ -4,6 +4,19 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.8.1] - 2026-10-22
+
+### Arreglado
+- **Bootloader no arrancaba la app**: *off-by-one* en la validación del MSP al saltar
+  a la aplicación (`src/bootloader.c:44`) rechazaba el valor legítimo
+  `__StackTop = 0x20042000` (tope exacto de la SRAM de 264 KB), por lo que el
+  bootloader descartaba la imagen y volvía a modo bootloader. La cota ahora es
+  `msp <= 0x20042000u` (tope incluido).
+
+### Documentado
+- Referencia al [pinout oficial de la Raspberry Pi Pico W (A4, RP-008315-DS-1)](https://pip-assets.raspberrypi.com/categories/686-raspberry-pi-pico-w/documents/RP-008315-DS-1-PicoW-A4-Pinout.pdf)
+  en `docs/ESQUEMATICO.md` y `docs/ARQUITECTURA.md`.
+
 ## [0.8.0] - 2026-10-22
 
 ### Añadido

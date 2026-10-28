@@ -170,6 +170,8 @@ Rutas HTTP:
 | LED onboard | CYW43 | Estado de red (fijo=STA, blink=AP) |
 
 > La batería se mide con un divisor externo en GPIO26; ver DECISIONES.md §9.
+>
+> **Referencia:** [Pinout oficial Raspberry Pi Pico W (A4, RP-008315-DS-1)](https://pip-assets.raspberrypi.com/categories/686-raspberry-pi-pico-w/documents/RP-008315-DS-1-PicoW-A4-Pinout.pdf)
 
 ## 8. Estimación de consumo
 
