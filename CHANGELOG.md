@@ -4,6 +4,17 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.9.1] - 2026-10-28
+
+### Arreglado
+- **Página `/login` inalcanzable**: un `GET /login` sin `?pin=` caía en la rama de
+  validación y devolvía `401 PIN incorrecto`, dejando `render_login` como código
+  muerto y bloqueando el acceso a todas las páginas de configuración (no se podía
+  autenticar). Ahora `src/web_server.cpp` solo valida el PIN (y consume el limitador
+  anti fuerza bruta) cuando el parámetro `pin` está presente y no vacío; un `GET`
+  plano de `/login` cae al render final y muestra el formulario
+  (`web_ui::render("/login")` → `render_login`).
+
 ## [0.9.0] - 2026-10-28
 
 ### Añadido

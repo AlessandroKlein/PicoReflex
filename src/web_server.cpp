@@ -880,25 +880,29 @@ err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
 
     // --- Sesión PIN: /login valida el PIN y setea la cookie; /logout la borra. ---
     if (std::strncmp(path, "/login", 6) == 0) {
-        // Limitador específico anti fuerza bruta (5 intentos/s).
-        if (rate_limited(&g_login_window_start, &g_login_count,
-                         LOGIN_WINDOW_MS, LOGIN_MAX_REQS)) {
-            send_http_response(tpcb, "429 Too Many Requests", "text/plain",
-                               "429 Too Many Requests");
+        const char* pin = find_param(query, "pin");
+        if (pin && *pin) {
+            // Solo un intento de login real (con ?pin=) consume el limitador anti
+            // fuerza bruta. Un GET plano de /login cae al render del formulario.
+            if (rate_limited(&g_login_window_start, &g_login_count,
+                             LOGIN_WINDOW_MS, LOGIN_MAX_REQS)) {
+                send_http_response(tpcb, "429 Too Many Requests", "text/plain",
+                                   "429 Too Many Requests");
+                return ERR_OK;
+            }
+            if (pin_equal(pin, WEB_PIN)) {
+                // Éxito: setea la cookie de sesión y redirige al Home (302) para no
+                // dejar el PIN en la URL/historial del navegador.
+                char setcookie[128];
+                std::snprintf(setcookie, sizeof(setcookie),
+                              "Set-Cookie: pr_auth=%s; Path=/; HttpOnly\r\n", auth_token());
+                send_redirect(tpcb, "/", setcookie);
+            } else {
+                send_http_response(tpcb, "401 Unauthorized", "text/plain", "PIN incorrecto");
+            }
             return ERR_OK;
         }
-        const char* pin = find_param(query, "pin");
-        if (pin && *pin && pin_equal(pin, WEB_PIN)) {
-            // Éxito: setea la cookie de sesión y redirige al Home (302) para no
-            // dejar el PIN en la URL/historial del navegador.
-            char setcookie[128];
-            std::snprintf(setcookie, sizeof(setcookie),
-                          "Set-Cookie: pr_auth=%s; Path=/; HttpOnly\r\n", auth_token());
-            send_redirect(tpcb, "/", setcookie);
-        } else {
-            send_http_response(tpcb, "401 Unauthorized", "text/plain", "PIN incorrecto");
-        }
-        return ERR_OK;
+        // sin ?pin= : cae al render de abajo (render_login muestra el formulario).
     }
     if (std::strncmp(path, "/logout", 7) == 0) {
         // Borra la cookie (Max-Age=0) y vuelve al Home.
