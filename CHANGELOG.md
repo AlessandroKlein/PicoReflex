@@ -4,6 +4,28 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.9.2] - 2026-10-28
+
+### Arreglado
+- **Reconexión en caliente AP→STA fallaba**: al conmutar del Access Point al modo
+  STA sin reiniciar, `cyw43_arch_disable_ap_mode()`/`disable_sta_mode()` solo
+  encolan el "link down" en el firmware CYW43 (es asíncrono); el `join` STA se
+  lanzaba con la radio aún cerrando el modo anterior y el primer `connect` fallaba.
+  Se añade un delay de asentamiento de 200 ms (`vTaskDelay`) en el handler
+  `g_wifi_reconnect` antes de `network_up()` (en frío no ocurría porque el chip
+  arranca limpio).
+- **Spam "STA activa" cada segundo**: `sta_refresh_ip()` publicaba la IP en cada
+  tick del watchdog de enlace aunque no hubiera cambiado. Ahora solo publica
+  cuando la IP aparece por primera vez o cambia (nueva `g_last_sta_ip`); si la IP
+  es 0 (DHCP en curso) o no varió, no imprime ni actualiza.
+
+### Documentado
+- `docs/COMPILAR.md`: nueva sección "Solución de problemas del STA (no carga
+  `http://<IP>`)" — el HTTP escucha en `0.0.0.0:80` y no hay firewall en lwIP, así
+  que la causa casi siempre es aislamiento entre clientes del router/AP
+  (guest/corporativa/"AP isolation"); cómo confirmarlo y la alternativa mDNS
+  `picoreflex.local`.
+
 ## [0.9.1] - 2026-10-28
 
 ### Arreglado

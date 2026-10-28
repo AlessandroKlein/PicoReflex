@@ -113,6 +113,7 @@ jobs:
             build/*.uf2
             build/*.elf
             build/*.hex
+            build/*.bin
 
       - name: Subir artefacto (reporte de tamaño)
         uses: actions/upload-artifact@v4
@@ -127,4 +128,5 @@ jobs:
           files: |
             build/*.uf2
             build/*.elf
+            build/*.bin
           generate_release_notes: true

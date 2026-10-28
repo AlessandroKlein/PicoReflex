@@ -105,6 +105,7 @@ static uint8_t  g_sta_retries = 0;        ///< Reintentos consecutivos fallidos.
 static uint32_t g_sta_backoff_ms = 0;     ///< Backoff actual (se duplica cada fallo).
 static uint32_t g_sta_backoff_until = 0;  ///< Marca de tiempo del próximo reintento.
 static uint32_t g_link_last_check = 0;    ///< Última vez que se vigiló el enlace.
+static uint32_t g_last_sta_ip = 0;        ///< Última IP STA publicada (0 = sin publicar).
 
 // Estado mDNS (solo se registra en modo STA).
 static bool g_mdns_inited = false;         ///< mdns_resp_init() ya ejecutado.
@@ -1048,8 +1049,15 @@ static void mdns_unregister_sta() {
 // -----------------------------------------------------------------------------
 
 // Publica la IP actual de la interfaz STA en el estado compartido (web + display).
+// Solo imprime/actualiza cuando la IP realmente cambió (o aparece por primera
+// vez): sta_link_watchdog la llama cada segundo y el spam de "STA activa" cada
+// segundo es molesto e innecesario.
 static void sta_refresh_ip() {
     uint32_t a = cyw43_state.netif[CYW43_ITF_STA].ip_addr.addr;
+    if (a == 0) return;               // Sin IP aún (DHCP en curso).
+    if (a == g_last_sta_ip) return;   // IP sin cambios: no publicar de nuevo.
+    g_last_sta_ip = a;
+
     char ip[16];
     std::snprintf(ip, sizeof(ip), "%u.%u.%u.%u",
                   a & 0xffu, (a >> 8) & 0xffu, (a >> 16) & 0xffu, (a >> 24) & 0xffu);
@@ -1113,6 +1121,7 @@ static void network_up() {
     g_sta_retries = 0;
     g_sta_backoff_ms = STA_BACKOFF_BASE_MS;
     g_sta_backoff_until = 0;
+    g_last_sta_ip = 0;   // Obliga a volver a publicar la IP STA (puede cambiar).
 
     // Diagnóstico por USB (stdio). Si el usuario mantiene el botón 0 al arrancar,
     // se fuerza AP sin intentar STA.
@@ -1241,6 +1250,13 @@ void run() {
             } else {
                 cyw43_arch_disable_sta_mode();
             }
+            // Asentamiento del CYW43: cyw43_arch_disable_*_mode() solo ENCOLA el
+            // comando "link down" en el firmware (cyw43_wifi_set_up(...,false) es
+            // asíncrono). Si se levanta STA y se lanza el join inmediatamente, la
+            // radio aún está cerrando el modo anterior y el primer connect falla
+            // (en frío no ocurre porque el chip arranca limpio). Este delay deja
+            // que la tarea del async_context procese el "down" antes del "up".
+            vTaskDelay(pdMS_TO_TICKS(200));
             network_up();
             net_up = true;
             blink_last = (uint32_t)(time_us_32() / 1000u);

@@ -179,6 +179,35 @@ Cuando la Pico W no logra conectarse a la red STA, levanta su propio Access Poin
 5. **LED onboard:** fijo = conectado a STA; parpadeo = modo AP; apagado = Wi-Fi
    sin inicializar.
 
+### Solución de problemas del STA (no carga `http://<IP>`)
+
+Si la placa conecta a STA (el display muestra la IP y el LED queda fijo) pero el
+navegador **no carga** `http://10.10.x.x`, la causa casi nunca es el firmware: el
+servidor HTTP escucha en `0.0.0.0:80` (todas las interfaces, STA incluida) y no
+hay firewall ni filtro en el stack lwIP. Lo más probable es **aislamiento entre
+clientes del router/AP** (muy común en redes corporativas, de invitados/guest o
+puntos de acceso con "AP isolation" activado), que impide que un dispositivo
+(por ejemplo, el teléfono) se comunique con otro dispositivo de la misma LAN
+(la Pico W). Para confirmarlo y resolverlo:
+
+1. **Probar desde otro equipo de la LAN:** si una PC/otro teléfono de la MISMA
+   red tampoco abre la IP, es aislamiento del router, no de la placa.
+2. **Revisar el router/AP:** buscar una opción llamada **"AP isolation"**,
+   **"aislamiento de clientes"**, **"client isolation"**, **"guest network"** o
+   **"red de invitados"** y desactivarla (o mover la Pico y el teléfono a una red
+   sin aislamiento). En redes corporativas puede ser política y no modificable.
+3. **Descartar el firmware:** arrancá forzando AP (botón 0 al encender) y abrí
+   `http://192.168.4.1`. Si ahí SÍ carga, el HTTP de la placa funciona y el
+   problema es 100 % de la red STA, no de la Pico.
+4. **IP correcta:** verificá que la IP que usás sea la que imprime el puerto
+   serie / display (`[web] STA activa, IP ...`). Un DHCP que rotó la IP entre
+   arranques deja la URL vieja apuntando a nada; recargá con la IP actual.
+
+> Nota: el servidor HTTP también responde por el nombre mDNS `picoreflex.local`
+> (solo en modo STA), que evita depender de la IP. Si tampoco resuelve, es otro
+> síntoma de aislamiento (mDNS usa multicast UDP, que el aislamiento también
+> bloquea).
+
 ## Depurar (printf por USB)
 
 El programa usa `stdio` por USB. Conectar el USB (no en modo BOOTSEL) y abrir el
