@@ -64,6 +64,11 @@ void clear();
 // Envía el framebuffer completo al display.
 void show();
 
+// Auto-test de arranque: enciende TODOS los píxeles (0xA5) durante ~1 s y luego
+// vuelve a la RAM (0xA4). Sirve de diagnóstico: si no se ve un destello blanco,
+// el panel/charge-pump/alimentación no funcionan (problema de hardware, no de RAM).
+void self_test();
+
 // Dibuja un carácter 5x7 en la posición (col, page). `page` es 0..7.
 void draw_char(uint8_t col, uint8_t page, char c);
 

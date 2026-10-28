@@ -104,13 +104,14 @@ bool init(Controller controller) {
         0xD3, 0x00,  // 4. Display offset = 0.
         0x40,        // 5. Línea de inicio = 0.
         0x8D, 0x14,  // 6. Charge pump ON (necesario en OLED de 3.3V).
+        0xAD, 0x8B,  // 6b. DC-DC ON (SH1106; ignorado por SSD1306). Compat.
         0x20, 0x00,  // 7. Modo de direccionamiento: horizontal.
         0xA1,        // 8. Segment remap (col 127 -> SEG0).
         0xC8,        // 9. Dirección de scan COM (remap).
         0xDA, 0x12,  // 10. Configuración de pines COM (alternativa, SSD1306).
         0x81, 0xCF,  // 11. Contraste (0xCF = alto).
-        0xD9, 0xF1,  // 12. Periodo de pre-carga.
-        0xDB, 0x40,  // 13. Nivel VCOMH deselect.
+        0xD9, 0x22,  // 12. Periodo de pre-carga (valor probado en refs).
+        0xDB, 0x35,  // 13. Nivel VCOMH deselect.
         0xA4,        // 14. Contenido desde GDDRAM (no "all on").
         0xA6,        // 15. Display normal (no invertido).
         0xAF,        // 16. Display ON.
@@ -122,13 +123,14 @@ bool init(Controller controller) {
         0xD3, 0x00,  // 4. Display offset = 0.
         0x40,        // 5. Línea de inicio = 0.
         0xAD, 0x8B,  // 6. Convertidor DC-DC interno ON (SH1106, no charge-pump).
+        0x8D, 0x14,  // 6b. Charge pump ON (SSD1306; ignorado por SH1106). Compat.
         0x20, 0x02,  // 7. Modo de direccionamiento: por PÁGINA (1.3" ignora el horizontal).
         0xA1,        // 8. Segment remap (col 127 -> SEG0).
         0xC8,        // 9. Dirección de scan COM (remap).
         0xDA, 0x12,  // 10. Configuración de pines COM (alternativa, estándar 128x64).
         0x81, 0xFF,  // 11. Contraste máximo (SH1106 1.3").
-        0xD9, 0xF1,  // 12. Periodo de pre-carga.
-        0xDB, 0x40,  // 13. Nivel VCOMH deselect.
+        0xD9, 0x22,  // 12. Periodo de pre-carga (valor probado en refs).
+        0xDB, 0x35,  // 13. Nivel VCOMH deselect.
         0xA4,        // 14. Contenido desde GDDRAM (no "all on").
         0xA6,        // 15. Display normal (no invertido).
         0xAF,        // 16. Display ON.
@@ -151,6 +153,7 @@ bool init(Controller controller) {
     if (g_ready) {
         clear();
         show();
+        self_test();   // Destello blanco de arranque (diagnóstico del panel).
     }
     return g_ready;
 }
@@ -208,6 +211,18 @@ void show() {
     uint8_t ctrl = 0x40;
     i2c_write_blocking(I2C_DISPLAY, g_oled_addr, &ctrl, 1, true);           // 0x40, sin stop.
     i2c_write_blocking(I2C_DISPLAY, g_oled_addr, g_fb, sizeof(g_fb), false); // datos, con stop.
+}
+
+void self_test() {
+    if (!g_ready) return;
+    // "Display All ON" (0xA5) enciende TODOS los píxeles sin leer la RAM, así que
+    // prueba de forma independiente el panel + charge-pump + alimentación. Si no
+    // se ve un destello blanco de ~1 s, el problema es de hardware, no de RAM.
+    uint8_t all_on = 0xA5;
+    uint8_t resume = 0xA4;
+    send_commands(&all_on, 1);
+    sleep_ms(1000);
+    send_commands(&resume, 1);
 }
 
 // -----------------------------------------------------------------------------
