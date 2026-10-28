@@ -4,6 +4,16 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.9.3] - 2026-10-28
+
+### Añadido
+- **Log de IP de origen en cada conexión HTTP**: `http_accept` (`src/web_server.cpp`)
+  imprime `[web] conn desde <ip>:<port>` por cada conexión TCP entrante. Es el
+  separador definitivo para diagnosticar la web por STA: si conectando por STA
+  NO aparece el log, el SYN nunca llegó al Pico (el router lo dropea por
+  aislamiento de clientes); si aparece pero la página no carga, el firmware
+  recibió y respondió (la respuesta se pierde en el router).
+
 ## [0.9.2] - 2026-10-28
 
 ### Arreglado

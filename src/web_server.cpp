@@ -950,6 +950,16 @@ err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
 
 err_t http_accept(void*, struct tcp_pcb* newpcb, err_t err) {
     if (err != ERR_OK || newpcb == nullptr) return ERR_VAL;
+    // Diagnóstico router-vs-firmware (web por STA que no carga): loguea la IP de
+    // origen de cada conexión entrante. Si conectando por STA NO aparece este
+    // log, el SYN nunca llegó al Pico (el router dropea por aislamiento de
+    // clientes); si aparece pero la página no carga, el firmware recibió y
+    // respondió (la respuesta se pierde en el router).
+    const ip4_addr_t* rip = ip_2_ip4(&newpcb->remote_ip);
+    printf("[web] conn desde %u.%u.%u.%u:%u\n",
+           (unsigned)ip4_addr1_16(rip), (unsigned)ip4_addr2_16(rip),
+           (unsigned)ip4_addr3_16(rip), (unsigned)ip4_addr4_16(rip),
+           (unsigned)newpcb->remote_port);
     tcp_nagle_disable(newpcb);      // Evita retardos por el algoritmo de Nagle.
     tcp_recv(newpcb, http_recv);    // Registra el callback de recepción.
     return ERR_OK;
