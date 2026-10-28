@@ -60,6 +60,14 @@
 #define LWIP_NETIF_TX_SINGLE_PBUF   1
 #define DHCP_DOES_ARP_CHECK         0
 #define LWIP_DHCP_DOES_ACD_CHECK    0
+// El default de lwIP para MEMP_NUM_SYS_TIMEOUT es LWIP_NUM_SYS_TIMEOUT_INTERNAL+2
+// (=9 con TCP+DHCP+DNS+IGMP+ARP). Esa fórmula NO cuenta el responder mDNS
+// (sondeos/anuncios) ni el keepalive TCP de las conexiones HTTP que el navegador
+// deja abiertas. En la renovación DHCP (~T1 = mitad del lease, ~3,5 min) los
+// timeouts t1/t2/retransmisión se solapan con esos y agotan el pool -> PANIC
+// "sys_timeout: pool MEMP_SYS_TIMEOUT is empty". 32 da margen sobrado
+// (cada sys_timeo ~24 B; 32 = ~768 B de RAM estática, negligible).
+#define MEMP_NUM_SYS_TIMEOUT        32
 
 // Configuración REQUERIDA para NO_SYS=0 (pico_cyw43_arch_lwip_sys_freertos):
 // lwIP corre en su tarea tcpip de FreeRTOS. Sin esto, lwIP usa los defaults 0
