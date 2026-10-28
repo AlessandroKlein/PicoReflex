@@ -140,6 +140,14 @@ bool init(Controller controller) {
     int rc = send_commands(seq, len);
     g_ready = (rc != PICO_ERROR_GENERIC);
 
+    // Diagnóstico por serial: qué controlador se está inicializando y si la
+    // secuencia de comandos se envió sin NACK. "Detectado en 0x3C" solo prueba
+    // que la dirección I2C responde (SSD1306 y SH1106 responden igual en 0x3C);
+    // esto confirma cuál de los dos se está usando.
+    printf("[display] controlador=%s, init=%s\n",
+           (g_controller == Controller::SH1106) ? "SH1106" : "SSD1306",
+           g_ready ? "OK" : "FALLO");
+
     if (g_ready) {
         clear();
         show();
