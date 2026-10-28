@@ -90,6 +90,14 @@ La fuente de verdad de los pines está en [`include/pin_defs.hpp`](https://githu
   `/display` (`?controller=0|1`) y persistido en Flash; la macro
   `PICOREFLEX_DISPLAY_CONTROLLER` solo fija el valor por defecto.
 
+> ⚠️ **Alimentación: solo 3V3, nunca VBUS (5 V).** Estos módulos OLED 1.3" son de
+> 3.3 V. Alimentarlos desde `VBUS` (5 V) puede quemar su charge-pump/DC-DC interno y,
+> además, sube sus resistencias de pull-up de I2C a 5 V sobre los **GPIO14/15, que no
+> son tolerantes a 5 V** (riesgo de dañar la RP2040). Conectar `VCC → 3V3(OUT)` (pin
+> 36) y `GND → GND`. Si el panel no enciende aun con init correcto y el auto-test
+> `0xA5` devuelve `ACK` sin destello blanco, el módulo está defectuoso (ver
+> `docs/DECISIONES.md` §33).
+
 ### 3.4 Buzzer pasivo (GPIO16, PWM)
 
 - El buzzer **pasivo** necesita una señal alterna (PWM) para sonar; el GPIO no

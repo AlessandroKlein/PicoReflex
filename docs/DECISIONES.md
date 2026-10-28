@@ -535,4 +535,34 @@ Documentación oficial de referencia (carpeta raíz):
   fijo de 3 min). Solo dormita con el Wi-Fi apagado (sin STA ni AP, ver §22);
   `sleep_enabled=false` desactiva el sueño por completo.
 
+---
+
+## 33. Display OLED en negro: doble charge-pump + auto-test (0xA5)
+
+- **Síntoma:** el OLED se detectaba en `0x3C` y el init imprimía
+  `[display] controlador=…, init=OK`, pero el panel quedaba en negro (sin destello
+  ni texto). La detección I2C **solo** confirma que la dirección responde (ACK):
+  SSD1306 y SH1106 responden igual en `0x3C`, así que no distingue el controlador.
+- **Causa raíz (software):** el init era correcto *por chip* pero mandaba **una sola**
+  fuente de tensión según el controlador elegido (SSD1306 → charge-pump `0x8D,0x14`;
+  SH1106 → DC-DC interno `0xAD,0x8B`). Si el panel real era el *otro* chip (muy común
+  en módulos 1.3" económicos), su comando de bomba se ignoraba → píxeles sin tensión
+  interna → negro total.
+- **Fix (commit 827a328):** las DOS secuencias mandan AMBAS fuentes de tensión (cada
+  una ignorada con seguridad por el chip que no la usa); pre-carga corregida a
+  `0xD9,0x22` y VCOM a `0xDB,0x35` (valores de referencia); SH1106 añade `0x31`
+  (tensión de bomba 7.4 V).
+- **Auto-test de arranque (0xA5):** al final de `init()` se envía "Display All ON"
+  (`0xA5`) durante 1 s y luego `0xA4`. Ese comando enciende TODOS los píxeles sin
+  leer la RAM (independiente de direccionamiento/offset/contraste), de modo que un
+  destello blanco demuestra que panel + charge-pump + alimentación funcionan. Log
+  serial `[display] self-test: all-on rc=… (ACK/NACK)` para acotar el fallo.
+- **Conclusión (hardware):** con `rc=1 (ACK)` y SIN destello, el fallo queda acotado
+  al charge-pump/panel: el chip está vivo (responde a todo) pero el panel no emite
+  luz — defecto físico del módulo (flex agrietado, bomba muerta), no reparable por
+  software. **IMPORTANTE:** estos OLED 1.3" son de 3.3 V; alimentarlos desde `VBUS`
+  (5 V) puede quemarlos y, además, sube sus pull-ups de I2C a 5 V sobre los
+  GPIO14/15 (que **no son tolerantes a 5 V**). Conectar SIEMPRE `VCC → 3V3(OUT)`
+  (ver `docs/ESQUEMATICO.md` §3.3).
+
 

@@ -4,6 +4,31 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.9.5] - 2026-10-28
+
+### Arreglado
+- **Reinicio al guardar configuración (modo AP):** `flash_safe_execute()` corría en el
+  Core 1 (red) bajo FreeRTOS SMP, donde `__wfe()` no tiene wakeup periódico → el
+  timeout de la zona segura nunca se re-evalúa → cuelgue → watchdog (8 s) → Flash a
+  medio borrar → checksum inválido → reset de fábrica → sin credenciales → modo AP.
+  Se fija la afinidad de tareas: `game_task` → Core 0 (escribe Flash),
+  `network_task` → Core 1 (ver `docs/FREERTOS.md` §7).
+- **Display OLED en negro:** el init mandaba una sola fuente de tensión por chip; si
+  el panel real era el otro controlador, su comando de bomba se ignoraba y el panel
+  no encendía. Ambas secuencias ahora mandan charge-pump + DC-DC, con pre-carga y
+  VCOM corregidos (ver `docs/DECISIONES.md` §33).
+
+### Añadido
+- **Auto-test del display (0xA5):** destello blanco de ~1 s al arrancar + log serial
+  `[display] self-test: all-on rc=… (ACK/NACK)` para separar panel muerto de
+  problema de RAM/direccionamiento.
+- **Log de diagnóstico de display:** `[display] controlador=SSD1306|SH1106, init=OK`.
+- **Reintentos STA al arrancar:** hasta 4 intentos antes de degradar a AP (en
+  runtime ya existía reintento + backoff).
+- **Botón "Comprobar actualizaciones" en `/ota`:** consulta la API de GitHub desde el
+  navegador (el Pico W no puede hacer HTTPS), compara la última release con la
+  versión del firmware y ofrece el enlace de descarga.
+
 ## [0.9.4] - 2026-10-28
 
 ### Arreglado
