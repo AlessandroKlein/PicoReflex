@@ -37,6 +37,18 @@ tags:
 > - **OTA A/B con bootloader** (1.5) — `POST /ota/upload` + rollback.
 > - **CI endurecido** — `cppcheck` + reporte de tamaño (`target size`).
 
+> **Nuevo en v0.9.x (post-v0.9.4):**
+> - **Fix del reinicio al guardar config** — las tareas ahora tienen **afinidad fija**
+>   (`xTaskCreateAffinitySet`: `game_task`→Core 0, `network_task`→Core 1). Con
+>   `configTICK_CORE=0` el SysTick solo está en el Core 0; si `flash_safe_execute()`
+>   caía en el Core 1, el `__wfe()` del SDK podía no despertarse y el watchdog
+>   reiniciaba → reset de fábrica → modo AP (ver `docs/FREERTOS.md` §7).
+> - **Reintentos STA al arrancar** — `network_up()` reintenta STA
+>   (`STA_MAX_RETRIES + 1` = 4 intentos, 10 s cada uno) antes de degradar a AP.
+> - **Botón "Comprobar actualizaciones" en `/ota`** — consulta la API de GitHub
+>   desde el navegador (la Pico W no tiene TLS) y enlaza el `.bin`/`.uf2` si hay
+>   versión más nueva. Versión inyectada por `PICOREFLEX_VERSION` (CMake).
+
 Esta hoja de ruta surge del análisis del código actual (módulos `game_logic`,
 `web_server`, `battery_monitor`, `display_driver`, `flash_storage`, `audio`,
 `captive_portal`, `dhcpserver`, `main`, `shared_state`) y de la documentación

@@ -18,7 +18,7 @@ los dos núcleos de forma transparente.
 
 | Aspecto | Antes (raw dual-core) | Después (FreeRTOS SMP) |
 |---|---|---|
-| Ejecución por núcleo | Fija: Core 0 = juego, Core 1 = red | Dinámica: el planificador reparte tareas |
+| Ejecución por núcleo | Fija: Core 0 = juego, Core 1 = red | Fija por afinidad: Core 0 = juego, Core 1 = red (ver §7) |
 | Arranque | `multicore_launch_core1()` | `vTaskStartScheduler()` |
 | Sincronización | `critical_section` + `queue` + flags `volatile` | + semáforos de FreeRTOS |
 | Wi-Fi/lwIP | `threadsafe_background` (IRQ baja) | `sys_freertos` (tarea `tcpip`) |
@@ -82,6 +82,14 @@ O definir `FREERTOS_KERNEL_PATH`. El CI lo clona automáticamente.
 
 ## 7. Limitaciones conocidas (con FreeRTOS SMP)
 
+- **Afinidad de núcleo obligatoria para escribir Flash** (v0.9.x). Con
+  `configTICK_CORE=0` el SysTick solo está en el Core 0. `flash_safe_execute()`
+  (guardado de config / OTA) hace `__wfe()` + `time_reached(timeout)` en el
+  núcleo que escribe; si ese núcleo es el Core 1, el `__wfe()` puede no
+  despertarse jamás (sin tick periódico) y el **hardware watchdog reinicia**.
+  Por eso `main.cpp` fija `game_task`→Core 0 y `network_task`→Core 1 con
+  `xTaskCreateAffinitySet()`. Si se agregan más tareas que escriban Flash, deben
+  fijarse también al Core 0 (o serializar la escritura).
 - **DORMANT degradado**: el modo *dormant* real (`low_power_dormant_until_gpio_pin_state`)
   exige ambos núcleos en WFE y no es compatible con FreeRTOS SMP sin rework. Se
   reemplazó por un **sleep ligero** (`vTaskDelay`); el ahorro de energía profundo
