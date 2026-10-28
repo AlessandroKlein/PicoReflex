@@ -123,6 +123,7 @@ bool init(Controller controller) {
         0xD3, 0x00,  // 4. Display offset = 0.
         0x40,        // 5. Línea de inicio = 0.
         0xAD, 0x8B,  // 6. Convertidor DC-DC interno ON (SH1106, no charge-pump).
+        0x31,        // 6c. Set pump voltage = 7.4V (evita VPP bajo).
         0x8D, 0x14,  // 6b. Charge pump ON (SSD1306; ignorado por SH1106). Compat.
         0x20, 0x02,  // 7. Modo de direccionamiento: por PÁGINA (1.3" ignora el horizontal).
         0xA1,        // 8. Segment remap (col 127 -> SEG0).
@@ -220,9 +221,17 @@ void self_test() {
     // se ve un destello blanco de ~1 s, el problema es de hardware, no de RAM.
     uint8_t all_on = 0xA5;
     uint8_t resume = 0xA4;
-    send_commands(&all_on, 1);
+
+    // Diagnóstico por serial: confirma que (1) este build se ejecuta realmente y
+    // (2) si el propio comando 0xA5 fue aceptado (ACK) por el controlador. Con
+    // ACK + sin destello, el fallo queda acotado al charge-pump / panel (hardware).
+    printf("[display] self-test: enviando 0xA5 (all-on)...\n");
+    int rc = send_commands(&all_on, 1);
+    printf("[display] self-test: all-on rc=%d (%s)\n",
+           rc, (rc == PICO_ERROR_GENERIC) ? "NACK" : "ACK");
     sleep_ms(1000);
     send_commands(&resume, 1);
+    printf("[display] self-test: fin (0xA4)\n");
 }
 
 // -----------------------------------------------------------------------------
