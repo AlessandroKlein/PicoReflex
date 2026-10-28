@@ -767,6 +767,22 @@ static bool is_ota_upload_start(struct pbuf* p) {
             std::memcmp(start, "/ota/upload", 11) == 0);
 }
 
+// Se llama cuando la conexión se aborta con un error irrecuperable (RST) o el
+// pcb se desasigna. A diferencia de tcp_recv(p==null) —cierre FIN, que requiere
+// tcp_close explícito— aquí lwIP YA libera el pcb tras el callback y no lo recibe
+// como argumento. Sin este callback, abortar una subida OTA (navegar lejos a
+// mitad de subida) dejaba g_ota_pcb apuntando a un pcb liberado -> use-after-free
+// en la siguiente conexión (el pool reutiliza la dirección de memoria).
+static void http_err(void* arg, err_t err) {
+    (void)arg;
+    (void)err;
+    // Limpia conservadoramente el estado OTA si había una subida en curso: una
+    // subida a la vez, y reiniciarla solo obliga a re-subir el .bin.
+    if (g_ota_pcb != nullptr) {
+        ota_upload_reset();
+    }
+}
+
 // Se llama al recibir datos del cliente.
 err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
     if (p == nullptr) {
@@ -952,17 +968,8 @@ err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
 
 err_t http_accept(void*, struct tcp_pcb* newpcb, err_t err) {
     if (err != ERR_OK || newpcb == nullptr) return ERR_VAL;
-    // Diagnóstico router-vs-firmware (web por STA que no carga): loguea la IP de
-    // origen de cada conexión entrante. Si conectando por STA NO aparece este
-    // log, el SYN nunca llegó al Pico (el router dropea por aislamiento de
-    // clientes); si aparece pero la página no carga, el firmware recibió y
-    // respondió (la respuesta se pierde en el router).
-    const ip4_addr_t* rip = ip_2_ip4(&newpcb->remote_ip);
-    printf("[web] conn desde %u.%u.%u.%u:%u\n",
-           (unsigned)ip4_addr1_16(rip), (unsigned)ip4_addr2_16(rip),
-           (unsigned)ip4_addr3_16(rip), (unsigned)ip4_addr4_16(rip),
-           (unsigned)newpcb->remote_port);
     tcp_nagle_disable(newpcb);      // Evita retardos por el algoritmo de Nagle.
+    tcp_err(newpcb, http_err);      // Callback de abort (RST/error): limpia OTA.
     tcp_recv(newpcb, http_recv);    // Registra el callback de recepción.
     return ERR_OK;
 }

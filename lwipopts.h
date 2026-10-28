@@ -25,6 +25,10 @@
 #define MEM_SIZE                    16000
 #endif
 #define MEMP_NUM_TCP_SEG            32
+// Default lwIP = 5. Con 5, navegar rápido (el navegador abre varias conexiones en
+// paralelo y cada cierre activo queda en TIME_WAIT ~2*TCP_MSL) agota los PCB y se
+// descartan SYN -> "la página no carga". 16 da margen sobrado para un usuario.
+#define MEMP_NUM_TCP_PCB            16
 #define MEMP_NUM_ARP_QUEUE          10
 #define PBUF_POOL_SIZE              32
 #define LWIP_ARP                    1
@@ -76,11 +80,13 @@
 // siempre en xSemaphoreTake(init_sem). Valores del ejemplo oficial pico-examples
 // (pico_w/wifi/freertos/iperf/lwipopts.h).
 #if !NO_SYS
-// TCPIP_THREAD_STACKSIZE=2560 (no 1024): dhcp_server_process() corre en el hilo
-// tcpip y declara dhcp_msg_t dhcp_msg (~548 B) + char hostname[32] + printf() +
-// cadena udp_sendto_if()/pbuf_alloc(). Con 1024 B el stack del hilo tcpip se
-// desborda y corrompe memoria -> reset por watchdog al asociar un cliente.
-#define TCPIP_THREAD_STACKSIZE      2560
+// TCPIP_THREAD_STACKSIZE=4096 (no 1024): el hilo tcpip no solo corre el servidor
+// DHCP (dhcp_msg_t dhcp_msg ~548 B + hostname + printf + udp_sendto_if) sino
+// TAMBIÉN las callbacks HTTP: http_recv -> web_ui::render -> render_wifi, que
+// apila GameConfig + 3 buffers de escape (~680 B) + el tmp[512] de Builder::printf.
+// Con 2560 B ese camino (lwIP tcp_input + http_recv headers[256] + render_wifi)
+// queda al filo del desborde -> corrupción de memoria y reset al navegar rápido.
+#define TCPIP_THREAD_STACKSIZE      4096
 #define DEFAULT_THREAD_STACKSIZE    1024
 #define TCPIP_MBOX_SIZE             8
 #define DEFAULT_RAW_RECVMBOX_SIZE   8
