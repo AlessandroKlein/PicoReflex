@@ -4,6 +4,15 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.9.4] - 2026-10-28
+
+### Arreglado
+- **PANIC de Wi-Fi al asociarse a la red** (`sys_timeout: pool MEMP_SYS_TIMEOUT is
+  empty`): `lwipopts.h` usaba el default de lwIP (`MEMP_NUM_SYS_TIMEOUT = 9`),
+  insuficiente para mDNS + keepalive TCP + renovación DHCP; al asociarse el pool
+  de timeouts del sistema se agotaba y lwIP panicaba. Ahora define
+  `MEMP_NUM_SYS_TIMEOUT 32`.
+
 ## [0.9.3] - 2026-10-28
 
 ### Añadido
