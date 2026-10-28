@@ -519,10 +519,21 @@ void render_login(Builder& b) {
 }
 
 // --- "/ota" (actualización de firmware por aire) -----------------------------
+#ifndef PICOREFLEX_VERSION
+#define PICOREFLEX_VERSION "0.9.4"
+#endif
+
 void render_ota(Builder& b) {
     render_head(b, "Actualización");
     b.append("<h1>Actualización de firmware (OTA)</h1>");
     render_nav(b, "/ota");
+
+    b.append("<div class='card'><h3>Comprobar actualizaciones (GitHub)</h3>");
+    b.append("<p class='muted'>Consulta la última versión publicada en el repositorio "
+             "y descarga el binario si hay una más nueva.</p>");
+    b.append("<button onclick='checkUpdate()'>Comprobar actualizaciones</button>");
+    b.append("<p id='upd-status' class='muted'>Sin comprobar.</p>");
+    b.append("</div>");
 
     b.append("<div class='card'><h3>Subir firmware</h3>");
     b.append("<p class='muted'>Selecciona el binario compilado "
@@ -556,6 +567,28 @@ void render_ota(Builder& b) {
              "headers:{'Content-Type':'application/octet-stream','X-CRC32':h},body:u});"
              "var t=await r.text();s.textContent=(r.ok?'OK: ':'Error: ')+t;}"
              "catch(e){s.textContent='Error de red: '+e;}}");
+    b.append("</script>");
+
+    // Consulta de actualizaciones: la Pico W NO tiene TLS, así que el navegador
+    // habla directamente con la API de GitHub (HTTPS). FW_VERSION se inyecta por
+    // definición de compilación (PICOREFLEX_VERSION).
+    b.append("<script>");
+    b.printf("var FW_VERSION='%s';", PICOREFLEX_VERSION);
+    b.append(
+        "function stripV(s){return s.replace(/^v/,'');}"
+        "async function checkUpdate(){var s=document.getElementById('upd-status');"
+        "s.textContent='Consultando GitHub...';"
+        "try{var r=await fetch('https://api.github.com/repos/AlessandroKlein/PicoReflex/releases/latest');"
+        "if(!r.ok){s.textContent='Error '+r.status;return;}"
+        "var j=await r.json();var cur=stripV(FW_VERSION);var tag=stripV(j.tag_name||'');"
+        "var msg='Última: '+j.tag_name+' · Actual: '+FW_VERSION+'. ';"
+        "if(tag===cur){s.textContent=msg+'Estás al día.';}"
+        "else{s.innerHTML=msg+'<b>Hay actualización.</b> ';"
+        "var a=j.assets||[];var n=0;"
+        "for(var i=0;i<a.length;i++){if(/\\.(bin|uf2)$/.test(a[i].name)){"
+        "s.innerHTML+='<a href=\"'+a[i].browser_download_url+'\" download>Descargar '+a[i].name+'</a> ';n++;}}"
+        "if(!n){s.innerHTML+='(sin binario adjunto)';}}}"
+        "catch(e){s.textContent='Error de red: '+e;}}");
     b.append("</script>");
 
     render_footer(b);

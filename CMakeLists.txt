@@ -95,6 +95,13 @@ pico_enable_stdio_usb(PicoReflex 1)
 # el retardo de arranque molesta.
 target_compile_definitions(PicoReflex PRIVATE PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS=3000)
 
+# Versión en runtime (botón "Comprobar actualizaciones" de /ota).
+# Mantener sincronizado con pico_set_program_version() de arriba.
+target_compile_definitions(PicoReflex PRIVATE PICOREFLEX_VERSION="0.9.4")
+# Versión en runtime (botón "Comprobar actualizaciones" de /ota).
+# Mantener sincronizado con pico_set_program_version() de arriba.
+target_compile_definitions(PicoReflex PRIVATE PICOREFLEX_VERSION="0.9.4")
+
 # Directorios de includes del proyecto (include/ y la raíz para lwipopts.h).
 target_include_directories(PicoReflex PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}

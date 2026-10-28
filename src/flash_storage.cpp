@@ -17,8 +17,10 @@
 #include "flash_storage.hpp"
 
 #include <cstring>
+#include <cstdio>
 
 #include "hardware/flash.h"
+#include "hardware/timer.h"   // time_us_32()
 #include "pico/flash.h"      // flash_safe_execute()
 #include "hardware/address_mapped.h" // XIP_BASE
 
@@ -139,7 +141,11 @@ bool save(const PersistentData& d) {
 
     // Ejecuta la escritura de forma segura entre núcleos.
     // 1000 ms es holgado para borrar+programar un sector/página.
+    uint32_t t0 = time_us_32();
     int rc = flash_safe_execute(do_write, &job, 1000);
+    uint32_t dt_ms = (time_us_32() - t0) / 1000u;
+    // Diagnóstico: rc=0 OK; -1 timeout; -2 genérico; -4 no permitido; -5 arg inválido.
+    printf("[flash] save rc=%d dur_ms=%u\n", rc, (unsigned)dt_ms);
     return (rc == PICO_OK);
 }
 

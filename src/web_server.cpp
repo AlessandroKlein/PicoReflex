@@ -1156,11 +1156,18 @@ static void network_up() {
 
     // Diagnóstico por USB (stdio). Si el usuario mantiene el botón 0 al arrancar,
     // se fuerza AP sin intentar STA.
-    if (!g_force_ap && sta_start()) {
-        http_server_init();
-        return;
-    }
-    if (g_force_ap) {
+    if (!g_force_ap) {
+        // Intenta STA varias veces antes de degradar a AP (reconexión en el
+        // arranque). Cada intento bloquea hasta STA_TIMEOUT_MS (10 s); el peor
+        // caso total es (STA_MAX_RETRIES + 1) * 10 s.
+        for (unsigned attempt = 1u; attempt <= STA_MAX_RETRIES + 1u; attempt++) {
+            if (sta_start()) {
+                http_server_init();
+                return;
+            }
+            printf("[web] STA fallo %u/%u\n", attempt, STA_MAX_RETRIES + 1u);
+        }
+    } else {
         printf("[web] STA omitido (forzar AP)\n");
     }
     ap_start();

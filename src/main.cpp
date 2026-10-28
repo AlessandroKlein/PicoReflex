@@ -100,8 +100,16 @@ int main() {
 
     // Tareas: la de red con prioridad mayor y más stack (lwIP/display).
     // cyw43_arch_init() se hace DENTRO de network_task (patrón oficial pico-examples).
-    xTaskCreate(game_task,    "game",    2048, nullptr, tskIDLE_PRIORITY + 2, nullptr);
-    xTaskCreate(network_task, "network", 4096, nullptr, tskIDLE_PRIORITY + 3, nullptr);
+    //
+    // AFINIDAD DE NÚCLEO FIJA: game_task -> Core 0, network_task -> Core 1.
+    // Es obligatoria para que flash_safe_execute() (guardado de config en Flash)
+    // sea determinista. Ese mecanismo usa __wfe() + time_reached(timeout) en el
+    // núcleo que escribe; con configTICK_CORE=0 el SysTick solo está en el Core 0,
+    // así que si la escritura cayera en el Core 1 el __wfe() puede no despertarse
+    // jamás (sin tick periódico) y el watchdog reinicia. Fijar el Core 0 garantiza
+    // que el timeout se evalúe cada tick en lugar de colgarse.
+    xTaskCreateAffinitySet(game_task,    "game",    2048, nullptr, tskIDLE_PRIORITY + 2, 1u << 0, nullptr);
+    xTaskCreateAffinitySet(network_task, "network", 4096, nullptr, tskIDLE_PRIORITY + 3, 1u << 1, nullptr);
 
     // Arranca el planificador (SMP en 2 núcleos). No retorna.
     vTaskStartScheduler();

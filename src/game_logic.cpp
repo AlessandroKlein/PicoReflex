@@ -542,8 +542,10 @@ void run() {
                 case ControlEvent::CONFIG_CHANGED:
                     // La web cambió la configuración: persiste los campos
                     // configurables en Flash.
+                    printf("[game] CONFIG_CHANGED: persistir\n");
                     sync_config_to_persist();
                     persist_if_dirty();
+                    printf("[game] persistido\n");
                     g_persist_done = true;   // Avisa al Core 1 (web) que ya guardó.
                     break;
                 default:
