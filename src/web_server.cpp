@@ -797,10 +797,13 @@ err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
     // Estático (no en stack) para no presionar el stack del Core 1, y de 1024 B
     // para admitir SSID + contraseña largas URL-encoded (~300 B) sin truncar.
     static char request[1024];
-    size_t len = p->tot_len < sizeof(request) - 1u ? p->tot_len : sizeof(request) - 1u;
+    u16_t recv_len = p->tot_len;
+    size_t len = recv_len < sizeof(request) - 1u ? recv_len : sizeof(request) - 1u;
     pbuf_copy_partial(p, request, (u16_t)len, 0);
     request[len] = '\0';
     pbuf_free(p);
+    tcp_recved(tpcb, recv_len);   // raw lwIP exige anunciar la ventana recibida
+                                  // tras consumir el pbuf (igual que en la OTA).
 
     // Nota de diseño: se usa un único buffer global g_body para la respuesta.
     // En NO_SYS=0 las callbacks de lwIP están serializadas, así que no hay
@@ -871,11 +874,10 @@ err_t http_recv(void*, struct tcp_pcb* tpcb, struct pbuf* p, err_t err) {
     }
 
     // --- Autenticación PIN para rutas protegidas (control + configuración). ---
-    // Sin cookie/token válido -> 401: los verbos de control se rechazan.
+    // Sin cookie/token válido -> 302 al formulario de login. (Un 401 crudo en
+    // text/plain se pintaba como error y parecía que la página "no cargaba".)
     if (is_protected_path(path) && !is_authorized(request)) {
-        send_http_response(tpcb, "401 Unauthorized", "text/plain",
-                           "401 Unauthorized",
-                           "WWW-Authenticate: Bearer realm=\"PicoReflex\"\r\n");
+        send_redirect(tpcb, "/login");
         return ERR_OK;
     }
 
