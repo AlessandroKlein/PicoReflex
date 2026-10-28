@@ -15,7 +15,8 @@
  *    y configuración COM 0x12.
  *  - SH1106 (módulos 1.3" 132x64): convertidor DC-DC interno (0xAD,0x8B),
  *    addressing por PÁGINA (0x20,0x02), contraste máximo (0x81,0xFF) y
- *    configuración COM 0x02. Además aplica un offset de columna +2 en show().
+ *    configuración COM 0x12. Además aplica un offset de columna +2 en show()
+ *    (vuelca el framebuffer página por página, sin usar 0x21/0x22).
  *
  * La selección del controlador puede cambiar en tiempo de ejecución: init() puede
  * llamarse de nuevo con otro `Controller` sin re-configurar I2C1 (solo se
