@@ -416,6 +416,18 @@ bool rate_limited(uint32_t* window_start, uint32_t* count,
 // (`path`). Si cambió algún campo, envía CONFIG_CHANGED para que el Core 0 lo
 // persista en Flash; si cambió el Wi-Fi, marca reconexión.
 static void handle_config(const char* path, const char* query) {
+    // GET sin query string = solo VER la página (el navegador la pide al entrar,
+    // al volver atrás, al recargar...). No hay que tocar la config NI escribir
+    // Flash. Antes esto marcaba `changed=true` incondicional en /seed /game
+    // /display /battery, así que cada carga disparaba flash_safe_execute(), que
+    // bajo FreeRTOS SMP pausa el OTRO núcleo (~100 ms de erase+program). Ese
+    // guardado innecesario es lo que reiniciaba el Pico al navegar y, si se
+    // interrumpía, dejaba la Flash corrupta -> checksum inválido -> factory reset
+    // -> arranque en modo AP.
+    if (query == nullptr || *query == '\0') {
+        return;
+    }
+
     GameConfig cfg = config_get();
     bool changed = false;
     bool wifi_changed = false;
