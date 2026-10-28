@@ -16,6 +16,13 @@ enum class Difficulty : uint8_t {
     EASY = 0, NORMAL = 1, HARD = 2, DIFF_COUNT = 3
 };
 
+struct BatteryCalibration {
+    uint32_t v_full_mv = 4200;
+    uint32_t v_mid_mv = 3700;
+    uint32_t v_empty_mv = 3000;
+    uint32_t load_comp_mv = 0;
+};
+
 struct GameConfig {
     uint32_t seed = 0;
     Difficulty difficulty = Difficulty::NORMAL;
@@ -26,9 +33,13 @@ struct GameConfig {
     char user_name[16] = "JUGADOR";
     uint32_t start_delay_s = 3;
     bool oled_enabled = true;
+    uint8_t display_controller = 0;
+    bool sleep_enabled = true;
+    uint32_t idle_sleep_min = 3;
     char wifi_ssid[33] = "TU_RED_WIFI";
     char wifi_password[65] = "TU_PASSWORD";
     char ap_password[16] = "";
+    BatteryCalibration batt_calib;
 };
 
 struct HistoryEntry {

@@ -116,16 +116,25 @@ static bool g_mdns_sta_registered = false; ///< netif STA registrado (picoreflex
 static dhcp_server_t g_dhcp_server;
 
 // Inicia el servidor DHCP en la interfaz del AP (192.168.4.1, máscara /24).
+// Se ejecuta desde la tarea de red (network_task), NO desde el hilo tcpip, así
+// que la API raw de lwIP debe ir bajo cyw43_arch_lwip_begin/end (equivale al
+// LOCK_TCPIP_CORE del SDK). Sin el lock, dhcp_server_init() (udp_new/udp_bind/
+// udp_recv/udp_bind_netif) corre en paralelo con el hilo tcpip y corrompe la
+// lista global udp_pcbs: cuelgue duro -> reset por watchdog al asociar cliente.
 static void ap_dhcp_start() {
     ip4_addr_t gw, mask;
     IP4_ADDR(&gw, 192, 168, 4, 1);
     IP4_ADDR(&mask, 255, 255, 255, 0);
+    cyw43_arch_lwip_begin();
     dhcp_server_init(&g_dhcp_server, &cyw43_state.netif[CYW43_ITF_AP], &gw, &mask);
+    cyw43_arch_lwip_end();
 }
 
 // Detiene el servidor DHCP del AP.
 static void ap_dhcp_stop() {
+    cyw43_arch_lwip_begin();
     dhcp_server_deinit(&g_dhcp_server);
+    cyw43_arch_lwip_end();
 }
 
 // -----------------------------------------------------------------------------
@@ -454,6 +463,13 @@ static void handle_config(const char* path, const char* query) {
         // Controlador del panel: 0 = SSD1306, 1 = SH1106 (validado a 0..1).
         int ctrl = get_int_param(query, "controller", (int)cfg.display_controller);
         cfg.display_controller = (ctrl == 1) ? 1 : 0;
+
+        // Modo dormir: habilitar/deshabilitar + minutos de inactividad (1..60).
+        cfg.sleep_enabled = get_int_param(query, "sleep", cfg.sleep_enabled ? 1 : 0) != 0;
+        uint32_t idle = (uint32_t)get_int_param(query, "idle_min", (int)cfg.idle_sleep_min);
+        if (idle < 1u)  idle = 1u;
+        if (idle > 60u) idle = 60u;
+        cfg.idle_sleep_min = idle;
 
         changed = true;
     } else if (std::strncmp(path, "/wifi", 5) == 0) {
@@ -935,12 +951,16 @@ err_t http_accept(void*, struct tcp_pcb* newpcb, err_t err) {
 }
 
 void http_server_init() {
+    // Se ejecuta desde network_task (no desde el hilo tcpip): la API raw de
+    // lwIP (tcp_new/bind/listen/accept) requiere el lock del core.
+    cyw43_arch_lwip_begin();
     struct tcp_pcb* pcb = tcp_new_ip_type(IPADDR_TYPE_ANY);
-    if (!pcb) return;
-    if (tcp_bind(pcb, IP_ADDR_ANY, HTTP_PORT) != ERR_OK) { tcp_close(pcb); return; }
+    if (!pcb) { cyw43_arch_lwip_end(); return; }
+    if (tcp_bind(pcb, IP_ADDR_ANY, HTTP_PORT) != ERR_OK) { tcp_close(pcb); cyw43_arch_lwip_end(); return; }
     struct tcp_pcb* l = tcp_listen(pcb);
-    if (!l) { tcp_close(pcb); return; }
+    if (!l) { tcp_close(pcb); cyw43_arch_lwip_end(); return; }
     tcp_accept(l, http_accept);
+    cyw43_arch_lwip_end();
 }
 
 } // namespace
@@ -951,10 +971,12 @@ void http_server_init() {
 void init() {
     // Inicializa el chip Wi-Fi + lwIP (sys_freertos crea la tarea tcpip). Se hace
     // DENTRO de la tarea de red (patrón oficial pico-examples), UNA sola vez.
+    printf("[web] cyw43_arch_init()...\n");
     if (cyw43_arch_init()) {
         printf("[web] fallo cyw43_arch_init\n");
         return;
     }
+    printf("[web] cyw43_arch_init OK\n");
     // Medición de batería (ADC, divisor externo en GPIO26). Se hace en la tarea de
     // red porque es quien publica el estado (batería) para la web y el display.
     battery::init();
@@ -1055,8 +1077,8 @@ static void ap_start() {
     cyw43_arch_disable_sta_mode();
     cyw43_wifi_ap_set_channel(&cyw43_state, AP_CHANNEL);   // Canal fijo (estable).
 
-    // Clave del AP: la configurada en /wifi (persistida) o, si está vacía, una
-    // derivada del RUID de la Flash (única por placa). Así no hay clave conocida.
+    // Clave del AP: la configurada en /wifi (persistida) o, si está vacía, la
+    // clave por defecto (AP_PASSWORD_DEFAULT).
     GameConfig cfg = config_get();
     if (cfg.ap_password[0] != '\0') {
         std::strncpy(g_ap_password, cfg.ap_password, sizeof(g_ap_password) - 1u);

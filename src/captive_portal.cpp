@@ -20,6 +20,7 @@
 
 #include "lwip/udp.h"
 #include "lwip/pbuf.h"
+#include "pico/cyw43_arch.h"
 
 namespace captive {
 
@@ -119,23 +120,34 @@ static void dns_recv_cb(void*, struct udp_pcb* pcb, struct pbuf* p,
 void init() {
     if (g_dns_pcb) return;               // Ya en marcha.
 
+    // Se llama desde la tarea de red (network_task), NO desde el hilo tcpip:
+    // la API raw de lwIP (udp_new/bind/recv) exige cyw43_arch_lwip_begin/end
+    // (== LOCK_TCPIP_CORE del SDK). Sin el lock, se corrompe la lista udp_pcbs.
+    cyw43_arch_lwip_begin();
     g_dns_pcb = udp_new_ip_type(IPADDR_TYPE_ANY);
-    if (!g_dns_pcb) return;
+    if (!g_dns_pcb) {
+        cyw43_arch_lwip_end();
+        return;
+    }
 
     // Se llama desde la tarea de red (network_task), con lwIP ya en marcha.
     if (udp_bind(g_dns_pcb, IP_ADDR_ANY, DNS_PORT) != ERR_OK) {
         udp_remove(g_dns_pcb);
         g_dns_pcb = nullptr;
+        cyw43_arch_lwip_end();
         return;
     }
     udp_recv(g_dns_pcb, dns_recv_cb, nullptr);
+    cyw43_arch_lwip_end();
 }
 
 void stop() {
+    cyw43_arch_lwip_begin();
     if (g_dns_pcb) {
         udp_remove(g_dns_pcb);
         g_dns_pcb = nullptr;
     }
+    cyw43_arch_lwip_end();
 }
 
 } // namespace captive

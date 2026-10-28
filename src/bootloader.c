@@ -20,12 +20,16 @@
  */
 
 #include "pico/stdlib.h"
+#include "pico/stdio_uart.h"       // stdio_uart_init() — solo UART, sin tocar USB
 #include "pico/bootrom.h"          // reset_usb_boot()
 #include "hardware/flash.h"
 #include "hardware/address_mapped.h" // XIP_BASE
 #include "hardware/structs/scb.h"    // scb_hw->vtor
+#include "hardware/structs/nvic.h"   // nvic_hw->icer/icpr
+#include "hardware/structs/systick.h" // systick_hw->csr
 
 #include <string.h>
+#include <stdio.h>
 
 #include "ota.h"
 
@@ -41,21 +45,32 @@ static void __attribute__((noreturn)) jump_to_app(void) {
     uint32_t msp   = vt[0];
     uint32_t reset = vt[1];
 
+    printf("[boot] saltando a app (vt=0x%08x msp=0x%08x reset=0x%08x)\n",
+           vt_addr, msp, reset);
+
     bool msp_ok   = (msp >= 0x20000000u) && (msp <= 0x20042000u); // RAM (264 KB), tope incluido.
     bool reset_ok = ((reset & 0xFF000000u) == 0x10000000u);      // Flash XIP.
 
     if (!msp_ok || !reset_ok) {
         // Sin imagen válida: entra en modo BOOTSEL (USB) para re-flashear.
+        printf("[boot] sin app valida -> USB\n");
         reset_usb_boot(0, 0);
         for (;;) { __asm volatile ("wfi"); }
     }
 
-    // Deshabilita IRQ y apunta VTOR a la tabla de vectores de la app. La app
-    // re-copiará la tabla a RAM en su runtime_init y volverá a habilitar IRQ.
-    __asm volatile ("cpsid i" : : : "memory");
-    scb_hw->vtor = vt_addr;
+    // Estado equivalente a un reset limpio antes de saltar: deshabilita y limpia
+    // TODAS las IRQ externas y SysTick, apunta VTOR a la tabla de vectores de la
+    // app, y salta con las interrupciones HABILITADAS (PRIMASK=0). Si se dejara
+    // PRIMASK=1 (cpsid i), la app no podría atender la IRQ USB (tud_task corre en
+    // esa IRQ) durante su stdio_init_all() y Windows mostraría "USB no reconocido"
+    // en vez de un puerto COM. La app re-copiará la tabla a RAM en su runtime_init.
+    nvic_hw->icer   = 0xFFFFFFFFu;  // deshabilita IRQ externas 0..31
+    nvic_hw->icpr   = 0xFFFFFFFFu;  // limpia IRQ pendientes
+    systick_hw->csr = 0;            // apaga SysTick (el bootloader no lo usa)
+    scb_hw->vtor    = vt_addr;
     __asm volatile (
         "msr msp, %0\n"
+        "cpsie i\n"                 // PRIMASK=0: interrupciones habilitadas
         "dsb\n"
         "isb\n"
         "bx  %1\n"
@@ -91,9 +106,19 @@ static void flash_copy(uint32_t src_off, uint32_t dst_off, uint32_t len) {
 // Punto de entrada del bootloader
 // -----------------------------------------------------------------------------
 int main() {
+    // Solo UART: el bootloader NO debe inicializar USB CDC. Si lo hiciera, la
+    // app (que también llama stdio_init_all) re-inicializaría el controlador USB
+    // ya activo y Windows mostraría "USB desconocido" en vez de un puerto COM.
+    // El USB lo reserva la app, que es quien lo necesita para el terminal.
+    stdio_uart_init();
+    printf("[boot] inicio\n");
+
     ota_metadata_t meta;
     ota_meta_read(&meta);
     bool meta_ok = ota_meta_valid(&meta);
+
+    printf("[boot] meta valid=%d commit=%u app_len=%u\n",
+           meta_ok, meta.commit_state, meta.app_len);
 
     // --- 1. Commit pendiente: conmutar (o hacer rollback si el staging falla). ---
     if (meta_ok && meta.commit_state == OTA_COMMIT_PENDING) {
@@ -116,6 +141,7 @@ int main() {
             }
             // La copia falló (fallo raro de escritura): se conserva el commit
             // pendiente para reintentar en el próximo arranque y se cae a USB.
+            printf("[boot] copia fallida -> USB\n");
             reset_usb_boot(0, 0);
             for (;;) { __asm volatile ("wfi"); }
         }
@@ -138,6 +164,7 @@ int main() {
         }
         if (app_known) {
             // Imagen comprometida corrupta y sin staging válido: USB.
+            printf("[boot] app corrupta -> USB\n");
             reset_usb_boot(0, 0);
             for (;;) { __asm volatile ("wfi"); }
         }

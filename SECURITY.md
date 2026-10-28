@@ -4,8 +4,8 @@
 
 | Versión | Soportada          |
 | ------- | ------------------ |
-| 0.7.x   | :white_check_mark: |
-| < 0.7   | :x:                |
+| 0.9.x   | :white_check_mark: |
+| < 0.9   | :x:                |
 
 ## Reportar una vulnerabilidad
 
@@ -27,9 +27,13 @@ Incluí:
 
 ## Buenas prácticas de despliegue
 
-- La contraseña del Access Point ya **no es fija**: se deriva del RUID de la Flash
-  (única por placa) o se configura desde `/wifi` (8..15 caracteres) y se persiste.
-  Las credenciales Wi-Fi (STA) también se configuran desde `/wifi`; las macros
+- La contraseña del Access Point tiene una **clave inicial fija `12345678`**
+  (`AP_PASSWORD_DEFAULT` en `include/config.hpp`), igual para cualquier placa. Se
+  puede cambiar desde `/wifi` (8..15 caracteres) y se persiste en Flash. La clave
+  efectiva se muestra en el display OLED (`PASS:xxxx`, línea 7) y por serial
+  (`[web] Modo AP: PicoW-ReactionGame / clave xxxx / IP 192.168.4.1`). El AP usa
+  **WPA2** por defecto (`AP_OPEN 0` en `src/web_server.cpp`). Las credenciales
+  Wi-Fi (STA) también se configuran desde `/wifi`; las macros
   `WIFI_SSID_DEFAULT` / `WIFI_PASSWORD_DEFAULT` (`include/config.hpp`) son solo el
   valor inicial.
 - El panel web ya exige **PIN** (`WEB_PIN`, por defecto `1234`, sobrescribible con

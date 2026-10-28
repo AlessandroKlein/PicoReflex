@@ -116,15 +116,18 @@ Documentación oficial de referencia (carpeta raíz):
 
 ---
 
-## 7. Wi-Fi: `cyw43_arch` en modo *threadsafe background*
+## 7. Wi-Fi: `cyw43_arch` en modo *sys_freertos* (tarea `tcpip`)
 
-- **Decisión:** Se enlaza `pico_cyw43_arch_lwip_threadsafe_background`, que permite
-  usar el driver CYW43 y lwIP desde **ambos núcleos** con servicio en segundo
-  plano automático.
+- **Decisión:** Se enlaza `pico_cyw43_arch_lwip_sys_freertos`, que atiende el
+  driver CYW43 y lwIP en una **tarea dedicada** (`tcpip`) sobre FreeRTOS, accesible
+  desde **ambos núcleos**.
 - **Conectividad:** STA (10 s de timeout) → si falla, SoftAP
-  (`PicoW-ReactionGame` / clave `12345678`, IP `192.168.4.1`, **WPA2 mixto**,
-  **canal 1 fijo**). El LED onboard queda fijo en STA y parpadea en AP. El DHCP del
-  AP lo provee el servidor integrado (ver §21).
+  (`PicoW-ReactionGame` / clave por defecto `12345678` —editable desde `/wifi`
+  (8..15 chars) y persistida en Flash—, IP `192.168.4.1`, **WPA2 mixto**,
+  **canal 1 fijo**). La clave se resuelve en `ap_start()`
+  (`src/web_server.cpp:1067-1083`): si `ap_password` está vacío se usa
+  `AP_PASSWORD_DEFAULT` (`include/config.hpp`). El LED onboard queda fijo en STA y
+  parpadea en AP. El DHCP del AP lo provee el servidor integrado (ver §21).
 - **Referencia:**
   - [pico_cyw43_arch](https://www.raspberrypi.com/documentation/pico-sdk/networking.html#pico_cyw43_arch)
   - `cyw43_arch_wifi_connect_timeout_ms`, `cyw43_arch_enable_ap_mode` en
@@ -132,14 +135,14 @@ Documentación oficial de referencia (carpeta raíz):
 
 ---
 
-## 8. Servidor web: lwIP (API raw) + NO_SYS=1
+## 8. Servidor web: lwIP (API raw) + NO_SYS=0 (con FreeRTOS)
 
 - **Decisión:** Servidor HTTP con la **API raw de lwIP** (`tcp_new`, `tcp_bind`,
   `tcp_listen`, `tcp_accept`, `tcp_recv`, `tcp_write`, `tcp_output`) en modo
-  `NO_SYS=1` (sin sistema operativo).
-- **Por qué:** Es el enfoque de los ejemplos oficiales `pico_w` y evita depender
-  de un RTOS. Las callbacks corren en contexto de IRQ de baja prioridad que
-  `pico_cyw43_arch_lwip_threadsafe_background` atiende automáticamente.
+  `NO_SYS=0` (con sistema operativo FreeRTOS).
+- **Por qué:** Con FreeRTOS, lwIP se atiende en la tarea `tcpip` que
+  `pico_cyw43_arch_lwip_sys_freertos` gestiona automáticamente (ver §30). La API
+  raw se mantiene; solo cambia el modelo de ejecución.
 - **Configuración lwIP:** `lwipopts.h` con `MEM_SIZE=16000`, `PBUF_POOL_SIZE=32`
   y `TCP_SND_BUF=(8*TCP_MSS)`. El buffer de respuesta HTTP es `g_body[8192]`
   (la Home con el CSS nuevo mide ~4.4 KB) y el **stack del Core 1 se amplió a
@@ -456,5 +459,80 @@ Documentación oficial de referencia (carpeta raíz):
 - **Consecuencia:** el mapa de memoria (app en `0x10010000`, bootloader en
   `0x10000000`) queda idéntico al del mecanismo previo de override por `-L`; solo
   cambia *cómo* se resuelven los `INCLUDE`.
+
+## 30. Fix del cuelgue en `cyw43_arch_init()` (tarea tcpip nunca creada)
+
+- **Síntoma:** la app se colgaba en `web::init()` justo después de imprimir
+  `[web] cyw43_arch_init()...`; nunca aparecía `OK`. El LED Wi-Fi no encendía y
+  no se levantaba el AP. Hardware, bootloader y linker quedaron descartados por
+  bisect (blink en el slot de app `0x10010000` funciona).
+- **Causa raíz:** con `pico_cyw43_arch_lwip_sys_freertos`, `cyw43_arch_init()`
+  ejecuta `lwip_freertos_init()` → `tcpip_init()` → `sys_thread_new()` con
+  `TCPIP_THREAD_STACKSIZE`. Nuestro `lwipopts.h` no definía ese macro, y el
+  default de lwIP es `0` (`lwip/opt.h`), por lo que `xTaskCreate` recibía stack
+  0 → la tarea `tcpip_thread` **nunca se creaba** → `xSemaphoreTake(init_sem,
+  portMAX_DELAY)` en `lwip_freertos.c:36` bloqueaba para siempre.
+- **Fix:** en `lwipopts.h`, mantener `NO_SYS 0` y añadir el bloque
+  `#if !NO_SYS` con `TCPIP_THREAD_STACKSIZE 1024`,
+  `DEFAULT_THREAD_STACKSIZE 1024`, `TCPIP_MBOX_SIZE 8` y los `*_RECVMBOX_SIZE 8`
+  (valores del ejemplo oficial `pico_w/wifi/freertos/iperf`). Además se revirtió
+  el cambio previo a `threadsafe_background` (que rompía el arranque por
+  completo): en `CMakeLists.txt` de vuelta a `pico_cyw43_arch_lwip_sys_freertos`,
+  y en `web_server.cpp`/`captive_portal.cpp` se retiraron los wrappers
+  `cyw43_arch_lwip_begin/end` (innecesarios con `sys_freertos`).
+- **Por qué no `threadsafe_background`:** es una variante *sin* tarea tcpip
+  (`NO_SYS=1`, raw API con polling en IRQ de baja prioridad), pensada para
+  bare-metal; con FreeRTOS el arranque se corrompía (ni siquiera imprimía
+  `[main]`). `sys_freertos` es la variante correcta para este firmware.
+
+---
+
+## 31. Salto del bootloader a la app con IRQ habilitadas (fix "USB no reconocido")
+
+- **Síntoma:** al arrancar la app detrás del bootloader, Windows mostraba
+  "dispositivo USB no reconocido" (Code 43): sin puerto COM, LED onboard apagado,
+  chip Wi-Fi frío, serial en blanco. El build standalone (app enlazada en
+  `0x10000000`, sin bootloader) sí enumeraba el COM.
+- **Causa raíz:** `jump_to_app()` (`src/bootloader.c`) hacía `cpsid i` (PRIMASK=1,
+  IRQ enmascaradas) antes de saltar. La app (`main.cpp` → `stdio_init_all`)
+  habilita el controlador USB y su IRQ, pero con PRIMASK=1 la IRQ USB (donde corre
+  `tud_task` de TinyUSB) no puede disparar durante `stdio_init_all()`; el host ve
+  el attach (pull-up) pero nunca recibe descriptor válido → Code 43.
+- **Fix:** `jump_to_app()` replica ahora un reset limpio antes del salto:
+  1. `nvic_hw->icer = 0xFFFFFFFF` (deshabilita las IRQ externas 0..31);
+  2. `nvic_hw->icpr = 0xFFFFFFFF` (limpia las IRQ pendientes);
+  3. `systick_hw->csr = 0` (apaga SysTick);
+  4. `scb_hw->vtor = vt_addr` (tabla de vectores de la app);
+  5. salto con `msr msp, vt[0]` + `cpsie i` (PRIMASK=0) + `dsb`/`isb` + `bx vt[1]`.
+  Al limpiar el NVIC y apagar SysTick **antes** de `cpsie i`, no queda IRQ que
+  pueda dispararse en la ventana entre el VTOR y el `runtime_init` de la app
+  (solo HardFault/NMI no enmascarables, que vectorizan por la tabla válida de la
+  app). `msr msp, vt[0]=0x20042000` replica la carga del SP que hace el reset por
+  hardware; `VTOR=0x10010100` está alineado a 256 B (válido en Cortex-M0+).
+- **Bootloader UART-only:** el bootloader usa `stdio_uart_init()` (sin USB) para
+  que la app sea el único dueño del controlador USB; el salto se hace con el XIP
+  ya configurado por el boot2 del propio bootloader (no hace falta ejecutar el
+  `.boot2` de la app).
+
+---
+
+## 32. Modo dormir configurable (ahorro de energía)
+
+- **Decisión:** el modo DORMANT deja de usar un umbral fijo de 3 minutos y pasa a
+  ser **configurable** con dos campos en `GameConfig` (`include/config.hpp:160-164`):
+  `sleep_enabled` (bool, por defecto `true`) e `idle_sleep_min` (uint32_t, por
+  defecto 3, rango 1..60).
+- **Persistencia:** ambos campos se guardan en Flash
+  (`PersistentData::sleep_enabled` e `PersistentData::idle_sleep_min`,
+  `include/flash_storage.hpp:69-70`). `PERSISTENT_VERSION` sube de 5 a 6
+  (`include/flash_storage.hpp:36`), por lo que el primer arranque tras la
+  actualización **resetea la configuración persistida**.
+- **UI:** la página `/display` añade la card "Modo dormir (ahorro de energía)" con
+  botones Habilitar/Deshabilitar y un campo "Inactividad (minutos)" 1..60
+  (`src/web_ui.cpp:381-398`).
+- **Comportamiento:** el protocolo de dormancia (`src/game_logic.cpp:565-579`) ahora
+  respeta `cfg.sleep_enabled` y `cfg.idle_sleep_min` (antes era `IDLE_SLEEP_AFTER_US`
+  fijo de 3 min). Solo dormita con el Wi-Fi apagado (sin STA ni AP, ver §22);
+  `sleep_enabled=false` desactiva el sueño por completo.
 
 

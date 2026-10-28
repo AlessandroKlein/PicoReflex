@@ -16,7 +16,7 @@ tags:
 > - Credenciales Wi-Fi configurables desde la web y **persistidas en Flash** (1.2 y 2.2).
 > - Re-conexión Wi-Fi en caliente al cambiar credenciales (1.3, parcial).
 > - **Servidor DHCP del AP** (fix "conecta y se desconecta") — `src/dhcpserver.c`.
-> - **AP con WPA2** (clave derivada del RUID o configurable, canal 1) y **captive portal**.
+> - **AP con WPA2** (clave por defecto `12345678` configurable, canal 1) y **captive portal**.
 > - **Stack de la tarea de red = 4 KB** (fix de *hard fault* al guardar/escanear).
 > - **Buffer HTTP 8192 B** (la Home con CSS mide ~4.4 KB).
 > - Frontend con CSS moderno; `/player` eliminado; botón "Buscar redes" eliminado.
@@ -33,7 +33,7 @@ tags:
 > - **Reconexión STA→AP en caliente** (1.3 y 2.3) — `sta_link_watchdog()`.
 > - **mDNS `picoreflex.local`** (1.4) — `LWIP_MDNS_RESPONDER` + `pico_lwip_mdns`.
 > - **Autenticación PIN + rate-limiting** — `WEB_PIN` + cookie/Bearer (SEGURIDAD.md 3.2).
-> - **Clave del AP configurable/persistida** (sin `12345678`) — derivada del RUID (SEGURIDAD.md 3.4).
+> - **Clave del AP configurable/persistida** — por defecto `12345678`, editable desde `/wifi` (SEGURIDAD.md 3.4).
 > - **OTA A/B con bootloader** (1.5) — `POST /ota/upload` + rollback.
 > - **CI endurecido** — `cppcheck` + reporte de tamaño (`target size`).
 

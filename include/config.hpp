@@ -69,6 +69,10 @@
 #ifndef WIFI_PASSWORD_DEFAULT
 #define WIFI_PASSWORD_DEFAULT ""
 #endif
+// Clave por defecto del AP de respaldo (fija y conocida; editable desde /wifi).
+#ifndef AP_PASSWORD_DEFAULT
+#define AP_PASSWORD_DEFAULT "12345678"
+#endif
 
 // =============================================================================
 // Modos de juego
@@ -152,6 +156,12 @@ struct GameConfig {
     // 1 = SH1106. La macro PICOREFLEX_DISPLAY_CONTROLLER solo fija el valor
     // inicial (compilación); este campo es el que manda y se persiste en Flash.
     uint8_t display_controller = PICOREFLEX_DISPLAY_CONTROLLER;
+
+    // Modo dormir (ahorro de energía): tras `idle_sleep_min` minutos sin actividad
+    // (y con el Wi-Fi apagado), el dispositivo entra en reposo. Si sleep_enabled
+    // es false, nunca duerme. Configurable desde /display y persistido en Flash.
+    bool     sleep_enabled  = true;
+    uint32_t idle_sleep_min = 3;   ///< Minutos de inactividad antes de dormir (1..60).
 
     // Credenciales Wi-Fi (configurables desde la web; persistidas en Flash).
     char wifi_ssid[33]     = WIFI_SSID_DEFAULT;

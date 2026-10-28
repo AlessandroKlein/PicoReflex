@@ -31,8 +31,8 @@ Hay dos formas de definir la red Wi-Fi:
 
 Si la conexión a la red falla en 10 s, el dispositivo pasa automáticamente a
 modo **Access Point** (`PicoW-ReactionGame`, IP `192.168.4.1`). La clave del AP
-ya **no es fija**: se deriva del RUID de la Flash o se configura desde `/wifi`
-(ver "Credenciales del Access Point" más abajo).
+es **fija `12345678`** por defecto (igual para cualquier placa) y se puede cambiar
+desde `/wifi` (ver "Credenciales del Access Point" más abajo).
 
 ## Compilar
 
@@ -137,14 +137,14 @@ Cuando la Pico W no logra conectarse a la red STA, levanta su propio Access Poin
 | Campo | Valor |
 |---|---|
 | **Red (SSID)** | `PicoW-ReactionGame` |
-| **Seguridad** | **WPA2** (clave derivada del RUID o configurable desde `/wifi`) |
+| **Seguridad** | **WPA2** (clave por defecto `12345678`, configurable desde `/wifi`) |
 | **IP del panel** | `192.168.4.1` |
 | **Canal** | `1` (fijo) |
 
-> El AP usa **WPA2** con canal fijo 1. La clave **no es fija**: si no se configuró
-> una, se deriva del **RUID de la Flash** (única por placa, 15 caracteres hex) y
-> se muestra en el display al entrar en modo AP; también puede fijarse desde
-> `/wifi` (8..15 caracteres) y se persiste en Flash. El **servidor DHCP integrado**
+> El AP usa **WPA2** con canal fijo 1. La clave por defecto es **fija `12345678`**
+> (igual para cualquier placa) y se muestra en el display al entrar en modo AP
+> (`PASS:xxxx`); se puede cambiar desde `/wifi` (8..15 caracteres) y se persiste
+> en Flash. El **servidor DHCP integrado**
 > (`src/dhcpserver.c`) asigna IPs `192.168.4.16`–`192.168.4.23` a los clientes; sin
 > ese DHCP el teléfono se asociaba pero nunca recibía IP.
 
@@ -169,7 +169,7 @@ Cuando la Pico W no logra conectarse a la red STA, levanta su propio Access Poin
    a 115200 baud. El firmware imprime:
    - `[game] Boton 0 presionado al arrancar -> forzando modo AP`
    - `[web] Intentando STA: ...` o `[web] STA omitido (forzar AP)`
-   - `[web] Modo AP: PicoW-ReactionGame / clave <derivada del RUID> / IP 192.168.4.1`
+   - `[web] Modo AP: PicoW-ReactionGame / clave 12345678 / IP 192.168.4.1`
    - `[web] Conectado a STA, IP ...`
 3. **Esperar:** si no se fuerza AP, la Pico intenta STA durante **10 s** antes de
    levantar el AP. Esperá ~12-15 s desde el encendido.

@@ -33,3 +33,19 @@ Elegir **uno** de los periféricos utilizados en el proyecto y detallar en el in
 
 ### 3. Exposición
 Exponer y presentar el trabajo realizado ante la cátedra.
+
+---
+
+## Estado del firmware (v0.9.0)
+
+> Documentación técnica completa en `docs/` (ver `docs/ARQUITECTURA.md`,
+> `docs/COMPILAR.md` y `docs/DECISIONES.md`).
+
+- **Modo dormir configurable:** desde la web `/display` → card "Modo dormir
+  (ahorro de energía)": botones Habilitar/Deshabilitar + campo "Inactividad
+  (minutos)" (1..60). El dispositivo entra en reposo (DORMANT, < 2 mA) tras ese
+  tiempo sin actividad y con el Wi-Fi apagado; deshabilitado = nunca duerme.
+- **Clave del Access Point:** por defecto es **fija `12345678`** (igual para
+  cualquier placa). Se puede cambiar desde `/wifi` (8..15 caracteres, persistida en
+  Flash). La clave efectiva se ve en el display OLED (`PASS:xxxx`, línea 7) o por
+  serial (`[web] Modo AP: PicoW-ReactionGame / clave xxxx / IP 192.168.4.1`).

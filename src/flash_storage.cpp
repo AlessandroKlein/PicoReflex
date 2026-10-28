@@ -43,10 +43,13 @@ void set_default(PersistentData* d) {
     // Configuración de red/preferencias por defecto (v0.2.0+).
     std::strncpy(d->wifi_ssid, WIFI_SSID_DEFAULT, sizeof(d->wifi_ssid) - 1u);
     std::strncpy(d->wifi_password, WIFI_PASSWORD_DEFAULT, sizeof(d->wifi_password) - 1u);
+    std::strncpy(d->ap_password, AP_PASSWORD_DEFAULT, sizeof(d->ap_password) - 1u);
     d->oled_enabled = 1;
     d->start_delay_s = 3;
     d->batt_calib = BatteryCalibration{};   // Curva por defecto (4200/3700/3000, sin comp.).
     d->display_controller = PICOREFLEX_DISPLAY_CONTROLLER;   // SSD1306 o SH1106.
+    d->sleep_enabled = 1;                    // Modo dormir habilitado por defecto.
+    d->idle_sleep_min = 3;                   // 3 minutos de inactividad.
     update_checksum(d);
 }
 
@@ -65,33 +68,15 @@ void update_checksum(PersistentData* d) {
 }
 
 // -----------------------------------------------------------------------------
-// Clave por defecto del AP (derivada del RUID de la Flash)
+// Clave por defecto del AP (fija, editable desde la web /wifi)
 // -----------------------------------------------------------------------------
-namespace {
-
-// Callback de flash_safe_execute: lee el identificador único de la Flash (RUID).
-void do_read_ruid(void* param) {
-    flash_get_unique_id(static_cast<uint8_t*>(param));
-}
-
-} // namespace
-
-// Deriva una clave única por placa a partir del RUID (8 bytes = 16 nibbles).
-// Se usan 15 nibbles (60 bits) para que quepan en ap_password[16] (15 + '\0').
-// Se ejecuta dentro de flash_safe_execute porque flash_get_unique_id() suspende
-// el XIP (no es seguro con IRQs/otro núcleo ejecutando desde Flash).
+// La clave inicial es una constante de compilación (AP_PASSWORD_DEFAULT) para
+// que cualquier placa arranque con la misma clave conocida. El usuario puede
+// cambiarla desde /wifi y se persiste en Flash (ap_password no vacío).
 void ap_password_default(char* out, size_t n) {
     if (n == 0) return;
-    static const char hex[] = "0123456789abcdef";
-    uint8_t id[FLASH_UNIQUE_ID_SIZE_BYTES] = {0};
-    flash_safe_execute(do_read_ruid, id, 1000);
-
-    size_t chars = (n >= 16u) ? 15u : (n - 1u);
-    for (size_t i = 0; i < chars; i++) {
-        uint8_t nib = (i & 1u) ? (id[i >> 1] & 0x0Fu) : (id[i >> 1] >> 4u);
-        out[i] = hex[nib];
-    }
-    out[chars] = '\0';
+    std::strncpy(out, AP_PASSWORD_DEFAULT, n - 1u);
+    out[n - 1u] = '\0';
 }
 
 // -----------------------------------------------------------------------------

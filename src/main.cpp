@@ -48,7 +48,9 @@ static SemaphoreHandle_t g_game_init_sem;
 // Tarea del juego (equivale al antiguo Core 0)
 // -----------------------------------------------------------------------------
 static void game_task(void*) {
+    printf("[game] init iniciando...\n");
     game::init();                       // GPIO (LEDs/botones), IRQ, DMA, PRNG, Flash.
+    printf("[game] init OK\n");
     xSemaphoreGive(g_game_init_sem);    // Señaliza que el juego ya inicializó.
     game::run();                        // Bucle del juego (bloquea para siempre).
 }
@@ -57,15 +59,19 @@ static void game_task(void*) {
 // Tarea de red (equivale al antiguo Core 1)
 // -----------------------------------------------------------------------------
 static void network_task(void*) {
+    printf("[net] esperando init del juego...\n");
     // Espera a que el juego inicialice (para leer bien el flag "forzar AP").
     xSemaphoreTake(g_game_init_sem, portMAX_DELAY);
+    printf("[net] iniciando red (cyw43_arch_init)...\n");
     web::init();                        // cyw43_arch_init() (sys_freertos) + batería.
+    printf("[net] red inicializada\n");
     web::run();                         // Bucle de red/display (bloquea para siempre).
 }
 
 // -----------------------------------------------------------------------------
 int main() {
     stdio_init_all();
+    printf("\n[main] PicoReflex arrancando\n");
 
     // Diagnóstico de la causa del último reinicio ANTES de re-habilitar el
     // watchdog: watchdog_enable_caused_reboot() distingue un reinicio por timeout

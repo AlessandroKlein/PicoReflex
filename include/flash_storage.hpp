@@ -33,7 +33,7 @@ namespace flash {
 // Cantidad de récords en el ranking (top mejores tiempos).
 #define RANKING_SIZE  5u
 // Versión del formato de PersistentData (se incrementa al cambiar la estructura).
-#define PERSISTENT_VERSION 5u
+#define PERSISTENT_VERSION 6u
 
 // -----------------------------------------------------------------------------
 // Datos persistentes (deben caber en el sector reservado de 4 KB; el guardado
@@ -57,7 +57,7 @@ struct PersistentData {
     // Configuración persistida (v0.2.0+): red y preferencias.
     char     wifi_ssid[33];      ///< SSID Wi-Fi (STA).
     char     wifi_password[65];  ///< Contraseña Wi-Fi (STA).
-    char     ap_password[16];    ///< Clave del AP de respaldo (vacío = derivar del RUID).
+    char     ap_password[16];    ///< Clave del AP de respaldo (vacío = usar AP_PASSWORD_DEFAULT).
     uint8_t  oled_enabled;       ///< 1 = OLED habilitado, 0 = apagado.
     uint32_t start_delay_s;      ///< Retardo de cuenta regresiva (segundos).
 
@@ -65,6 +65,9 @@ struct PersistentData {
     BatteryCalibration batt_calib;
 
     uint8_t  display_controller; ///< 0 = SSD1306, 1 = SH1106 (controlador del OLED).
+
+    uint8_t  sleep_enabled;      ///< 1 = modo dormir habilitado, 0 = deshabilitado.
+    uint32_t idle_sleep_min;     ///< Minutos de inactividad antes de dormir (1..60).
 
     uint32_t checksum;           ///< Suma simple de todos los bytes previos.
 };
@@ -93,9 +96,8 @@ bool save(const PersistentData& d);
 // Calcula y actualiza el checksum de la estructura.
 void update_checksum(PersistentData* d);
 
-// Deriva la clave por defecto del Access Point a partir del identificador único
-// de la Flash (RUID, 8 bytes -> 15 caracteres hexadecimales + '\0'). Es única por
-// placa y se usa cuando ap_password está vacío. `n` debe ser >= 16.
+// Copia la clave por defecto del Access Point (AP_PASSWORD_DEFAULT) a `out`.
+// Se usa cuando ap_password está vacío (placa recién flasheada). `n` >= 1.
 void ap_password_default(char* out, size_t n);
 
 // -----------------------------------------------------------------------------

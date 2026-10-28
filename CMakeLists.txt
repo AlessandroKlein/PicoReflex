@@ -80,13 +80,20 @@ pico_generate_pio_header(PicoReflex ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
 pico_generate_pio_header(PicoReflex ${CMAKE_CURRENT_LIST_DIR}/button_debounce.pio)
 
 pico_set_program_name(PicoReflex "PicoReflex")
-pico_set_program_version(PicoReflex "0.8.1")
+pico_set_program_version(PicoReflex "0.9.0")
 
 # Salida de depuración (printf): USB (CDC) y UART0 (GPIO0=TX, GPIO1=RX, 115200).
 # El USB es el más cómodo (conectar la Pico y abrir el puerto COM a 115200).
 # El UART0 sirve de respaldo con un adaptador USB-serial (FTDI).
 pico_enable_stdio_uart(PicoReflex 1)
 pico_enable_stdio_usb(PicoReflex 1)
+
+# Diagnóstico de bring-up: espera hasta 3 s a que un terminal abra el puerto CDC
+# antes de seguir, para no perder los mensajes de arranque por USB (sin esto, el
+# arranque imprime en los primeros ~10 ms y se pierde si el terminal abre tarde).
+# El UART0 (GPIO0=TX/GPIO1=RX) siempre emite. Se puede quitar en producción si
+# el retardo de arranque molesta.
+target_compile_definitions(PicoReflex PRIVATE PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS=3000)
 
 # Directorios de includes del proyecto (include/ y la raíz para lwipopts.h).
 target_include_directories(PicoReflex PRIVATE
@@ -129,14 +136,21 @@ pico_add_extra_outputs(PicoReflex)
 # ---------------------------------------------------------------------------
 # OTA: bootloader de segundo nivel + relocalización de la aplicación
 # ---------------------------------------------------------------------------
-# La aplicación se enlaza SIEMPRE en el slot de aplicación (0x10010000, 896 KB)
-# para que el bootloader pueda conmutar/volver atrás entre imágenes sin re-vincular.
-# El fichero linker/pico_flash_region.ld sobreescribe la región FLASH del SDK
-# (por defecto ORIGIN=0x10000000, 2 MB). Ver include/ota.h para el mapa completo.
-pico_add_linker_script_override_path(PicoReflex
-    ${CMAKE_CURRENT_LIST_DIR}/linker
-    FILES pico_flash_region.ld
-)
+# Diagnóstico de bring-up: con PICOREFLEX_STANDALONE=ON la app se enlaza en la
+# dirección por defecto del SDK (0x10000000, 2 MB), SIN bootloader ni offset,
+# para flashear la app sola y descartar el camino bootloader+offset.
+option(PICOREFLEX_STANDALONE "Enlazar la app en 0x10000000 sin bootloader (diagnóstico)" OFF)
+
+if(NOT PICOREFLEX_STANDALONE)
+    # La aplicación se enlaza SIEMPRE en el slot de aplicación (0x10010000, 896 KB)
+    # para que el bootloader pueda conmutar/volver atrás entre imágenes sin re-vincular.
+    # El fichero linker/pico_flash_region.ld sobreescribe la región FLASH del SDK
+    # (por defecto ORIGIN=0x10000000, 2 MB). Ver include/ota.h para el mapa completo.
+    pico_add_linker_script_override_path(PicoReflex
+        ${CMAKE_CURRENT_LIST_DIR}/linker
+        FILES pico_flash_region.ld
+    )
+endif()
 
 # Bootloader de segundo nivel (0x10000000, mononúcleo, sin FreeRTOS/lwIP/CYW43):
 # verifica el CRC de la imagen en staging y, si es correcta, la copia al slot de
@@ -157,6 +171,12 @@ target_link_libraries(PicoReflex_bootloader
     hardware_flash
     pico_bootrom   # reset_usb_boot (modo BOOTSEL por USB si no hay app válida)
 )
+
+# El bootloader es UART0-ONLY para el diagnóstico (GPIO0=TX, GPIO1=RX, 115200):
+# NO inicializa USB CDC, de modo que la app pasa a ser el único dueño del
+# controlador USB y lo inicializa limpio (evita "USB no reconocido" en Windows).
+pico_enable_stdio_usb(PicoReflex_bootloader 0)
+pico_enable_stdio_uart(PicoReflex_bootloader 1)
 
 pico_add_extra_outputs(PicoReflex_bootloader)
 

@@ -378,6 +378,25 @@ void render_display(Builder& b) {
     b.append("<button type='submit'>Guardar</button></form>");
     b.append("</div>");
 
+    // Modo dormir: toggle + tiempo de inactividad (persistido en Flash).
+    b.append("<div class='card'><h3>Modo dormir (ahorro de energía)</h3>");
+    b.printf("<p>Estado: <b>%s</b> &middot; Inactividad: <b>%u min</b></p>",
+             cfg.sleep_enabled ? "Habilitado" : "Deshabilitado",
+             (unsigned)cfg.idle_sleep_min);
+    b.append("<p class='muted'>Al quedar inactivo (y sin Wi-Fi conectado), apaga "
+             "los servicios de red para ahorrar batería. Deshabilitado = nunca "
+             "dormir.</p>");
+    b.append("<form method='get' action='/display'>");
+    b.append("<button type='submit' name='sleep' value='1'>Habilitar</button>");
+    b.append("<button type='submit' name='sleep' value='0' class='stop'>Deshabilitar</button>");
+    b.append("</form>");
+    b.append("<form method='get' action='/display'>");
+    b.printf("<label>Inactividad (minutos):</label><input name='idle_min' value='%u' "
+             "inputmode='numeric' pattern='[0-9]*' min='1' max='60'><br>",
+             (unsigned)cfg.idle_sleep_min);
+    b.append("<button type='submit'>Guardar</button></form>");
+    b.append("</div>");
+
     render_footer(b);
 }
 

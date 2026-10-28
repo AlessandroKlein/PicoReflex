@@ -62,7 +62,7 @@
 | `controller` | `/display` | entero | 0 = SSD1306 (0.96"), 1 = SH1106 (1.3") | Controlador de display (se persiste en Flash) |
 | `ssid` | `/wifi` | texto | ≤ 32 chars | SSID de la red Wi-Fi (STA) |
 | `pass` | `/wifi` | texto | ≤ 64 chars | Contraseña de la red Wi-Fi (STA) |
-| `ap_pass` | `/wifi` | texto | 8..15 chars (vacío = derivar del RUID) | Clave del AP de respaldo (WPA2) |
+| `ap_pass` | `/wifi` | texto | 8..15 chars (vacío = `12345678` por defecto) | Clave del AP de respaldo (WPA2) |
 | `vfull` | `/battery` | entero | mV | Tensión de batería al 100 % (def. 4200) |
 | `vmid` | `/battery` | entero | mV | Tensión al 50 % (def. 3700) |
 | `vempty` | `/battery` | entero | mV | Tensión al 0 % (def. 3000) |

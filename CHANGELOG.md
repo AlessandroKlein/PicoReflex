@@ -4,6 +4,48 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.9.0] - 2026-10-28
+
+### Añadido
+- **Modo dormir configurable**: `GameConfig::sleep_enabled` (bool, por defecto
+  `true`) e `idle_sleep_min` (minutos, 1..60, por defecto 3) en `include/config.hpp`;
+  card "Modo dormir (ahorro de energía)" en `/display` (Habilitar/Deshabilitar +
+  campo Inactividad). El protocolo de dormancia (`src/game_logic.cpp`) respeta estos
+  valores (antes era un umbral fijo de 3 min) y solo dormita con el Wi-Fi apagado;
+  `sleep_enabled=false` desactiva el sueño. Persistido en Flash
+  (`PersistentData::sleep_enabled`/`idle_sleep_min`).
+
+### Arreglado
+- **Cuelgue en `cyw43_arch_init()`**: `lwipopts.h` no definía `TCPIP_THREAD_STACKSIZE`
+  (default lwIP `0`) y la tarea `tcpip_thread` nunca se creaba. Se añade el bloque
+  `#if !NO_SYS` con `TCPIP_THREAD_STACKSIZE 2560` (y `DEFAULT_THREAD_STACKSIZE`,
+  `TCPIP_MBOX_SIZE`, `*_RECVMBOX_SIZE`); de vuelta a `pico_cyw43_arch_lwip_sys_freertos`
+  (ver `docs/DECISIONES.md` §30).
+- **"USB no reconocido" tras el bootloader**: `jump_to_app()` saltaba con IRQ
+  enmascaradas (`cpsid i`); ahora replica un reset limpio (limpia NVIC/SysTick,
+  fija VTOR, `cpsie i`) antes del salto (ver `docs/DECISIONES.md` §31).
+- **Reset por watchdog al conectar un cliente al AP**: `src/web_server.cpp`
+  (`ap_dhcp_start`/`ap_dhcp_stop`/`http_server_init`) y `src/captive_portal.cpp`
+  (`captive::init`/`stop`) usaban la API raw de lwIP (`udp_new`/`udp_bind`/`udp_recv`/
+  `udp_remove`) sin `cyw43_arch_lwip_begin()`/`cyw43_arch_lwip_end()`, lo que bajo
+  `NO_SYS=0` disparaba una aserción de lwIP y el watchdog reiniciaba el firmware al
+  conectar un cliente al AP. Ahora están envueltos en begin/end y
+  `TCPIP_THREAD_STACKSIZE` sube a 2560.
+
+### Cambiado
+- **Clave del AP vuelve a ser FIJA `12345678`** (`AP_PASSWORD_DEFAULT` en
+  `include/config.hpp`), igual para cualquier placa, editable desde `/wifi`
+  (8..15 chars) y persistida en Flash. Se revierte la derivación del RUID de v0.7.0
+  (a petición del usuario).
+- `PersistentData` versión 6 (modo dormir): el primer arranque tras la actualización
+  **resetea la configuración persistida**.
+
+### Documentado
+- `docs/DECISIONES.md`: §7 (clave del AP por defecto) y nueva §32 (modo dormir).
+- `SECURITY.md`, `docs/SEGURIDAD.md` (§3.4), `docs/COMPILAR.md`, `docs/API.md` y
+  `docs/ROADMAP.md`: corregido "derivada del RUID" → clave fija `12345678`.
+- `README.md`: nota de modo dormir y clave del AP.
+
 ## [0.8.1] - 2026-10-22
 
 ### Arreglado

@@ -14,8 +14,8 @@
 > - ✅ `smin`/`smax` acotados y ordenados (clamp 50..60000 ms).
 > - ✅ Credenciales STA ya no son solo macros: se configuran desde la web y se
 >   persisten en Flash (siguen en texto plano, ver 3.3).
-> - ✅ **Clave del AP por defecto `12345678` eliminada** (v0.7.0): se deriva del
->   RUID de la Flash o se configura desde `/wifi` y se persiste (ver 3.4).
+> - ✅ **Clave del AP `12345678` eliminada en v0.7.0** (se derivaba del RUID);
+>   **restablecida como clave fija en v0.9.0**, editable desde `/wifi` (ver 3.4).
 > - ✅ **Autenticación PIN + rate-limiting** en los endpoints de control (ver 3.2).
 
 ---
@@ -27,7 +27,7 @@
 | 🔴 Alta | Reflected/Stored XSS vía parámetro `name` sin escapar | `web_server.cpp:268` |
 | ✅ Resuelta | Endpoints sin autenticación ni rate-limiting | `web_server.cpp` (v0.7.0) |
 | 🟠 Media | Credenciales Wi-Fi (STA) compiladas en el firmware | `web_server.hpp:30,33` |
-| ✅ Resuelta | Contraseña del AP por defecto `12345678` | derivada del RUID (v0.7.0) |
+| 🟠 Media | Contraseña del AP por defecto `12345678` | configurable desde `/wifi` (v0.9.0) |
 | 🟡 Baja | Sin TLS (HTTP plano) en el panel web | `web_server.cpp` |
 | 🟡 Baja | `smin`/`smax` sin cota superior ni `smin ≤ smax` | `web_server.cpp:165-168` |
 | 🟡 Baja | Flash sin cifrar + checksum no criptográfico | `flash_storage.cpp` |
@@ -89,18 +89,20 @@ desborde de búfer del DNS fue corregido (búfer `resp[160]` + chequeo defensivo
 - **Mitigación:** cifrar el campo en Flash (AES de `pico_mbedtls`) con clave
   derivada del RUID, o al menos evitar exponerlas en el binario.
 
-### 3.4 ✅ Resuelto — Contraseña del Access Point por defecto `12345678`
+### 3.4 🟠 Contraseña del Access Point por defecto `12345678` (configurable)
 
-- **Estado:** **RESUELTO** en v0.7.0. Ya **no hay clave hardcodeada**: si el campo
-  `ap_password` está vacío, la clave WPA2 del AP de respaldo se deriva del **RUID
-  de la Flash** (identificador único por placa, 15 caracteres hex) mediante
-  `flash::ap_password_default()`.
+- **Estado (v0.9.0):** la clave del AP es **fija `12345678`** por defecto
+  (`AP_PASSWORD_DEFAULT` en `include/config.hpp`), igual para cualquier placa.
+  `ap_start()` (`src/web_server.cpp:1067-1083`) la aplica si `ap_password` está
+  vacío. WPA2 por defecto (`AP_OPEN 0`).
 - **Configuración:** desde `/wifi` se puede fijar una clave propia (8..15
   caracteres), que se persiste en Flash (`PersistentData.ap_password`). La clave
-  se muestra en el display en modo AP para poder conectarse.
-- **Historial:** entre v0.2.5 y v0.4.3 el AP estuvo abierto (sin clave) por un
-  falso positivo de compatibilidad; en v0.4.4 volvió a WPA2 con `12345678`.
-  v0.7.0 elimina la clave fija (CWE-521 / CWE-798 cerradas).
+  efectiva se muestra en el display OLED (`PASS:xxxx`, línea 7) y por serial
+  (`[web] Modo AP: PicoW-ReactionGame / clave xxxx / IP 192.168.4.1`).
+- **Historial:** entre v0.2.5 y v0.4.3 el AP estuvo abierto (sin clave); en v0.4.4
+  volvió a WPA2 con `12345678`. v0.7.0 derivó la clave del RUID (CWE-521/CWE-798
+  cerradas); v0.9.0 la **restablece como fija** a petición del usuario. El riesgo
+  de clave débil se mitiga cambiándola desde `/wifi`.
 
 ### 3.5 🟡 HTTP sin TLS (texto plano)
 
@@ -209,8 +211,8 @@ Revisión punto por punto (`web_server.cpp:151-178`):
 
 ### Esfuerzo medio
 
-5. ~~**Contraseña del AP configurable**~~ ✅ **HECHO en v0.7.0** — derivada del
-   RUID o editable desde `/wifi` y persistida (ver 3.4).
+5. **Contraseña del AP configurable** — ✅ **HECHO**: editable desde `/wifi`
+   (8..15 chars) y persistida; el valor por defecto es `12345678` (ver 3.4).
 6. ~~**Autenticación mínima (PIN/token)**~~ ✅ **HECHO en v0.7.0** — PIN + cookie/
    Bearer en los endpoints de control (ver 3.2).
 7. **Mover credenciales STA a Flash** (configurables desde el AP) en lugar de

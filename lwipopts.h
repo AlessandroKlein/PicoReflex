@@ -61,6 +61,26 @@
 #define DHCP_DOES_ARP_CHECK         0
 #define LWIP_DHCP_DOES_ACD_CHECK    0
 
+// Configuración REQUERIDA para NO_SYS=0 (pico_cyw43_arch_lwip_sys_freertos):
+// lwIP corre en su tarea tcpip de FreeRTOS. Sin esto, lwIP usa los defaults 0
+// de TCPIP_THREAD_STACKSIZE y TCPIP_MBOX_SIZE: xTaskCreate(stack 0) falla y la
+// tarea tcpip jamás se crea, por lo que cyw43_arch_init() queda bloqueado para
+// siempre en xSemaphoreTake(init_sem). Valores del ejemplo oficial pico-examples
+// (pico_w/wifi/freertos/iperf/lwipopts.h).
+#if !NO_SYS
+// TCPIP_THREAD_STACKSIZE=2560 (no 1024): dhcp_server_process() corre en el hilo
+// tcpip y declara dhcp_msg_t dhcp_msg (~548 B) + char hostname[32] + printf() +
+// cadena udp_sendto_if()/pbuf_alloc(). Con 1024 B el stack del hilo tcpip se
+// desborda y corrompe memoria -> reset por watchdog al asociar un cliente.
+#define TCPIP_THREAD_STACKSIZE      2560
+#define DEFAULT_THREAD_STACKSIZE    1024
+#define TCPIP_MBOX_SIZE             8
+#define DEFAULT_RAW_RECVMBOX_SIZE   8
+#define DEFAULT_UDP_RECVMBOX_SIZE   8
+#define DEFAULT_TCP_RECVMBOX_SIZE   8
+#define DEFAULT_ACCEPTMBOX_SIZE     8
+#endif
+
 #ifndef NDEBUG
 #define LWIP_DEBUG                  1
 #define LWIP_STATS                  1

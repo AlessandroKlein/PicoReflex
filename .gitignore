@@ -1,4 +1,5 @@
 build
+build_standalone/
 !.vscode/*
 # Artefactos del test del frontend (tools/web_preview)
 web_preview.exe

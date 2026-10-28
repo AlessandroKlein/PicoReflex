@@ -101,11 +101,10 @@ static bool g_persist_dirty = false;   ///< true si hay que escribir a Flash.
 // -----------------------------------------------------------------------------
 // Modo de bajo consumo (DORMANT, < 2 mA)
 // -----------------------------------------------------------------------------
-// Tras IDLE_SLEEP_AFTER_US sin actividad, el Core 0 inicia el protocolo de
-// dormancia: pide al Core 1 que apague el Wi-Fi (cyw43_arch_deinit) y, cuando
-// responde, entra en modo DORMANT con wake por GPIO (cualquier pulsador).
-// Ver low_power_dormant_until_gpio_pin_state() en pico/low_power.h.
-#define IDLE_SLEEP_AFTER_US   (3u * 60u * 1000000u)  ///< 3 minutos.
+// Tras idle_sleep_min minutos de inactividad (configurable desde /display y
+// persistido en Flash), el Core 0 inicia el protocolo de dormancia: pide al
+// Core 1 que apague el Wi-Fi (cyw43_arch_deinit) y, cuando responde, entra en
+// reposo. Si sleep_enabled es false, nunca duerme.
 #define IDLE_WAKE_PERIOD_MS   50u                    ///< Despertar periódico (fallback).
 #define SLEEP_READY_TIMEOUT_MS 1000u                 ///< Timeout del handshake.
 
@@ -214,6 +213,8 @@ static void apply_persist_to_config() {
     cfg.ap_password[sizeof(cfg.ap_password) - 1u] = '\0';
     cfg.oled_enabled = (g_persist.oled_enabled != 0);
     cfg.display_controller = g_persist.display_controller;
+    cfg.sleep_enabled = (g_persist.sleep_enabled != 0);
+    cfg.idle_sleep_min = g_persist.idle_sleep_min;
     cfg.start_delay_s = g_persist.start_delay_s;
     cfg.batt_calib = g_persist.batt_calib;
     std::strncpy(cfg.user_name, g_persist.user_name, sizeof(cfg.user_name) - 1u);
@@ -232,6 +233,8 @@ static void sync_config_to_persist() {
     g_persist.ap_password[sizeof(g_persist.ap_password) - 1u] = '\0';
     g_persist.oled_enabled = cfg.oled_enabled ? 1 : 0;
     g_persist.display_controller = cfg.display_controller;
+    g_persist.sleep_enabled = cfg.sleep_enabled ? 1 : 0;
+    g_persist.idle_sleep_min = cfg.idle_sleep_min;
     g_persist.start_delay_s = cfg.start_delay_s;
     g_persist.batt_calib = cfg.batt_calib;
     std::strncpy(g_persist.user_name, cfg.user_name, sizeof(g_persist.user_name) - 1u);
@@ -559,8 +562,10 @@ void run() {
                     g_last_activity_us = time_us_32();
                     start_with_countdown(cfg);
                 }
-            } else if ((time_us_32() - g_last_activity_us) > IDLE_SLEEP_AFTER_US) {
-                // Tras 3 minutos sin actividad, entra en modo DORMANT (< 2 mA),
+            } else if (cfg.sleep_enabled &&
+                       (uint64_t)(uint32_t)(time_us_32() - g_last_activity_us) >
+                           (uint64_t)cfg.idle_sleep_min * 60u * 1000000ull) {
+                // Tras idle_sleep_min minutos sin actividad, entra en reposo,
                 // PERO solo si el Wi-Fi está apagado: con la web activa (STA o AP)
                 // hay que mantener el servidor HTTP accesible. Si el handshake con
                 // el Core 1 falla, cae en un WFI como respaldo.
