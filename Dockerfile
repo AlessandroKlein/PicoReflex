@@ -10,7 +10,7 @@
 #   docker run --rm -v "${PWD}:/project" picoreflex-build cmake --build build
 #   # el .uf2 queda en ./build/
 #
-# Ver también: .github/workflows/build.yml (CI) y docker-compose.yml.
+# Ver también: .github/workflows/ci.yml (CI) y docker-compose.yml.
 
 FROM debian:bookworm-slim
 
