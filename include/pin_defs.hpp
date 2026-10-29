@@ -58,8 +58,12 @@
 #define I2C_DISPLAY_SCL  15u         ///< GPIO SCL del display.
 #define I2C_BAUDRATE     400u * 1000u ///< 400 kHz (fast mode).
 
-#define OLED_ADDR        0x3Cu       ///< Dirección I2C por defecto del SSD1306.
-#define OLED_ADDR_ALT    0x3Du       ///< Dirección alternativa (común en clones).
+// Direcciones I2C del panel en notación de 7 bits (la que usa el SDK RP2040).
+// Los fabricantes de módulos 1.3" suelen publicarlas como 8 bits (7-bit << 1):
+//   0x3C = 0x78,  0x3D = 0x7A.
+// i2c_write_blocking() toma la forma de 7 bits, por eso aquí va 0x3C/0x3D.
+#define OLED_ADDR        0x3Cu       ///< Dirección I2C por defecto del SSD1306 (8-bit: 0x78).
+#define OLED_ADDR_ALT    0x3Du       ///< Dirección alternativa (común en clones) (8-bit: 0x7A).
 #define OLED_WIDTH       128u        ///< Ancho en píxeles.
 #define OLED_HEIGHT      64u         ///< Alto en píxeles.
 #define OLED_PAGES       (OLED_HEIGHT / 8u) ///< 8 páginas de 8 filas cada una.
