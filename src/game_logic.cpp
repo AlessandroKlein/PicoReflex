@@ -440,14 +440,25 @@ static uint32_t simon_tone(uint i) {
     return tones[i % LED_COUNT];
 }
 
-// Intervalo de presentación de la secuencia según dificultad (ms).
-// Cuanto mayor la dificultad, más rápido se muestra ("aceleran los patrones").
-static uint32_t simon_show_interval_ms(Difficulty d) {
+// Intervalo base de presentación de la secuencia según dificultad (ms).
+static uint32_t simon_base_interval_ms(Difficulty d) {
     switch (d) {
         case Difficulty::EASY:   return 700u;
         case Difficulty::HARD:   return 300u;
         default:                 return 450u;   // NORMAL
     }
+}
+
+// Intervalo efectivo de presentación: acelera a medida que la secuencia crece
+// ("el patrón se vuelve cada vez más rápido"), con un suelo del 40 % del base
+// para que los LEDs sigan siendo distinguibles.
+static uint32_t simon_show_interval_ms(Difficulty d) {
+    uint32_t interval = simon_base_interval_ms(d);
+    uint32_t floor_   = interval * 2u / 5u;
+    for (uint32_t i = 1; i < g_seq_length && interval > floor_; i++) {
+        interval -= interval / 25u;   // -4 % por elemento de secuencia.
+    }
+    return interval;
 }
 
 // Muestra la secuencia completa (enciende cada LED + su tono).
