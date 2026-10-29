@@ -1,8 +1,25 @@
+# --- Carpetas de salida / build ---
 build
 build_standalone/
-!.vscode/*
-# Artefactos del test del frontend (tools/web_preview)
+docs/html/
+
+# --- Editor / IDE (config local, no forma parte del firmware) ---
+.vscode/
+.idea/
+
+# --- Artefactos del test del frontend (tools/web_preview) ---
 web_preview.exe
 web_preview_*.html
-# Estado interno del equipo de agentes (no forma parte del firmware)
+
+# --- Basura de sistema operativo ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Temporales y locks ---
+*.tmp
+*.zip
+~$*
+
+# --- Estado interno del equipo de agentes (no forma parte del firmware) ---
 .agent-teams/
