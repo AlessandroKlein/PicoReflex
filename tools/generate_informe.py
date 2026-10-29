@@ -23,10 +23,23 @@ def code_block(doc, text):
 
 doc = Document()
 
-# Estilo base
+# Estilo base: cuerpo en Inter (APA 7.ª ed.).
 style = doc.styles["Normal"]
-style.font.name = "Calibri"
+style.font.name = "Inter"
 style.font.size = Pt(11)
+# Cuerpo uniforme en Inter: forzamos también w:cs (w:ascii/hAnsi ya los fija .name).
+style._element.rPr.rFonts.set(qn("w:cs"), "Inter")
+
+
+def add_reference(doc, text):
+    """Agrega una referencia APA 7 con sangría francesa (0.5 in)."""
+    p = doc.add_paragraph()
+    p.paragraph_format.left_indent = Pt(36)
+    p.paragraph_format.first_line_indent = Pt(-36)
+    p.paragraph_format.space_after = Pt(6)
+    p.add_run(text)
+    return p
+
 
 # ---- Título ----
 t = doc.add_heading("PicoReflex — Informe Técnico", level=0)
@@ -43,22 +56,30 @@ doc.add_paragraph(
 doc.add_heading("1. En qué consiste el proyecto", level=1)
 doc.add_paragraph(
     "PicoReflex es un dispositivo de entrenamiento de reflejos (juego de reacción) "
-    "construido sobre una Raspberry Pi Pico W. El sistema enciende de forma aleatoria "
-    "uno de cinco LEDs y mide, con resolución de microsegundos, el tiempo que tarda el "
-    "jugador en pulsar el botón asociado a ese LED."
+    "construido sobre una Raspberry Pi Pico W (Raspberry Pi Ltd, 2023). El sistema "
+    "enciende de forma aleatoria uno de cinco LEDs y mide, con resolución de "
+    "microsegundos, el tiempo que tarda el jugador en pulsar el botón asociado a ese LED."
 )
 doc.add_paragraph(
-    "Incluye tres modos de juego (entrenamiento libre, contrarreloj y muerte súbita) y "
-    "tres niveles de dificultad (tolerancia de 1000 / 500 / 250 ms). La secuencia de LEDs "
-    "puede generarse con una semilla fija (reproducible) o aleatoria. Todo el dispositivo "
-    "es configurable y supervisable desde un servidor web embebido (Wi-Fi, lwIP) sin "
-    "recompilar el firmware, y soporta actualización de firmware por aire (OTA A/B con "
-    "rollback)."
+    "Incluye cuatro modos de juego (entrenamiento libre, contrarreloj, muerte súbita y "
+    "Simón Dice) y tres niveles de dificultad (tolerancia de 1000 / 500 / 250 ms). La "
+    "secuencia de LEDs puede generarse con una semilla fija (reproducible) o aleatoria. "
+    "Todo el dispositivo es configurable y supervisable desde un servidor web embebido "
+    "(Wi-Fi, lwIP) sin recompilar el firmware, y soporta actualización de firmware por "
+    "aire (OTA A/B con rollback)."
 )
 doc.add_paragraph(
-    "El firmware usa FreeRTOS en dos núcleos: el núcleo 0 ejecuta la lógica del juego "
-    "(máquina de estados, temporización por interrupción y PRNG) y el núcleo 1 gestiona "
-    "la red (Wi-Fi/AP), el servidor web y el refresco del display OLED."
+    "El firmware usa FreeRTOS (Real Time Engineers Ltd, n.d.) en dos núcleos: el núcleo 0 "
+    "ejecuta la lógica del juego (máquina de estados, temporización por interrupción y "
+    "PRNG) y el núcleo 1 gestiona la red (Wi-Fi/AP), el servidor web y el refresco del "
+    "display OLED."
+)
+doc.add_paragraph(
+    "El modo de juego, la dificultad y la semilla se persisten en Flash (formato v7), de "
+    "modo que al reiniciar se recupera la configuración anterior en lugar de volver a los "
+    "valores por defecto. El controlador del display OLED —SSD1306 (0.96\") o SH1106 "
+    "(1.3\")— se selecciona en runtime desde la interfaz web y también se persiste. Desde "
+    "el estado de reposo, la ronda arranca pulsando cualquiera de los cinco botones."
 )
 
 # ---- 2. Qué lleva el proyecto (componentes) ----
@@ -66,10 +87,10 @@ doc.add_heading("2. Componentes del proyecto", level=1)
 doc.add_paragraph("El hardware se compone de los siguientes elementos:")
 
 components = [
-    ("Raspberry Pi Pico W", "RP2040 (doble núcleo Cortex-M0+) + chip inalámbrico CYW43 (Wi-Fi 2.4 GHz)."),
+    ("Raspberry Pi Pico W", "RP2040 (doble núcleo Cortex-M0+, Raspberry Pi Ltd, 2024) + chip inalámbrico CYW43 (Wi-Fi 2.4 GHz, Infineon Technologies, n.d.)."),
     ("5 LEDs indicadores", "GPIO 2–6, con resistencia limitadora de 330 Ω en serie (ánodo a GPIO, cátodo a GND)."),
     ("5 pulsadores", "GPIO 7–11, entrada digital con pull-up interno (~50 kΩ) y debounce por PIO (flanco de bajada)."),
-    ("Display OLED 128×64", "I2C1 (SDA=GPIO14, SCL=GPIO15, 400 kHz, dirección 0x3C/0x3D). Compatible SSD1306 (0.96\") y SH1106 (1.3\")."),
+    ("Display OLED 128×64", "I2C1 (SDA=GPIO14, SCL=GPIO15, 400 kHz, dirección 0x3C/0x3D). Compatible SSD1306 (0.96\", Solomon Systech, 2008) y SH1106 (1.3\", Sino Wealth, n.d.)."),
     ("Buzzer pasivo", "GPIO16, tonos por PWM (acierto, fallo, cuenta regresiva y game over)."),
     ("Medición de batería", "GPIO26 (ADC0) con divisor resistivo externo 10 kΩ / 22 kΩ para LiPo 1S (3.0–4.2 V)."),
     ("LED onboard", "Controlado por el CYW43, indica el estado de la conexión Wi-Fi."),
@@ -100,6 +121,15 @@ code_block(doc, """  LED 1 ──[330 Ω]── GPIO2          GPIO7  ──[P1]
 
 doc.add_paragraph()
 
+# Esquema circuital completo (PNG rasterizado a partir de docs/img/Schematic.svg).
+doc.add_picture("docs/img/Schematic.png", width=Pt(450))
+doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
+cap = doc.add_paragraph()
+cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
+_cr = cap.add_run("Figura 1. Esquema circuital del PicoReflex (Schematic.svg).")
+_cr.italic = True
+_cr.font.size = Pt(9)
+
 table = doc.add_table(rows=1, cols=3)
 table.style = "Light Grid Accent 1"
 hdr = table.rows[0].cells
@@ -124,8 +154,9 @@ p = doc.add_paragraph()
 r = p.add_run("Nota de alimentación: ")
 r.bold = True
 p.add_run(
-    "el display OLED es de 3.3 V. Conectar VCC → 3V3(OUT) (pin 36) y GND → GND; "
-    "nunca a VBUS (5 V), que puede dañar el módulo y llevar 5 V a los GPIO14/15."
+    "el fabricante del módulo OLED indica un rango de 3.3–5 V, pero se recomienda "
+    "VCC → 3V3(OUT) (pin 36) y GND → GND: alimentar a 5 V (VBUS, pin 40) puede llevar "
+    "5 V a los GPIO14/15 (I2C) a través de los pull-up y dañar el RP2040."
 )
 
 # ---- 4. Problemas y soluciones ----
@@ -190,12 +221,43 @@ problems = [
      "defecto físico del módulo (charge-pump/DC-DC muerto o flex agrietado), no reparable "
      "por software; se documentó el método de diagnóstico para separar este caso del de "
      "RAM/direccionamiento."),
+    ("Modo y dificultad volvían a los valores por defecto al reiniciar",
+     "Solo se persistían el nombre, el ranking y las credenciales Wi-Fi. Se amplió el "
+     "formato de Flash (PersistentData v6→v7) con game_mode, game_difficulty, seed, "
+     "round_seconds y stimulus_min/max, restaurados al arrancar; además, el disparador de "
+     "inicio acepta ahora cualquiera de los cinco botones desde el estado de reposo."),
 ]
 for i, (title, body) in enumerate(problems, 1):
     p = doc.add_paragraph()
     r = p.add_run(f"{i}. {title}")
     r.bold = True
     doc.add_paragraph(body).paragraph_format.space_after = Pt(8)
+
+# ---- Referencias (APA 7.ª ed.) ----
+doc.add_heading("Referencias", level=1)
+referencias = [
+    "Dunkels, A. (2001). *lwIP — A lightweight TCP/IP stack*. https://savannah.nongnu.org/projects/lwip/",
+    "Infineon Technologies. (n.d.). *CYW43439: Single-chip IEEE 802.11 b/g/n wireless LAN and Bluetooth 5.1 combo*. https://www.infineon.com/",
+    "Raspberry Pi Ltd. (2023). *Raspberry Pi Pico W datasheet*. https://datasheets.raspberrypi.com/picow/pico-w-datasheet.pdf",
+    "Raspberry Pi Ltd. (2024). *RP2040 datasheet: A microcontroller by Raspberry Pi*. https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf",
+    "Raspberry Pi Ltd. (2025). *Pico SDK documentation* (versión 2.3.0). https://www.raspberrypi.com/documentation/pico-sdk/",
+    "Raspberry Pi Ltd. (2025). *Pico SDK: hardware_pwm* (PWM para buzzer pasivo). https://www.raspberrypi.com/documentation/pico-sdk/hardware.html#hardware_pwm",
+    "Real Time Engineers Ltd. (n.d.). *FreeRTOS: Real-time operating system for microcontrollers*. https://www.freertos.org/",
+    "Sino Wealth. (n.d.). *SH1106: 132 × 64 dot matrix OLED/PLED segment/common driver with controller*. https://www.displayfuture.com/Display/datasheet/controller/SH1106.pdf",
+    "Solomon Systech. (2008). *SSD1306: 128 × 64 dot matrix OLED/PLED segment/common driver with controller* (Rev. 2.2). https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf",
+]
+for ref in referencias:
+    add_reference(doc, ref)
+
+# ---- Aclaración sobre el uso de inteligencia artificial ----
+doc.add_heading("Aclaración sobre el uso de inteligencia artificial", level=1)
+doc.add_paragraph(
+    "Se deja constancia de que se utilizó una herramienta de inteligencia artificial "
+    "como asistencia para el formato y la presentación del documento, así como para la "
+    "revisión y corrección ortográfica y gramatical del texto. El contenido técnico, los "
+    "cálculos, las ecuaciones y las comparaciones se presentan conforme al desarrollo del "
+    "trabajo práctico y a los análisis realizados."
+)
 
 doc.save("Informe_PicoReflex.docx")
 print("OK -> Informe_PicoReflex.docx")

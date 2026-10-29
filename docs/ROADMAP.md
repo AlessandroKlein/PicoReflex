@@ -55,6 +55,8 @@ tags:
 >   (`PERSISTENT_VERSION` 7); ya no vuelve a `FREE_PLAY` al reiniciar.
 > - **Arranque con cualquier botón** — reemplaza el disparador de dos botones
 >   simultáneos (`two_buttons_pressed()` eliminada).
+> - **Modo por defecto = Simón Dice** — al instalar, arranca en `SIMON_SAYS`
+>   (antes `FREE_PLAY`); el resto de modos sigue disponible desde `/game`.
 
 Esta hoja de ruta surge del análisis del código actual (módulos `game_logic`,
 `web_server`, `battery_monitor`, `display_driver`, `flash_storage`, `audio`,

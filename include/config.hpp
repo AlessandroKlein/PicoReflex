@@ -128,7 +128,7 @@ struct GameConfig {
     Difficulty difficulty = Difficulty::NORMAL;
 
     // Modo de juego actual.
-    GameMode mode = GameMode::FREE_PLAY;
+    GameMode mode = GameMode::SIMON_SAYS;
 
     // Duración de la ronda (solo relevante en modo TIMED), en segundos.
     uint32_t round_seconds = 30;

@@ -4,6 +4,16 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.9.6] - 2026-10-29
+
+### Cambiado
+- **Modo por defecto de fábrica = Simón Dice (`SIMON_SAYS`)**: al instalar, el
+  firmware arranca en Simón Dice en lugar de Entrenamiento libre. Sigue siendo
+  seleccionable desde `/game` (y persistido en Flash); solo cambia el valor por
+  defecto de `GameConfig.mode` y de `PersistentData.game_mode` (ver
+  `docs/DECISIONES.md` §36). Sin cambios de `PERSISTENT_VERSION` (sigue 7): quien
+  ya tenga otro modo persistido lo conserva y puede cambiarlo desde `/game`.
+
 ## [0.9.5] - 2026-10-29
 
 ### Arreglado

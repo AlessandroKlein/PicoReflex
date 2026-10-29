@@ -597,4 +597,18 @@ Documentación oficial de referencia (carpeta raíz):
   presionar dos botones exactamente a la vez; la cuenta regresiva de `start_delay_s`
   se mantiene como red de seguridad contra arranques accidentales.
 
+---
+
+## 36. Modo por defecto de fábrica = Simón Dice (SIMON_SAYS)
+
+- **Decisión:** el valor por defecto de `GameConfig.mode` (y de
+  `PersistentData.game_mode` al inicializar en Flash) pasa de `FREE_PLAY` a
+  `SIMON_SAYS`. Son dos líneas: `include/config.hpp` (`GameMode mode =
+  GameMode::SIMON_SAYS`) y `src/flash_storage.cpp` (`set_default()`).
+- **Por qué:** Simón Dice es el modo más demostrativo para una primera impresión
+  (secuencia de memoria con LEDs, ideal para ferias/demos); el resto de modos siguen
+  disponibles desde `/game`. No cambia `PERSISTENT_VERSION` (sigue 7): un usuario con
+  datos v7 conserva Wi-Fi/ranking, y quien tenga otro modo persistido lo cambia una
+  vez desde `/game`.
+
 

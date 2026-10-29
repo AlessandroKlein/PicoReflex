@@ -53,7 +53,7 @@ void set_default(PersistentData* d) {
     d->sleep_enabled = 1;                    // Modo dormir habilitado por defecto.
     d->idle_sleep_min = 3;                   // 3 minutos de inactividad.
     // Configuración del juego (defaults de GameConfig).
-    d->game_mode = static_cast<uint8_t>(GameMode::FREE_PLAY);
+    d->game_mode = static_cast<uint8_t>(GameMode::SIMON_SAYS);
     d->game_difficulty = static_cast<uint8_t>(Difficulty::NORMAL);
     d->seed = 0;
     d->round_seconds = 30;
