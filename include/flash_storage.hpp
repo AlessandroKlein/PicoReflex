@@ -33,7 +33,7 @@ namespace flash {
 // Cantidad de récords en el ranking (top mejores tiempos).
 #define RANKING_SIZE  5u
 // Versión del formato de PersistentData (se incrementa al cambiar la estructura).
-#define PERSISTENT_VERSION 6u
+#define PERSISTENT_VERSION 7u
 
 // -----------------------------------------------------------------------------
 // Datos persistentes (deben caber en el sector reservado de 4 KB; el guardado
@@ -68,6 +68,14 @@ struct PersistentData {
 
     uint8_t  sleep_enabled;      ///< 1 = modo dormir habilitado, 0 = deshabilitado.
     uint32_t idle_sleep_min;     ///< Minutos de inactividad antes de dormir (1..60).
+
+    // Configuración del juego: modo, dificultad, semilla y tiempos de estímulo.
+    uint8_t  game_mode;          ///< Modo de juego (GameMode).
+    uint8_t  game_difficulty;    ///< Dificultad (Difficulty).
+    uint32_t seed;               ///< Semilla del PRNG (0 = aleatoria).
+    uint32_t round_seconds;      ///< Duración de la ronda en modo TIMED (s).
+    uint32_t stimulus_min_ms;    ///< Mínimo entre estímulos (ms).
+    uint32_t stimulus_max_ms;    ///< Máximo entre estímulos (ms).
 
     uint32_t checksum;           ///< Suma simple de todos los bytes previos.
 };

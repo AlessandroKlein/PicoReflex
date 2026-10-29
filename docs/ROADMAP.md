@@ -48,6 +48,13 @@ tags:
 > - **Botón "Comprobar actualizaciones" en `/ota`** — consulta la API de GitHub
 >   desde el navegador (la Pico W no tiene TLS) y enlaza el `.bin`/`.uf2` si hay
 >   versión más nueva. Versión inyectada por `PICOREFLEX_VERSION` (CMake).
+> - **Simón Dice acelera la secuencia** — el tiempo entre notas se acorta a medida
+>   que la secuencia crece (cada vez más rápido).
+> - **Persistencia del modo/dificultad del juego** — `game_mode`/`game_difficulty`
+>   (y `seed`/`round_seconds`/`stimulus_*`) se guardan en Flash
+>   (`PERSISTENT_VERSION` 7); ya no vuelve a `FREE_PLAY` al reiniciar.
+> - **Arranque con cualquier botón** — reemplaza el disparador de dos botones
+>   simultáneos (`two_buttons_pressed()` eliminada).
 
 Esta hoja de ruta surge del análisis del código actual (módulos `game_logic`,
 `web_server`, `battery_monitor`, `display_driver`, `flash_storage`, `audio`,

@@ -4,9 +4,19 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
-## [0.9.5] - 2026-10-28
+## [0.9.5] - 2026-10-29
 
 ### Arreglado
+- **Rutas protegidas redirigen a `/login`** y **`tcp_recved()` en GET (lwIP)**: acceder
+  a una ruta protegida sin autenticar ahora redirige a la página de login (antes 401
+  sin página), y las respuestas GET cierran correctamente la ventana de recepción.
+- **Crash al navegar rápido + use-after-free al abortar OTA**: doble free / acceso a
+  buffer liberado al cancelar una actualización por aire y al navegar entre páginas.
+- **SH1106 en blanco**: el direccionamiento horizontal dejaba el panel en blanco; se
+  cambia a addressing por página (`0xB0`/columna) y `COM 0x12`.
+- **No escribir Flash al solo ver una página de config**: visitar `/display` (u otra
+  página de config) disparaba una escritura de Flash innecesaria (crash); ahora solo
+  se persiste al enviar un formulario.
 - **Reinicio al guardar configuración (modo AP):** `flash_safe_execute()` corría en el
   Core 1 (red) bajo FreeRTOS SMP, donde `__wfe()` no tiene wakeup periódico → el
   timeout de la zona segura nunca se re-evalúa → cuelgue → watchdog (8 s) → Flash a
@@ -17,6 +27,10 @@ sigue [Semantic Versioning](https://semver.org/) (SemVer).
   el panel real era el otro controlador, su comando de bomba se ignoraba y el panel
   no encendía. Ambas secuencias ahora mandan charge-pump + DC-DC, con pre-carga y
   VCOM corregidos (ver `docs/DECISIONES.md` §33).
+- **Modo/dificultad del juego se perdían al reiniciar**: el firmware volvía a
+  `FREE_PLAY`/`NORMAL` al reiniciar. Ahora `game_mode`, `game_difficulty`, `seed`,
+  `round_seconds`, `stimulus_min_ms` y `stimulus_max_ms` se persisten en Flash y se
+  restauran al arrancar (ver `docs/DECISIONES.md` §34).
 
 ### Añadido
 - **Auto-test del display (0xA5):** destello blanco de ~1 s al arrancar + log serial
@@ -28,6 +42,25 @@ sigue [Semantic Versioning](https://semver.org/) (SemVer).
 - **Botón "Comprobar actualizaciones" en `/ota`:** consulta la API de GitHub desde el
   navegador (el Pico W no puede hacer HTTPS), compara la última release con la
   versión del firmware y ofrece el enlace de descarga.
+- **Simón Dice acelera la secuencia**: a medida que la secuencia crece, el tiempo de
+  reproducción entre notas se acorta (cada vez más rápido).
+
+### Cambiado
+- **Disparador de inicio con cualquier botón**: arrancar una ronda ya no requiere dos
+  botones simultáneos; cualquier pulsación inicia la cuenta regresiva
+  (`two_buttons_pressed()` eliminada; ver `docs/DECISIONES.md` §35).
+- **`PersistentData` versión 7** (persistencia de modo/dificultad): el primer arranque
+  tras la actualización **resetea la configuración persistida** (semántica de
+  migración de `flash::load()`).
+
+### Documentado
+- **Informe Word + documentación del display OLED** (decisión 33, aviso VBUS): el
+  informe en Word y la guía del diagnóstico del display, incluido el aviso de NO
+  alimentar el OLED desde VBUS (5 V).
+- **Dirección I2C aclarada**: `0x3C` (7-bit) equivale a `0x78` en la notación 8-bit
+  que usan algunos fabricantes; documentado en `docs/ESQUEMATICO.md` §3.3.
+- **`Schematic.svg` + `Pinout.svg`**: se reemplaza `docs/img/esquematico.svg` por
+  `docs/img/Schematic.svg` y se añade `docs/img/Pinout.svg`.
 
 ## [0.9.4] - 2026-10-28
 

@@ -552,6 +552,9 @@ Documentación oficial de referencia (carpeta raíz):
   una ignorada con seguridad por el chip que no la usa); pre-carga corregida a
   `0xD9,0x22` y VCOM a `0xDB,0x35` (valores de referencia); SH1106 añade `0x31`
   (tensión de bomba 7.4 V).
+- **Fix SH1106 en blanco (commit 4417e6a):** el direccionamiento horizontal dejaba el
+  SH1106 en blanco; se cambió a **addressing por página** (`0xB0` + columna) y
+  `COM 0x12` (configuración de pines compatible con la secuencia secuencial).
 - **Auto-test de arranque (0xA5):** al final de `init()` se envía "Display All ON"
   (`0xA5`) durante 1 s y luego `0xA4`. Ese comando enciende TODOS los píxeles sin
   leer la RAM (independiente de direccionamiento/offset/contraste), de modo que un
@@ -564,5 +567,34 @@ Documentación oficial de referencia (carpeta raíz):
   (5 V) puede quemarlos y, además, sube sus pull-ups de I2C a 5 V sobre los
   GPIO14/15 (que **no son tolerantes a 5 V**). Conectar SIEMPRE `VCC → 3V3(OUT)`
   (ver `docs/ESQUEMATICO.md` §3.3).
+
+---
+
+## 34. Persistencia del modo y la dificultad del juego en Flash (v6→v7)
+
+- **Problema:** al reiniciar, el modo y la dificultad elegidos volvían a
+  `FREE_PLAY`/`NORMAL` (solo se persistían Wi-Fi, nombre, ranking, OLED, retardo de
+  arranque, calibración de batería y modo dormir). El resto de la configuración de
+  juego se perdía.
+- **Decisión:** ampliar `PersistentData` (antes de `checksum`) con `game_mode`,
+  `game_difficulty`, `seed`, `round_seconds`, `stimulus_min_ms` y
+  `stimulus_max_ms` (los enums como `uint8_t`). `apply_persist_to_config()` los
+  restaura en `cfg` al arrancar y `sync_config_to_persist()` los copia antes de
+  guardar (en `src/game_logic.cpp`). `PERSISTENT_VERSION` pasa de 6 a **7**.
+- **Impacto (migración):** al cambiar la estructura, `flash::load()` descarta los
+  datos Flash v6 existentes y re-inicializa a defaults en el primer arranque
+  (semántica ya documentada en `flash::load()`); se pierden Wi-Fi/ranking previos.
+
+---
+
+## 35. Disparador de inicio: cualquier botón (reemplaza a §16)
+
+- **Decisión:** el arranque de una ronda ya **no** requiere dos botones simultáneos
+  (decisión §16). Ahora **cualquier pulsación** inicia la cuenta regresiva: la rama
+  `IDLE` de `run()` consume `g_button_pending` y llama a `start_with_countdown()`.
+  `two_buttons_pressed()` fue eliminada (sin referencias).
+- **Por qué:** simplifica el uso en campo y evita arranques "fallidos" por no lograr
+  presionar dos botones exactamente a la vez; la cuenta regresiva de `start_delay_s`
+  se mantiene como red de seguridad contra arranques accidentales.
 
 

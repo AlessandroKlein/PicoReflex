@@ -52,6 +52,13 @@ void set_default(PersistentData* d) {
     d->display_controller = PICOREFLEX_DISPLAY_CONTROLLER;   // SSD1306 o SH1106.
     d->sleep_enabled = 1;                    // Modo dormir habilitado por defecto.
     d->idle_sleep_min = 3;                   // 3 minutos de inactividad.
+    // Configuración del juego (defaults de GameConfig).
+    d->game_mode = static_cast<uint8_t>(GameMode::FREE_PLAY);
+    d->game_difficulty = static_cast<uint8_t>(Difficulty::NORMAL);
+    d->seed = 0;
+    d->round_seconds = 30;
+    d->stimulus_min_ms = 500;
+    d->stimulus_max_ms = 1500;
     update_checksum(d);
 }
 

@@ -216,6 +216,12 @@ static void apply_persist_to_config() {
     cfg.sleep_enabled = (g_persist.sleep_enabled != 0);
     cfg.idle_sleep_min = g_persist.idle_sleep_min;
     cfg.start_delay_s = g_persist.start_delay_s;
+    cfg.mode = static_cast<GameMode>(g_persist.game_mode);
+    cfg.difficulty = static_cast<Difficulty>(g_persist.game_difficulty);
+    cfg.seed = g_persist.seed;
+    cfg.round_seconds = g_persist.round_seconds;
+    cfg.stimulus_min_ms = g_persist.stimulus_min_ms;
+    cfg.stimulus_max_ms = g_persist.stimulus_max_ms;
     cfg.batt_calib = g_persist.batt_calib;
     std::strncpy(cfg.user_name, g_persist.user_name, sizeof(cfg.user_name) - 1u);
     cfg.user_name[sizeof(cfg.user_name) - 1u] = '\0';
@@ -236,6 +242,12 @@ static void sync_config_to_persist() {
     g_persist.sleep_enabled = cfg.sleep_enabled ? 1 : 0;
     g_persist.idle_sleep_min = cfg.idle_sleep_min;
     g_persist.start_delay_s = cfg.start_delay_s;
+    g_persist.game_mode = static_cast<uint8_t>(cfg.mode);
+    g_persist.game_difficulty = static_cast<uint8_t>(cfg.difficulty);
+    g_persist.seed = cfg.seed;
+    g_persist.round_seconds = cfg.round_seconds;
+    g_persist.stimulus_min_ms = cfg.stimulus_min_ms;
+    g_persist.stimulus_max_ms = cfg.stimulus_max_ms;
     g_persist.batt_calib = cfg.batt_calib;
     std::strncpy(g_persist.user_name, cfg.user_name, sizeof(g_persist.user_name) - 1u);
     g_persist.user_name[sizeof(g_persist.user_name) - 1u] = '\0';
@@ -369,18 +381,6 @@ void ranking_insert(uint32_t time_us, const char* name) {
 }
 
 } // namespace
-
-// -----------------------------------------------------------------------------
-// Disparador de inicio: dos botones presionados simultáneamente
-// -----------------------------------------------------------------------------
-// Devuelve true si hay al menos DOS pulsadores presionados a la vez (nivel bajo).
-static bool two_buttons_pressed() {
-    uint count = 0;
-    for (uint i = 0; i < LED_COUNT; i++) {
-        if (gpio_get(g_button_pins[i]) == 0) count++;   // presionado = bajo (pull-up).
-    }
-    return count >= 2;
-}
 
 // Cuenta regresiva (start_delay_s segundos) y arranque de la ronda.
 static void start_with_countdown(const GameConfig& cfg) {
@@ -570,11 +570,9 @@ void run() {
         if (!g_round_active) {
             if (g_button_pending) {
                 g_button_pending = false;
-                // Disparador: requiere DOS botones presionados a la vez.
-                if (two_buttons_pressed()) {
-                    g_last_activity_us = time_us_32();
-                    start_with_countdown(cfg);
-                }
+                // Disparador: cualquier botón inicia la ronda.
+                g_last_activity_us = time_us_32();
+                start_with_countdown(cfg);
             } else if (cfg.sleep_enabled &&
                        (uint64_t)(uint32_t)(time_us_32() - g_last_activity_us) >
                            (uint64_t)cfg.idle_sleep_min * 60u * 1000000ull) {
