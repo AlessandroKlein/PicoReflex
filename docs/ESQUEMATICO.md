@@ -7,7 +7,7 @@ cálculos de dimensionamiento. Es el "Diagrama circuital" que pide la consigna
 
 La fuente de verdad de los pines está en [`include/pin_defs.hpp`](https://github.com/AlessandroKlein/PicoReflex/blob/main/include/pin_defs.hpp).
 
-![Esquema circuital](img/Schematic.svg)
+![Esquema circuital](img/Esquemático.svg)
 
 ---
 

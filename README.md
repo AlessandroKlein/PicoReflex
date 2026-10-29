@@ -36,10 +36,11 @@ Exponer y presentar el trabajo realizado ante la cátedra.
 
 ---
 
-## Estado del firmware (v0.9.0)
+## Estado del firmware (v0.9.6)
 
 > Documentación técnica completa en `docs/` (ver `docs/ARQUITECTURA.md`,
-> `docs/COMPILAR.md` y `docs/DECISIONES.md`).
+> `docs/COMPILAR.md` y `docs/DECISIONES.md`). Historial completo de versiones en
+> `CHANGELOG.md`.
 
 - **Modo dormir configurable:** desde la web `/display` → card "Modo dormir
   (ahorro de energía)": botones Habilitar/Deshabilitar + campo "Inactividad

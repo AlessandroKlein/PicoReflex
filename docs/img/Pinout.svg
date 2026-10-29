@@ -1,441 +1,123 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 1250" width="100%" height="100%" style="background-color: #0d1117; font-family: -apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, Helvetica, Arial, sans-serif;">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180">
+  <title>Raspberry Pi Pico W — Pinout</title>
+  <desc>Pinout de la Raspberry Pi Pico W, con numeración física, GPIO, alimentación, masa y funciones principales.</desc>
   <defs>
-    <!-- PCB Textures & Gradients -->
-    <linearGradient id="pcbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#004d25" />
-      <stop offset="50%" stop-color="#00381b" />
-      <stop offset="100%" stop-color="#002210" />
-    </linearGradient>
-    
-    <linearGradient id="metalSilver" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#e0e0e0" />
-      <stop offset="30%" stop-color="#ffffff" />
-      <stop offset="50%" stop-color="#cccccc" />
-      <stop offset="80%" stop-color="#eeeeee" />
-      <stop offset="100%" stop-color="#999999" />
-    </linearGradient>
-
-    <linearGradient id="chipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#2c2c2c" />
-      <stop offset="100%" stop-color="#121212" />
-    </linearGradient>
-
-    <linearGradient id="goldPad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#d4af37" />
-      <stop offset="50%" stop-color="#f3e5ab" />
-      <stop offset="100%" stop-color="#aa8c2c" />
-    </linearGradient>
-
-    <!-- Drop Shadows -->
-    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000000" flood-opacity="0.6" />
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#000" flood-opacity=".45"/>
     </filter>
-
-    <filter id="chipShadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#000000" flood-opacity="0.8" />
-    </filter>
+    <linearGradient id="board" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#176b50"/><stop offset="1" stop-color="#104534"/>
+    </linearGradient>
+    <linearGradient id="chip" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#263449"/><stop offset="1" stop-color="#111a28"/>
+    </linearGradient>
+    <style>
+      text{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+      .title{font-size:31px;font-weight:750;letter-spacing:1.2px;fill:#f0f6fc}
+      .subtitle{font-size:15px;fill:#9ba9ba}
+      .section{font-size:15px;font-weight:700;letter-spacing:1px;fill:#dce6f1}
+      .pinno{font-size:13px;font-weight:700;fill:#d9e2ef}
+      .gpio{font-size:15px;font-weight:750;fill:#f0f6fc}
+      .func{font-size:10.8px;fill:#aebdce}
+      .special{font-size:14px;font-weight:750}
+      .note{font-size:12px;fill:#91a0b2}
+      .legend{font-size:12px;fill:#c8d3df}
+    </style>
   </defs>
+  <rect width="1600" height="1180" fill="#0d1117"/>
+  <circle cx="800" cy="530" r="450" fill="#101a27" opacity=".25"/>
+  <text x="800" y="48" text-anchor="middle" class="title">RASPBERRY PI PICO W — PINOUT</text>
+  <text x="800" y="76" text-anchor="middle" class="subtitle">RP2040 · 40 pines físicos · GPIO, alimentación y funciones principales</text>
 
-  <!-- Title & Header -->
-  <text x="550" y="45" text-anchor="middle" fill="#ffffff" font-size="26" font-weight="bold" letter-spacing="1">RASPBERRY PI PICO W</text>
-  <text x="550" y="70" text-anchor="middle" fill="#8b949e" font-size="14">Pinout Reference & Hardware Layout</text>
-
-  <g transform="translate(150, 40)">
-    <!-- ==================== BOARD OUTLINE ==================== -->
-    <g filter="url(#dropShadow)">
-      <!-- Main PCB Base -->
-      <rect x="250" y="80" width="300" height="820" rx="16" ry="16" fill="url(#pcbGrad)" stroke="#002b15" stroke-width="2" />
-      
-      <!-- Corner Mounting Holes -->
-      <circle cx="270" cy="100" r="10" fill="none" stroke="url(#goldPad)" stroke-width="4" />
-      <circle cx="270" cy="100" r="7" fill="#0d1117" />
-      
-      <circle cx="530" cy="100" r="10" fill="none" stroke="url(#goldPad)" stroke-width="4" />
-      <circle cx="530" cy="100" r="7" fill="#0d1117" />
-
-      <circle cx="270" cy="880" r="10" fill="none" stroke="url(#goldPad)" stroke-width="4" />
-      <circle cx="270" cy="880" r="7" fill="#0d1117" />
-
-      <circle cx="530" cy="880" r="10" fill="none" stroke="url(#goldPad)" stroke-width="4" />
-      <circle cx="530" cy="880" r="7" fill="#0d1117" />
-    </g>
-
-    <!-- Silkscreen Details -->
-    <text x="272" y="520" fill="#ffffff" fill-opacity="0.7" font-size="13" font-weight="bold" transform="rotate(-90 272 520)" letter-spacing="1.5">Raspberry Pi Pico W ©2022</text>
-    <circle cx="380" cy="170" r="2.5" fill="#ffffff" fill-opacity="0.6" />
-    <text x="380" y="185" fill="#ffffff" fill-opacity="0.6" font-size="9" text-anchor="middle">LED</text>
-
-    <!-- ==================== HARDWARE COMPONENTS ==================== -->
-    
-    <!-- Micro-USB Connector -->
-    <g filter="url(#chipShadow)">
-      <rect x="350" y="62" width="100" height="40" rx="4" fill="url(#metalSilver)" />
-      <rect x="362" y="62" width="76" height="28" rx="2" fill="#aaaaaa" />
-      <path d="M 370 62 L 375 92 L 425 92 L 430 62 Z" fill="#777777" />
-      <rect x="380" y="92" width="40" height="5" fill="#444444" />
-      <text x="400" y="118" fill="#ffffff" fill-opacity="0.5" font-size="9" text-anchor="middle">USB</text>
-    </g>
-
-    <!-- CYW43439 Wireless Shield (Pico W Silver Metal Can) -->
-    <g filter="url(#chipShadow)">
-      <rect x="315" y="620" width="170" height="150" rx="6" fill="url(#metalSilver)" stroke="#bbbbbb" stroke-width="1" />
-      <!-- Wifi Symbol or Text on Shield -->
-      <text x="400" y="685" fill="#555555" font-size="14" font-weight="bold" text-anchor="middle" letter-spacing="0.5">Infineon</text>
-      <text x="400" y="705" fill="#666666" font-size="12" text-anchor="middle">CYW43439</text>
-    </g>
-
-    <!-- Onboard Antenna (ABRACON triangle/trapezoid block at top) -->
-    <path d="M 360 102 L 440 102 L 425 140 L 375 140 Z" fill="#888888" stroke="#aaaaaa" stroke-width="1" />
-    <text x="400" y="123" fill="#ffffff" font-size="8" text-anchor="middle" font-weight="bold">ANTENNA</text>
-
-    <!-- RP2040 Microcontroller -->
-    <g filter="url(#chipShadow)">
-      <rect x="350" y="470" width="100" height="100" rx="4" fill="url(#chipGrad)" stroke="#333333" stroke-width="1" />
-      <circle cx="365" cy="555" r="3" fill="#444444" /> <!-- Pin 1 dot -->
-      <text x="400" y="515" fill="#cccccc" font-size="13" font-weight="bold" text-anchor="middle">RP2040</text>
-      <text x="400" y="535" fill="#888888" font-size="9" text-anchor="middle">RPI 20 21</text>
-    </g>
-
-    <!-- BOOTSEL Button -->
-    <g filter="url(#chipShadow)">
-      <rect x="380" y="240" width="40" height="26" rx="3" fill="#aaaaaa" />
-      <rect x="385" y="244" width="30" height="18" rx="2" fill="#e74c3c" />
-      <circle cx="400" cy="253" r="6" fill="#c0392b" />
-      <text x="348" y="257" fill="#ffffff" fill-opacity="0.8" font-size="9" text-anchor="end">BOOTSEL</text>
-    </g>
-
-    <!-- Debug Header Pins (Bottom) -->
-    <g>
-      <rect x="360" y="865" width="80" height="25" fill="#222222" rx="2" />
-      <!-- Pads -->
-      <circle cx="375" cy="877" r="5" fill="url(#goldPad)" />
-      <circle cx="400" cy="877" r="5" fill="url(#goldPad)" />
-      <circle cx="425" cy="877" r="5" fill="url(#goldPad)" />
-      <circle cx="375" cy="877" r="2.5" fill="#0d1117" />
-      <circle cx="400" cy="877" r="2.5" fill="#0d1117" />
-      <circle cx="425" cy="877" r="2.5" fill="#0d1117" />
-      <text x="400" y="858" fill="#ffffff" fill-opacity="0.6" font-size="9" text-anchor="middle">DEBUG</text>
-    </g>
-
-    <!-- Small SMD Components (Passive detail) -->
-    <rect x="320" y="200" width="12" height="20" fill="#333" stroke="#888" stroke-width="1" />
-    <rect x="340" y="200" width="10" height="15" fill="#b87333" />
-    <rect x="440" y="200" width="15" height="10" fill="#333" stroke="#888" stroke-width="1" />
-    <rect x="455" y="240" width="10" height="20" fill="#b87333" />
-    <rect x="315" y="490" width="8" height="14" fill="#333" />
-    <rect x="315" y="510" width="8" height="14" fill="#b87333" />
-
-    <!-- ==================== PIN PADS (1 to 40) ==================== -->
-    <!-- Left Edge Pads (1 to 20) -->
-    <!-- Right Edge Pads (40 down to 21) -->
-    <!-- Rendered dynamically via loop-like layout structure -->
-
-    <!-- Left Pins 1-20 -->
-    <!-- 1 --> <path d="M 240 120 L 265 120 L 265 134 L 240 134 Z" fill="url(#goldPad)" /> <circle cx="257" cy="127" r="3.5" fill="#0d1117" />
-    <!-- 2 --> <path d="M 240 158 L 265 158 L 265 172 L 240 172 Z" fill="url(#goldPad)" /> <circle cx="257" cy="165" r="3.5" fill="#0d1117" />
-    <!-- 3 --> <path d="M 240 196 L 265 196 L 265 210 L 240 210 Z" fill="url(#goldPad)" /> <circle cx="257" cy="203" r="3.5" fill="#0d1117" />
-    <!-- 4 --> <path d="M 240 234 L 265 234 L 265 248 L 240 248 Z" fill="url(#goldPad)" /> <circle cx="257" cy="241" r="3.5" fill="#0d1117" />
-    <!-- 5 --> <path d="M 240 272 L 265 272 L 265 286 L 240 286 Z" fill="url(#goldPad)" /> <circle cx="257" cy="279" r="3.5" fill="#0d1117" />
-    <!-- 6 --> <path d="M 240 310 L 265 310 L 265 324 L 240 324 Z" fill="url(#goldPad)" /> <circle cx="257" cy="317" r="3.5" fill="#0d1117" />
-    <!-- 7 --> <path d="M 240 348 L 265 348 L 265 362 L 240 362 Z" fill="url(#goldPad)" /> <circle cx="257" cy="355" r="3.5" fill="#0d1117" />
-    <!-- 8 --> <path d="M 240 386 L 265 386 L 265 400 L 240 400 Z" fill="url(#goldPad)" /> <circle cx="257" cy="393" r="3.5" fill="#0d1117" />
-    <!-- 9 --> <path d="M 240 424 L 265 424 L 265 438 L 240 438 Z" fill="url(#goldPad)" /> <circle cx="257" cy="431" r="3.5" fill="#0d1117" />
-    <!-- 10 --> <path d="M 240 462 L 265 462 L 265 476 L 240 476 Z" fill="url(#goldPad)" /> <circle cx="257" cy="469" r="3.5" fill="#0d1117" />
-    <!-- 11 --> <path d="M 240 500 L 265 500 L 265 514 L 240 514 Z" fill="url(#goldPad)" /> <circle cx="257" cy="507" r="3.5" fill="#0d1117" />
-    <!-- 12 --> <path d="M 240 538 L 265 538 L 265 552 L 240 552 Z" fill="url(#goldPad)" /> <circle cx="257" cy="545" r="3.5" fill="#0d1117" />
-    <!-- 13 --> <path d="M 240 576 L 265 576 L 265 590 L 240 590 Z" fill="url(#goldPad)" /> <circle cx="257" cy="583" r="3.5" fill="#0d1117" />
-    <!-- 14 --> <path d="M 240 614 L 265 614 L 265 628 L 240 628 Z" fill="url(#goldPad)" /> <circle cx="257" cy="621" r="3.5" fill="#0d1117" />
-    <!-- 15 --> <path d="M 240 652 L 265 652 L 265 666 L 240 666 Z" fill="url(#goldPad)" /> <circle cx="257" cy="659" r="3.5" fill="#0d1117" />
-    <!-- 16 --> <path d="M 240 690 L 265 690 L 265 704 L 240 704 Z" fill="url(#goldPad)" /> <circle cx="257" cy="697" r="3.5" fill="#0d1117" />
-    <!-- 17 --> <path d="M 240 728 L 265 728 L 265 742 L 240 742 Z" fill="url(#goldPad)" /> <circle cx="257" cy="735" r="3.5" fill="#0d1117" />
-    <!-- 18 --> <path d="M 240 766 L 265 766 L 265 780 L 240 780 Z" fill="url(#goldPad)" /> <circle cx="257" cy="773" r="3.5" fill="#0d1117" />
-    <!-- 19 --> <path d="M 240 804 L 265 804 L 265 818 L 240 818 Z" fill="url(#goldPad)" /> <circle cx="257" cy="811" r="3.5" fill="#0d1117" />
-    <!-- 20 --> <path d="M 240 842 L 265 842 L 265 856 L 240 856 Z" fill="url(#goldPad)" /> <circle cx="257" cy="849" r="3.5" fill="#0d1117" />
-
-    <!-- Right Pins 40-21 -->
-    <!-- 40 --> <path d="M 535 120 L 560 120 L 560 134 L 535 134 Z" fill="url(#goldPad)" /> <circle cx="543" cy="127" r="3.5" fill="#0d1117" />
-    <!-- 39 --> <path d="M 535 158 L 560 158 L 560 172 L 535 172 Z" fill="url(#goldPad)" /> <circle cx="543" cy="165" r="3.5" fill="#0d1117" />
-    <!-- 38 --> <path d="M 535 196 L 560 196 L 560 210 L 535 210 Z" fill="url(#goldPad)" /> <circle cx="543" cy="203" r="3.5" fill="#0d1117" />
-    <!-- 37 --> <path d="M 535 234 L 560 234 L 560 248 L 535 248 Z" fill="url(#goldPad)" /> <circle cx="543" cy="241" r="3.5" fill="#0d1117" />
-    <!-- 36 --> <path d="M 535 272 L 560 272 L 560 286 L 535 286 Z" fill="url(#goldPad)" /> <circle cx="543" cy="279" r="3.5" fill="#0d1117" />
-    <!-- 35 --> <path d="M 535 310 L 560 310 L 560 324 L 535 324 Z" fill="url(#goldPad)" /> <circle cx="543" cy="317" r="3.5" fill="#0d1117" />
-    <!-- 34 --> <path d="M 535 348 L 560 348 L 560 362 L 535 362 Z" fill="url(#goldPad)" /> <circle cx="543" cy="355" r="3.5" fill="#0d1117" />
-    <!-- 33 --> <path d="M 535 386 L 560 386 L 560 400 L 535 400 Z" fill="url(#goldPad)" /> <circle cx="543" cy="393" r="3.5" fill="#0d1117" />
-    <!-- 32 --> <path d="M 535 424 L 560 424 L 560 438 L 535 438 Z" fill="url(#goldPad)" /> <circle cx="543" cy="431" r="3.5" fill="#0d1117" />
-    <!-- 31 --> <path d="M 535 462 L 560 462 L 560 476 L 535 476 Z" fill="url(#goldPad)" /> <circle cx="543" cy="469" r="3.5" fill="#0d1117" />
-    <!-- 30 --> <path d="M 535 500 L 560 500 L 560 514 L 535 514 Z" fill="url(#goldPad)" /> <circle cx="543" cy="507" r="3.5" fill="#0d1117" />
-    <!-- 29 --> <path d="M 535 538 L 560 538 L 560 552 L 535 552 Z" fill="url(#goldPad)" /> <circle cx="543" cy="545" r="3.5" fill="#0d1117" />
-    <!-- 28 --> <path d="M 535 576 L 560 576 L 560 590 L 535 590 Z" fill="url(#goldPad)" /> <circle cx="543" cy="583" r="3.5" fill="#0d1117" />
-    <!-- 27 --> <path d="M 535 614 L 560 614 L 560 628 L 535 628 Z" fill="url(#goldPad)" /> <circle cx="543" cy="621" r="3.5" fill="#0d1117" />
-    <!-- 26 --> <path d="M 535 652 L 560 652 L 560 666 L 535 666 Z" fill="url(#goldPad)" /> <circle cx="543" cy="659" r="3.5" fill="#0d1117" />
-    <!-- 25 --> <path d="M 535 690 L 560 690 L 560 704 L 535 704 Z" fill="url(#goldPad)" /> <circle cx="543" cy="697" r="3.5" fill="#0d1117" />
-    <!-- 24 --> <path d="M 535 728 L 560 728 L 560 742 L 535 742 Z" fill="url(#goldPad)" /> <circle cx="543" cy="735" r="3.5" fill="#0d1117" />
-    <!-- 23 --> <path d="M 535 766 L 560 766 L 560 780 L 535 780 Z" fill="url(#goldPad)" /> <circle cx="543" cy="773" r="3.5" fill="#0d1117" />
-    <!-- 22 --> <path d="M 535 804 L 560 804 L 560 818 L 535 818 Z" fill="url(#goldPad)" /> <circle cx="543" cy="811" r="3.5" fill="#0d1117" />
-    <!-- 21 --> <path d="M 535 842 L 560 842 L 560 856 L 535 856 Z" fill="url(#goldPad)" /> <circle cx="543" cy="849" r="3.5" fill="#0d1117" />
-
-    <!-- Numbers on Board Silkscreen -->
-    <g fill="#ffffff" font-size="9" font-weight="bold" fill-opacity="0.9">
-      <!-- Left -->
-      <text x="273" y="130">1</text>
-      <text x="273" y="168">2</text>
-      <text x="273" y="206">3</text>
-      <text x="273" y="244">4</text>
-      <text x="273" y="282">5</text>
-      <text x="273" y="320">6</text>
-      <text x="273" y="358">7</text>
-      <text x="273" y="396">8</text>
-      <text x="273" y="434">9</text>
-      <text x="273" y="472">10</text>
-      <text x="273" y="510">11</text>
-      <text x="273" y="548">12</text>
-      <text x="273" y="586">13</text>
-      <text x="273" y="624">14</text>
-      <text x="273" y="662">15</text>
-      <text x="273" y="700">16</text>
-      <text x="273" y="738">17</text>
-      <text x="273" y="776">18</text>
-      <text x="273" y="814">19</text>
-      <text x="273" y="852">20</text>
-      <!-- Right -->
-      <text x="527" y="130" text-anchor="end">40</text>
-      <text x="527" y="168" text-anchor="end">39</text>
-      <text x="527" y="206" text-anchor="end">38</text>
-      <text x="527" y="244" text-anchor="end">37</text>
-      <text x="527" y="282" text-anchor="end">36</text>
-      <text x="527" y="320" text-anchor="end">35</text>
-      <text x="527" y="358" text-anchor="end">34</text>
-      <text x="527" y="396" text-anchor="end">33</text>
-      <text x="527" y="434" text-anchor="end">32</text>
-      <text x="527" y="472" text-anchor="end">31</text>
-      <text x="527" y="510" text-anchor="end">30</text>
-      <text x="527" y="548" text-anchor="end">29</text>
-      <text x="527" y="586" text-anchor="end">28</text>
-      <text x="527" y="624" text-anchor="end">27</text>
-      <text x="527" y="662" text-anchor="end">26</text>
-      <text x="527" y="700" text-anchor="end">25</text>
-      <text x="527" y="738" text-anchor="end">24</text>
-      <text x="527" y="776" text-anchor="end">23</text>
-      <text x="527" y="814" text-anchor="end">22</text>
-      <text x="527" y="852" text-anchor="end">21</text>
-    </g>
-
-    <!-- ==================== PIN LABELS & BOXES ==================== -->
-    
-    <!-- Color Legend Palette -->
-    <!-- Power: #e74c3c, GND: #2c3e50, GPIO: #2ecc71, ADC: #27ae60, UART: #9b59b6, SPI: #e67e22, I2C: #2980b9, System: #e84393 -->
-
-    <!-- LEFT SIDE LABELS (Pins 1 to 20) -->
-    <g transform="translate(0, 0)" font-size="10" font-weight="bold" text-anchor="end">
-      <!-- Pin 1 -->
-      <rect x="180" y="117" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="131" fill="#fff">GP0</text>
-      <rect x="120" y="117" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="131" fill="#fff">SPI0 RX</text>
-      <rect x="60" y="117" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="131" fill="#fff">I2C0 SDA</text>
-      <rect x="0" y="117" width="55" height="20" rx="3" fill="#9b59b6" /> <text x="50" y="131" fill="#fff">UART0 TX</text>
-
-      <!-- Pin 2 -->
-      <rect x="180" y="155" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="169" fill="#fff">GP1</text>
-      <rect x="120" y="155" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="169" fill="#fff">SPI0 CSn</text>
-      <rect x="60" y="155" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="169" fill="#fff">I2C0 SCL</text>
-      <rect x="0" y="155" width="55" height="20" rx="3" fill="#9b59b6" /> <text x="50" y="169" fill="#fff">UART0 RX</text>
-
-      <!-- Pin 3 -->
-      <rect x="180" y="193" width="55" height="20" rx="3" fill="#000000" stroke="#555" stroke-width="1" /> <text x="230" y="207" fill="#fff">GND</text>
-
-      <!-- Pin 4 -->
-      <rect x="180" y="231" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="245" fill="#fff">GP2</text>
-      <rect x="120" y="231" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="245" fill="#fff">SPI0 SCK</text>
-      <rect x="60" y="231" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="245" fill="#fff">I2C1 SDA</text>
-
-      <!-- Pin 5 -->
-      <rect x="180" y="269" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="283" fill="#fff">GP3</text>
-      <rect x="120" y="269" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="283" fill="#fff">SPI0 TX</text>
-      <rect x="60" y="269" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="283" fill="#fff">I2C1 SCL</text>
-
-      <!-- Pin 6 -->
-      <rect x="180" y="307" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="321" fill="#fff">GP4</text>
-      <rect x="120" y="307" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="321" fill="#fff">SPI0 RX</text>
-      <rect x="60" y="307" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="321" fill="#fff">I2C0 SDA</text>
-      <rect x="0" y="307" width="55" height="20" rx="3" fill="#9b59b6" /> <text x="50" y="321" fill="#fff">UART1 TX</text>
-
-      <!-- Pin 7 -->
-      <rect x="180" y="345" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="359" fill="#fff">GP5</text>
-      <rect x="120" y="345" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="359" fill="#fff">SPI0 CSn</text>
-      <rect x="60" y="345" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="359" fill="#fff">I2C0 SCL</text>
-      <rect x="0" y="345" width="55" height="20" rx="3" fill="#9b59b6" /> <text x="50" y="359" fill="#fff">UART1 RX</text>
-
-      <!-- Pin 8 -->
-      <rect x="180" y="383" width="55" height="20" rx="3" fill="#000000" stroke="#555" stroke-width="1" /> <text x="230" y="397" fill="#fff">GND</text>
-
-      <!-- Pin 9 -->
-      <rect x="180" y="421" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="435" fill="#fff">GP6</text>
-      <rect x="120" y="421" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="435" fill="#fff">SPI0 SCK</text>
-      <rect x="60" y="421" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="435" fill="#fff">I2C1 SDA</text>
-
-      <!-- Pin 10 -->
-      <rect x="180" y="459" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="473" fill="#fff">GP7</text>
-      <rect x="120" y="459" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="473" fill="#fff">SPI0 TX</text>
-      <rect x="60" y="459" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="473" fill="#fff">I2C1 SCL</text>
-
-      <!-- Pin 11 -->
-      <rect x="180" y="497" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="511" fill="#fff">GP8</text>
-      <rect x="120" y="497" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="511" fill="#fff">SPI1 RX</text>
-      <rect x="60" y="497" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="511" fill="#fff">I2C0 SDA</text>
-      <rect x="0" y="497" width="55" height="20" rx="3" fill="#9b59b6" /> <text x="50" y="511" fill="#fff">UART1 TX</text>
-
-      <!-- Pin 12 -->
-      <rect x="180" y="535" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="549" fill="#fff">GP9</text>
-      <rect x="120" y="535" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="549" fill="#fff">SPI1 CSn</text>
-      <rect x="60" y="535" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="549" fill="#fff">I2C0 SCL</text>
-      <rect x="0" y="535" width="55" height="20" rx="3" fill="#9b59b6" /> <text x="50" y="549" fill="#fff">UART1 RX</text>
-
-      <!-- Pin 13 -->
-      <rect x="180" y="573" width="55" height="20" rx="3" fill="#000000" stroke="#555" stroke-width="1" /> <text x="230" y="587" fill="#fff">GND</text>
-
-      <!-- Pin 14 -->
-      <rect x="180" y="611" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="625" fill="#fff">GP10</text>
-      <rect x="120" y="611" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="625" fill="#fff">SPI1 SCK</text>
-      <rect x="60" y="611" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="625" fill="#fff">I2C1 SDA</text>
-
-      <!-- Pin 15 -->
-      <rect x="180" y="649" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="663" fill="#fff">GP11</text>
-      <rect x="120" y="649" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="663" fill="#fff">SPI1 TX</text>
-      <rect x="60" y="649" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="663" fill="#fff">I2C1 SCL</text>
-
-      <!-- Pin 16 -->
-      <rect x="180" y="687" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="701" fill="#fff">GP12</text>
-      <rect x="120" y="687" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="701" fill="#fff">SPI1 RX</text>
-      <rect x="60" y="687" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="701" fill="#fff">I2C0 SDA</text>
-      <rect x="0" y="687" width="55" height="20" rx="3" fill="#9b59b6" /> <text x="50" y="701" fill="#fff">UART0 TX</text>
-
-      <!-- Pin 17 -->
-      <rect x="180" y="725" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="739" fill="#fff">GP13</text>
-      <rect x="120" y="725" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="739" fill="#fff">SPI1 CSn</text>
-      <rect x="60" y="725" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="739" fill="#fff">I2C0 SCL</text>
-      <rect x="0" y="725" width="55" height="20" rx="3" fill="#9b59b6" /> <text x="50" y="739" fill="#fff">UART0 RX</text>
-
-      <!-- Pin 18 -->
-      <rect x="180" y="763" width="55" height="20" rx="3" fill="#000000" stroke="#555" stroke-width="1" /> <text x="230" y="777" fill="#fff">GND</text>
-
-      <!-- Pin 19 -->
-      <rect x="180" y="801" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="815" fill="#fff">GP14</text>
-      <rect x="120" y="801" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="815" fill="#fff">SPI1 SCK</text>
-      <rect x="60" y="801" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="815" fill="#fff">I2C1 SDA</text>
-
-      <!-- Pin 20 -->
-      <rect x="180" y="839" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="230" y="853" fill="#fff">GP15</text>
-      <rect x="120" y="839" width="55" height="20" rx="3" fill="#e67e22" /> <text x="170" y="853" fill="#fff">SPI1 TX</text>
-      <rect x="60" y="839" width="55" height="20" rx="3" fill="#2980b9" /> <text x="110" y="853" fill="#fff">I2C1 SCL</text>
-    </g>
-
-    <!-- RIGHT SIDE LABELS (Pins 21 to 40) -->
-    <g transform="translate(0, 0)" font-size="10" font-weight="bold" text-anchor="start">
-      <!-- Pin 40 -->
-      <rect x="565" y="117" width="60" height="20" rx="3" fill="#e74c3c" /> <text x="572" y="131" fill="#fff">VBUS</text>
-
-      <!-- Pin 39 -->
-      <rect x="565" y="155" width="60" height="20" rx="3" fill="#e74c3c" /> <text x="572" y="169" fill="#fff">VSYS</text>
-
-      <!-- Pin 38 -->
-      <rect x="565" y="193" width="60" height="20" rx="3" fill="#000000" stroke="#555" stroke-width="1" /> <text x="572" y="207" fill="#fff">GND</text>
-
-      <!-- Pin 37 -->
-      <rect x="565" y="231" width="60" height="20" rx="3" fill="#e84393" /> <text x="572" y="245" fill="#fff">3V3_EN</text>
-
-      <!-- Pin 36 -->
-      <rect x="565" y="269" width="75" height="20" rx="3" fill="#e74c3c" /> <text x="572" y="283" fill="#fff">3V3(OUT)</text>
-
-      <!-- Pin 35 -->
-      <rect x="565" y="307" width="75" height="20" rx="3" fill="#e84393" /> <text x="572" y="321" fill="#fff">ADC_VREF</text>
-
-      <!-- Pin 34 -->
-      <rect x="565" y="345" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="572" y="359" fill="#fff">GP28</text>
-      <rect x="625" y="345" width="55" height="20" rx="3" fill="#27ae60" /> <text x="632" y="359" fill="#fff">ADC2</text>
-
-      <!-- Pin 33 -->
-      <rect x="565" y="383" width="60" height="20" rx="3" fill="#000000" stroke="#555" stroke-width="1" /> <text x="572" y="397" fill="#fff">AGND</text>
-
-      <!-- Pin 32 -->
-      <rect x="565" y="421" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="572" y="435" fill="#fff">GP27</text>
-      <rect x="625" y="421" width="55" height="20" rx="3" fill="#27ae60" /> <text x="632" y="435" fill="#fff">ADC1</text>
-      <rect x="685" y="421" width="60" height="20" rx="3" fill="#2980b9" /> <text x="692" y="435" fill="#fff">I2C1 SCL</text>
-
-      <!-- Pin 31 -->
-      <rect x="565" y="459" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="572" y="473" fill="#fff">GP26</text>
-      <rect x="625" y="459" width="55" height="20" rx="3" fill="#27ae60" /> <text x="632" y="473" fill="#fff">ADC0</text>
-      <rect x="685" y="459" width="60" height="20" rx="3" fill="#2980b9" /> <text x="692" y="473" fill="#fff">I2C1 SDA</text>
-
-      <!-- Pin 30 -->
-      <rect x="565" y="497" width="55" height="20" rx="3" fill="#e84393" /> <text x="572" y="511" fill="#fff">RUN</text>
-
-      <!-- Pin 29 -->
-      <rect x="565" y="535" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="572" y="549" fill="#fff">GP22</text>
-
-      <!-- Pin 28 -->
-      <rect x="565" y="573" width="60" height="20" rx="3" fill="#000000" stroke="#555" stroke-width="1" /> <text x="572" y="587" fill="#fff">GND</text>
-
-      <!-- Pin 27 -->
-      <rect x="565" y="611" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="572" y="625" fill="#fff">GP21</text>
-      <rect x="625" y="611" width="60" height="20" rx="3" fill="#2980b9" /> <text x="632" y="625" fill="#fff">I2C0 SCL</text>
-
-      <!-- Pin 26 -->
-      <rect x="565" y="649" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="572" y="663" fill="#fff">GP20</text>
-      <rect x="625" y="649" width="60" height="20" rx="3" fill="#2980b9" /> <text x="632" y="663" fill="#fff">I2C0 SDA</text>
-
-      <!-- Pin 25 -->
-      <rect x="565" y="687" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="572" y="701" fill="#fff">GP19</text>
-      <rect x="625" y="687" width="55" height="20" rx="3" fill="#e67e22" /> <text x="632" y="701" fill="#fff">SPI0 TX</text>
-      <rect x="685" y="687" width="60" height="20" rx="3" fill="#2980b9" /> <text x="692" y="701" fill="#fff">I2C1 SCL</text>
-
-      <!-- Pin 24 -->
-      <rect x="565" y="725" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="572" y="739" fill="#fff">GP18</text>
-      <rect x="625" y="725" width="60" height="20" rx="3" fill="#e67e22" /> <text x="632" y="739" fill="#fff">SPI0 SCK</text>
-      <rect x="690" y="725" width="60" height="20" rx="3" fill="#2980b9" /> <text x="697" y="739" fill="#fff">I2C1 SDA</text>
-
-      <!-- Pin 23 -->
-      <rect x="565" y="763" width="60" height="20" rx="3" fill="#000000" stroke="#555" stroke-width="1" /> <text x="572" y="777" fill="#fff">GND</text>
-
-      <!-- Pin 22 -->
-      <rect x="565" y="801" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="572" y="815" fill="#fff">GP17</text>
-      <rect x="625" y="801" width="55" height="20" rx="3" fill="#e67e22" /> <text x="632" y="815" fill="#fff">SPI0 CSn</text>
-      <rect x="685" y="801" width="60" height="20" rx="3" fill="#2980b9" /> <text x="692" y="815" fill="#fff">I2C0 SCL</text>
-      <rect x="750" y="801" width="60" height="20" rx="3" fill="#9b59b6" /> <text x="757" y="815" fill="#fff">UART0 RX</text>
-
-      <!-- Pin 21 -->
-      <rect x="565" y="839" width="55" height="20" rx="3" fill="#2ecc71" /> <text x="572" y="853" fill="#fff">GP16</text>
-      <rect x="625" y="839" width="55" height="20" rx="3" fill="#e67e22" /> <text x="632" y="853" fill="#fff">SPI0 RX</text>
-      <rect x="685" y="839" width="60" height="20" rx="3" fill="#2980b9" /> <text x="692" y="853" fill="#fff">I2C0 SDA</text>
-      <rect x="750" y="839" width="60" height="20" rx="3" fill="#9b59b6" /> <text x="757" y="853" fill="#fff">UART0 TX</text>
-    </g>
-
-    <!-- DEBUG PIN LABELS (Bottom) -->
-    <g font-size="10" font-weight="bold" text-anchor="middle">
-      <rect x="340" y="910" width="50" height="18" rx="3" fill="#d35400" /> <text x="365" y="923" fill="#fff">SWCLK</text>
-      <rect x="395" y="910" width="40" height="18" rx="3" fill="#000000" stroke="#555" stroke-width="1" /> <text x="415" y="923" fill="#fff">GND</text>
-      <rect x="440" y="910" width="50" height="18" rx="3" fill="#d35400" /> <text x="465" y="923" fill="#fff">SWDIO</text>
-
-      <line x1="375" y1="885" x2="365" y2="910" stroke="#d35400" stroke-dasharray="2,2" />
-      <line x1="400" y1="885" x2="415" y2="910" stroke="#555" stroke-dasharray="2,2" />
-      <line x1="425" y1="885" x2="465" y2="910" stroke="#d35400" stroke-dasharray="2,2" />
-    </g>
+  <!-- Main board -->
+  <g filter="url(#shadow)">
+    <rect x="530" y="115" width="540" height="850" rx="25" fill="url(#board)" stroke="#2ecc91" stroke-width="2"/>
+    <circle cx="563" cy="148" r="15" fill="#0d1117" stroke="#78c9a7" stroke-width="3"/>
+    <circle cx="1037" cy="148" r="15" fill="#0d1117" stroke="#78c9a7" stroke-width="3"/>
+    <circle cx="563" cy="932" r="15" fill="#0d1117" stroke="#78c9a7" stroke-width="3"/>
+    <circle cx="1037" cy="932" r="15" fill="#0d1117" stroke="#78c9a7" stroke-width="3"/>
+    <rect x="720" y="137" width="160" height="48" rx="6" fill="#b7c4cc" stroke="#e7edf1" stroke-width="2"/>
+    <rect x="737" y="145" width="126" height="31" rx="3" fill="#d7e0e5"/>
+    <text x="800" y="166" text-anchor="middle" font-size="13" font-weight="700" fill="#344454">USB</text>
+    <rect x="635" y="280" width="330" height="210" rx="13" fill="url(#chip)" stroke="#708197" stroke-width="2"/>
+    <text x="800" y="358" text-anchor="middle" font-size="27" font-weight="800" fill="#f0f6fc">RP2040</text>
+    <text x="800" y="388" text-anchor="middle" font-size="15" fill="#8fa4ba">Dual-core Arm Cortex-M0+</text>
+    <text x="800" y="415" text-anchor="middle" font-size="13" fill="#8fa4ba">Microcontrolador</text>
+    <rect x="684" y="535" width="232" height="115" rx="9" fill="#152b23" stroke="#55b78c" stroke-width="1.5"/>
+    <text x="800" y="572" text-anchor="middle" font-size="18" font-weight="750" fill="#a7f3d0">PICO W</text>
+    <text x="800" y="598" text-anchor="middle" font-size="13" fill="#b5c9c0">Wi-Fi 2,4 GHz · Bluetooth 5.2</text>
+    <text x="800" y="621" text-anchor="middle" font-size="12" fill="#8ca99c">CYW43439</text>
+    <rect x="755" y="700" width="90" height="55" rx="5" fill="#c8d2d9" stroke="#e9eef2" stroke-width="2"/>
+    <rect x="767" y="710" width="66" height="35" rx="3" fill="#9ba9b5"/>
+    <text x="800" y="732" text-anchor="middle" font-size="11" font-weight="700" fill="#263746">RF</text>
+    <path d="M700 820 Q800 780 900 820" fill="none" stroke="#73c6a2" stroke-width="2" opacity=".65"/>
+    <path d="M715 838 Q800 805 885 838" fill="none" stroke="#73c6a2" stroke-width="2" opacity=".5"/>
+    <text x="800" y="886" text-anchor="middle" font-size="13" font-weight="700" fill="#c1e7d5">Raspberry Pi</text>
+    <text x="800" y="906" text-anchor="middle" font-size="11" fill="#9bcbb4">Pico W</text>
   </g>
 
-  <!-- ==================== LEGEND ==================== -->
-  <g transform="translate(180, 1070)" font-size="11" font-weight="bold">
-    <rect x="0" y="0" width="740" height="110" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1" />
-    
-    <text x="370" y="25" fill="#ffffff" font-size="13" text-anchor="middle">PIN FUNCTIONS LEGEND</text>
+  <!-- Header pin rows -->
+  <text x="400" y="117" text-anchor="middle" class="section">LADO IZQUIERDO · PINES 1–20</text>
+  <text x="1200" y="117" text-anchor="middle" class="section">LADO DERECHO · PINES 21–40</text>
+  <!-- Header strips -->
+  <rect x="504" y="155" width="26" height="760" rx="5" fill="#c4cbd2"/>
+  <rect x="1070" y="155" width="26" height="760" rx="5" fill="#c4cbd2"/>
 
-    <!-- Row 1 -->
-    <rect x="30" y="45" width="16" height="16" rx="3" fill="#e74c3c" /> <text x="55" y="58" fill="#c9d1d9">Power (VBUS, VSYS, 3V3)</text>
-    <rect x="280" y="45" width="16" height="16" rx="3" fill="#000000" stroke="#888" stroke-width="1" /> <text x="305" y="58" fill="#c9d1d9">Ground (GND)</text>
-    <rect x="500" y="45" width="16" height="16" rx="3" fill="#2ecc71" /> <text x="525" y="58" fill="#c9d1d9">GPIO / PIO / PWM</text>
-
-    <!-- Row 2 -->
-    <rect x="30" y="75" width="16" height="16" rx="3" fill="#27ae60" /> <text x="55" y="88" fill="#c9d1d9">ADC Inputs</text>
-    <rect x="180" y="75" width="16" height="16" rx="3" fill="#9b59b6" /> <text x="205" y="88" fill="#c9d1d9">UART</text>
-    <rect x="310" y="75" width="16" height="16" rx="3" fill="#e67e22" /> <text x="335" y="88" fill="#c9d1d9">SPI Bus</text>
-    <rect x="440" y="75" width="16" height="16" rx="3" fill="#2980b9" /> <text x="465" y="88" fill="#c9d1d9">I2C Bus</text>
-    <rect x="570" y="75" width="16" height="16" rx="3" fill="#e84393" /> <text x="595" y="88" fill="#c9d1d9">System Control</text>
+  <!-- Left pins 1..20 -->
+  <g>
+    <g transform="translate(0,0)"><rect x="505" y="155" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="170" r="5" fill="#0d1117"/><text x="487" y="175" text-anchor="end" class="pinno">1</text><path d="M505 170 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="166" text-anchor="end" class="gpio">GP0</text><text x="448" y="180" text-anchor="end" class="func">UART0 TX · SPI0 RX · I²C0 SDA · PWM</text></g>
+    <g><rect x="505" y="194" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="209" r="5" fill="#0d1117"/><text x="487" y="214" text-anchor="end" class="pinno">2</text><path d="M505 209 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="205" text-anchor="end" class="gpio">GP1</text><text x="448" y="219" text-anchor="end" class="func">UART0 RX · SPI0 CSn · I²C0 SCL · PWM</text></g>
+    <g><rect x="505" y="233" width="24" height="31" rx="3" fill="#6b7280"/><circle cx="517" cy="248" r="5" fill="#0d1117"/><text x="487" y="253" text-anchor="end" class="pinno">3</text><path d="M505 248 H458" stroke="#6b7280" stroke-width="1.5"/><text x="448" y="253" text-anchor="end" class="special" fill="#d1d5db">GND</text></g>
+    <g><rect x="505" y="272" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="287" r="5" fill="#0d1117"/><text x="487" y="292" text-anchor="end" class="pinno">4</text><path d="M505 287 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="292" text-anchor="end" class="gpio">GP2</text><text x="448" y="306" text-anchor="end" class="func">GPIO · PWM</text></g>
+    <g><rect x="505" y="311" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="326" r="5" fill="#0d1117"/><text x="487" y="331" text-anchor="end" class="pinno">5</text><path d="M505 326 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="331" text-anchor="end" class="gpio">GP3</text><text x="448" y="345" text-anchor="end" class="func">GPIO · PWM</text></g>
+    <g><rect x="505" y="350" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="365" r="5" fill="#0d1117"/><text x="487" y="370" text-anchor="end" class="pinno">6</text><path d="M505 365 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="361" text-anchor="end" class="gpio">GP4</text><text x="448" y="375" text-anchor="end" class="func">UART1 TX · SPI0 RX · I²C0 SDA</text></g>
+    <g><rect x="505" y="389" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="404" r="5" fill="#0d1117"/><text x="487" y="409" text-anchor="end" class="pinno">7</text><path d="M505 404 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="400" text-anchor="end" class="gpio">GP5</text><text x="448" y="414" text-anchor="end" class="func">UART1 RX · SPI0 CSn · I²C0 SCL</text></g>
+    <g><rect x="505" y="428" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="443" r="5" fill="#0d1117"/><text x="487" y="448" text-anchor="end" class="pinno">8</text><path d="M505 443 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="453" text-anchor="end" class="special" fill="#60a5fa">GND</text></g>
+    <g><rect x="505" y="467" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="482" r="5" fill="#0d1117"/><text x="487" y="487" text-anchor="end" class="pinno">9</text><path d="M505 482 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="478" text-anchor="end" class="gpio">GP6</text><text x="448" y="492" text-anchor="end" class="func">GPIO · PWM</text></g>
+    <g><rect x="505" y="506" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="521" r="5" fill="#0d1117"/><text x="487" y="526" text-anchor="end" class="pinno">10</text><path d="M505 521 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="517" text-anchor="end" class="gpio">GP7</text><text x="448" y="531" text-anchor="end" class="func">GPIO · PWM</text></g>
+    <g><rect x="505" y="545" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="560" r="5" fill="#0d1117"/><text x="487" y="565" text-anchor="end" class="pinno">11</text><path d="M505 560 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="556" text-anchor="end" class="gpio">GP8</text><text x="448" y="570" text-anchor="end" class="func">UART1 TX · SPI1 RX · I²C0 SDA</text></g>
+    <g><rect x="505" y="584" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="599" r="5" fill="#0d1117"/><text x="487" y="604" text-anchor="end" class="pinno">12</text><path d="M505 599 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="595" text-anchor="end" class="gpio">GP9</text><text x="448" y="609" text-anchor="end" class="func">UART1 RX · SPI1 CSn · I²C0 SCL</text></g>
+    <g><rect x="505" y="623" width="24" height="31" rx="3" fill="#6b7280"/><circle cx="517" cy="638" r="5" fill="#0d1117"/><text x="487" y="643" text-anchor="end" class="pinno">13</text><path d="M505 638 H458" stroke="#6b7280" stroke-width="1.5"/><text x="448" y="643" text-anchor="end" class="special" fill="#d1d5db">GND</text></g>
+    <g><rect x="505" y="662" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="677" r="5" fill="#0d1117"/><text x="487" y="682" text-anchor="end" class="pinno">14</text><path d="M505 677 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="673" text-anchor="end" class="gpio">GP10</text><text x="448" y="687" text-anchor="end" class="func">SPI1 SCK · I²C1 SDA · PWM</text></g>
+    <g><rect x="505" y="701" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="716" r="5" fill="#0d1117"/><text x="487" y="721" text-anchor="end" class="pinno">15</text><path d="M505 716 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="712" text-anchor="end" class="gpio">GP11</text><text x="448" y="726" text-anchor="end" class="func">SPI1 TX · I²C1 SCL · PWM</text></g>
+    <g><rect x="505" y="740" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="755" r="5" fill="#0d1117"/><text x="487" y="760" text-anchor="end" class="pinno">16</text><path d="M505 755 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="751" text-anchor="end" class="gpio">GP12</text><text x="448" y="765" text-anchor="end" class="func">SPI1 RX · I²C0 SDA · PWM</text></g>
+    <g><rect x="505" y="779" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="794" r="5" fill="#0d1117"/><text x="487" y="799" text-anchor="end" class="pinno">17</text><path d="M505 794 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="790" text-anchor="end" class="gpio">GP13</text><text x="448" y="804" text-anchor="end" class="func">SPI1 CSn · I²C0 SCL · PWM</text></g>
+    <g><rect x="505" y="818" width="24" height="31" rx="3" fill="#6b7280"/><circle cx="517" cy="833" r="5" fill="#0d1117"/><text x="487" y="838" text-anchor="end" class="pinno">18</text><path d="M505 833 H458" stroke="#6b7280" stroke-width="1.5"/><text x="448" y="838" text-anchor="end" class="special" fill="#d1d5db">GND</text></g>
+    <g><rect x="505" y="857" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="872" r="5" fill="#0d1117"/><text x="487" y="877" text-anchor="end" class="pinno">19</text><path d="M505 872 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="868" text-anchor="end" class="gpio">GP14</text><text x="448" y="882" text-anchor="end" class="func">GPIO · PWM</text></g>
+    <g><rect x="505" y="896" width="24" height="31" rx="3" fill="#3498db"/><circle cx="517" cy="911" r="5" fill="#0d1117"/><text x="487" y="916" text-anchor="end" class="pinno">20</text><path d="M505 911 H458" stroke="#3498db" stroke-width="1.5"/><text x="448" y="907" text-anchor="end" class="gpio">GP15</text><text x="448" y="921" text-anchor="end" class="func">GPIO · PWM</text></g>
   </g>
+
+  <!-- Right pins 40..21, physical top-to-bottom -->
+  <g>
+    <g><rect x="1071" y="155" width="24" height="31" rx="3" fill="#f59e0b"/><circle cx="1083" cy="170" r="5" fill="#0d1117"/><text x="1113" y="175" class="pinno">40</text><path d="M1095 170 H1142" stroke="#f59e0b" stroke-width="1.5"/><text x="1152" y="175" class="special" fill="#fbbf24">VBUS</text><text x="1152" y="189" class="func">5 V desde USB</text></g>
+    <g><rect x="1071" y="194" width="24" height="31" rx="3" fill="#f59e0b"/><circle cx="1083" cy="209" r="5" fill="#0d1117"/><text x="1113" y="214" class="pinno">39</text><path d="M1095 209 H1142" stroke="#f59e0b" stroke-width="1.5"/><text x="1152" y="214" class="special" fill="#fbbf24">VSYS</text><text x="1152" y="228" class="func">Alimentación de entrada</text></g>
+    <g><rect x="1071" y="233" width="24" height="31" rx="3" fill="#6b7280"/><circle cx="1083" cy="248" r="5" fill="#0d1117"/><text x="1113" y="253" class="pinno">38</text><path d="M1095 248 H1142" stroke="#6b7280" stroke-width="1.5"/><text x="1152" y="253" class="special" fill="#d1d5db">GND</text></g>
+    <g><rect x="1071" y="272" width="24" height="31" rx="3" fill="#f59e0b"/><circle cx="1083" cy="287" r="5" fill="#0d1117"/><text x="1113" y="292" class="pinno">37</text><path d="M1095 287 H1142" stroke="#f59e0b" stroke-width="1.5"/><text x="1152" y="292" class="special" fill="#fbbf24">3V3_EN</text><text x="1152" y="306" class="func">Habilitación regulador</text></g>
+    <g><rect x="1071" y="311" width="24" height="31" rx="3" fill="#f59e0b"/><circle cx="1083" cy="326" r="5" fill="#0d1117"/><text x="1113" y="331" class="pinno">36</text><path d="M1095 326 H1142" stroke="#f59e0b" stroke-width="1.5"/><text x="1152" y="331" class="special" fill="#fbbf24">3V3(OUT)</text><text x="1152" y="345" class="func">Salida regulada 3,3 V</text></g>
+    <g><rect x="1071" y="350" width="24" height="31" rx="3" fill="#f59e0b"/><circle cx="1083" cy="365" r="5" fill="#0d1117"/><text x="1113" y="370" class="pinno">35</text><path d="M1095 365 H1142" stroke="#f59e0b" stroke-width="1.5"/><text x="1152" y="370" class="special" fill="#fbbf24">ADC_VREF</text><text x="1152" y="384" class="func">Referencia ADC</text></g>
+    <g><rect x="1071" y="389" width="24" height="31" rx="3" fill="#8b5cf6"/><circle cx="1083" cy="404" r="5" fill="#0d1117"/><text x="1113" y="409" class="pinno">34</text><path d="M1095 404 H1142" stroke="#8b5cf6" stroke-width="1.5"/><text x="1152" y="400" class="gpio">GP28 / ADC2</text><text x="1152" y="414" class="func">GPIO · entrada analógica</text></g>
+    <g><rect x="1071" y="428" width="24" height="31" rx="3" fill="#6b7280"/><circle cx="1083" cy="443" r="5" fill="#0d1117"/><text x="1113" y="448" class="pinno">33</text><path d="M1095 443 H1142" stroke="#6b7280" stroke-width="1.5"/><text x="1152" y="448" class="special" fill="#d1d5db">GND</text></g>
+    <g><rect x="1071" y="467" width="24" height="31" rx="3" fill="#8b5cf6"/><circle cx="1083" cy="482" r="5" fill="#0d1117"/><text x="1113" y="487" class="pinno">32</text><path d="M1095 482 H1142" stroke="#8b5cf6" stroke-width="1.5"/><text x="1152" y="478" class="gpio">GP27 / ADC1</text><text x="1152" y="492" class="func">GPIO · entrada analógica</text></g>
+    <g><rect x="1071" y="506" width="24" height="31" rx="3" fill="#8b5cf6"/><circle cx="1083" cy="521" r="5" fill="#0d1117"/><text x="1113" y="526" class="pinno">31</text><path d="M1095 521 H1142" stroke="#8b5cf6" stroke-width="1.5"/><text x="1152" y="517" class="gpio">GP26 / ADC0</text><text x="1152" y="531" class="func">GPIO · entrada analógica</text></g>
+    <g><rect x="1071" y="545" width="24" height="31" rx="3" fill="#f59e0b"/><circle cx="1083" cy="560" r="5" fill="#0d1117"/><text x="1113" y="565" class="pinno">30</text><path d="M1095 560 H1142" stroke="#f59e0b" stroke-width="1.5"/><text x="1152" y="565" class="special" fill="#fbbf24">RUN</text><text x="1152" y="579" class="func">Reset / habilitación MCU</text></g>
+    <g><rect x="1071" y="584" width="24" height="31" rx="3" fill="#3498db"/><circle cx="1083" cy="599" r="5" fill="#0d1117"/><text x="1113" y="604" class="pinno">29</text><path d="M1095 599 H1142" stroke="#3498db" stroke-width="1.5"/><text x="1152" y="599" class="gpio">GP22</text><text x="1152" y="613" class="func">GPIO · PWM</text></g>
+    <g><rect x="1071" y="623" width="24" height="31" rx="3" fill="#6b7280"/><circle cx="1083" cy="638" r="5" fill="#0d1117"/><text x="1113" y="643" class="pinno">28</text><path d="M1095 638 H1142" stroke="#6b7280" stroke-width="1.5"/><text x="1152" y="643" class="special" fill="#d1d5db">GND</text></g>
+    <g><rect x="1071" y="662" width="24" height="31" rx="3" fill="#3498db"/><circle cx="1083" cy="677" r="5" fill="#0d1117"/><text x="1113" y="682" class="pinno">27</text><path d="M1095 677 H1142" stroke="#3498db" stroke-width="1.5"/><text x="1152" y="673" class="gpio">GP21</text><text x="1152" y="687" class="func">UART1 RX · SPI0 CSn · I²C0 SCL</text></g>
+    <g><rect x="1071" y="701" width="24" height="31" rx="3" fill="#3498db"/><circle cx="1083" cy="716" r="5" fill="#0d1117"/><text x="1113" y="721" class="pinno">26</text><path d="M1095 716 H1142" stroke="#3498db" stroke-width="1.5"/><text x="1152" y="712" class="gpio">GP20</text><text x="1152" y="726" class="func">UART1 TX · SPI0 RX · I²C0 SDA</text></g>
+    <g><rect x="1071" y="740" width="24" height="31" rx="3" fill="#3498db"/><circle cx="1083" cy="755" r="5" fill="#0d1117"/><text x="1113" y="760" class="pinno">25</text><path d="M1095 755 H1142" stroke="#3498db" stroke-width="1.5"/><text x="1152" y="751" class="gpio">GP19</text><text x="1152" y="765" class="func">SPI0 TX · I²C1 SCL · PWM</text></g>
+    <g><rect x="1071" y="779" width="24" height="31" rx="3" fill="#3498db"/><circle cx="1083" cy="794" r="5" fill="#0d1117"/><text x="1113" y="799" class="pinno">24</text><path d="M1095 794 H1142" stroke="#3498db" stroke-width="1.5"/><text x="1152" y="790" class="gpio">GP18</text><text x="1152" y="804" class="func">SPI0 SCK · I²C1 SDA · PWM</text></g>
+    <g><rect x="1071" y="818" width="24" height="31" rx="3" fill="#6b7280"/><circle cx="1083" cy="833" r="5" fill="#0d1117"/><text x="1113" y="838" class="pinno">23</text><path d="M1095 833 H1142" stroke="#6b7280" stroke-width="1.5"/><text x="1152" y="838" class="special" fill="#d1d5db">GND</text></g>
+    <g><rect x="1071" y="857" width="24" height="31" rx="3" fill="#3498db"/><circle cx="1083" cy="872" r="5" fill="#0d1117"/><text x="1113" y="877" class="pinno">22</text><path d="M1095 872 H1142" stroke="#3498db" stroke-width="1.5"/><text x="1152" y="868" class="gpio">GP17</text><text x="1152" y="882" class="func">UART0 RX · SPI0 CSn · I²C0 SCL</text></g>
+    <g><rect x="1071" y="896" width="24" height="31" rx="3" fill="#3498db"/><circle cx="1083" cy="911" r="5" fill="#0d1117"/><text x="1113" y="916" class="pinno">21</text><path d="M1095 911 H1142" stroke="#3498db" stroke-width="1.5"/><text x="1152" y="907" class="gpio">GP16</text><text x="1152" y="921" class="func">UART0 TX · SPI0 RX · I²C0 SDA</text></g>
+  </g>
+
+  <!-- Legend -->
+  <rect x="100" y="1000" width="1400" height="115" rx="14" fill="#111923" stroke="#263344" stroke-width="1.5"/>
+  <text x="130" y="1031" class="section">LEYENDA</text>
+  <rect x="130" y="1050" width="16" height="16" rx="3" fill="#3498db"/><text x="155" y="1063" class="legend">GPIO digital</text>
+  <rect x="300" y="1050" width="16" height="16" rx="3" fill="#8b5cf6"/><text x="325" y="1063" class="legend">GPIO con ADC</text>
+  <rect x="485" y="1050" width="16" height="16" rx="3" fill="#f59e0b"/><text x="510" y="1063" class="legend">Alimentación / control</text>
+  <rect x="740" y="1050" width="16" height="16" rx="3" fill="#6b7280"/><text x="765" y="1063" class="legend">GND</text>
+  <text x="130" y="1090" class="note">Nota: las funciones alternativas dependen de la configuración del multiplexor GPIO. No todas pueden utilizarse simultáneamente.</text>
+  <text x="800" y="1148" text-anchor="middle" class="note">Referencia visual basada en el pinout oficial de Raspberry Pi Pico W. Verificar el datasheet antes de diseñar el hardware.</text>
 </svg>

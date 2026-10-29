@@ -259,5 +259,18 @@ doc.add_paragraph(
     "trabajo práctico y a los análisis realizados."
 )
 
+# ---- Enlaces ----
+doc.add_heading("Enlaces", level=1)
+enlaces = [
+    ("Documentación (sitio MkDocs)", "https://alessandroklein.github.io/Docs/picoreflex/"),
+    ("Repositorio del código", "https://github.com/AlessandroKlein/PicoReflex"),
+    ("Repositorio de la documentación", "https://github.com/AlessandroKlein/Docs"),
+]
+for label, url in enlaces:
+    p = doc.add_paragraph(style="List Bullet")
+    r = p.add_run(label + ": ")
+    r.bold = True
+    p.add_run(url)
+
 doc.save("Informe_PicoReflex.docx")
 print("OK -> Informe_PicoReflex.docx")

@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1250 820" width="100%" height="100%" style="background-color: #0d1117; font-family: -apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, &#39;Fira Code&#39;, Monaco, Consolas, sans-serif;">
+  <defs>
+    <!-- Filter effects -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+    <filter id="glowBlue" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#3498db" flood-opacity="0.4" />
+    </filter>
+    <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#2ecc71" flood-opacity="0.4" />
+    </filter>
+    <filter id="glowPurple" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#a855f7" flood-opacity="0.4" />
+    </filter>
+    <filter id="glowCyan" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#00d2ff" flood-opacity="0.4" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="periphGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <linearGradient id="gameGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1b2a38" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <linearGradient id="networkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a3328" />
+      <stop offset="100%" stop-color="#0f2018" />
+    </linearGradient>
+
+    <linearGradient id="ipcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2c1e38" />
+      <stop offset="100%" stop-color="#1a1124" />
+    </linearGradient>
+
+    <!-- Markers for Arrows -->
+    <marker id="arrowCyan" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#00d2ff" />
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#3498db" />
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#2ecc71" />
+    </marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#a855f7" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="625" y="40" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="bold" letter-spacing="1">ESQUEMA GENERAL DEL SISTEMA — PICOREFLEX</text>
+  <text x="625" y="65" text-anchor="middle" fill="#8b949e" font-size="13">Periféricos de Entrada/Salida, Tareas Principales, Estado Compartido y Subservicios</text>
+
+  <!-- ==================== FLOW CONNECTIONS ==================== -->
+
+  <!-- Top Peripherals -> Main Core 0 Line -->
+  <path d="M 625 160 L 260 160 L 260 220" fill="none" stroke="#00d2ff" stroke-width="2.5" marker-end="url(#arrowCyan)" />
+
+  <!-- Shared State IPC Interconnection Line -->
+  <line x1="450" y1="265" x2="520" y2="265" stroke="#a855f7" stroke-width="2.5" marker-start="url(#arrowPurple)" />
+  <line x1="730" y1="265" x2="790" y2="265" stroke="#a855f7" stroke-width="2.5" marker-end="url(#arrowPurple)" />
+
+  <!-- Subservices Lines - Left (game_task) -->
+  <path d="M 260 310 L 260 670" fill="none" stroke="#3498db" stroke-width="2" />
+  <line x1="260" y1="390" x2="300" y2="390" stroke="#3498db" stroke-width="2" marker-end="url(#arrowBlue)" />
+  <line x1="260" y1="500" x2="300" y2="500" stroke="#3498db" stroke-width="2" marker-end="url(#arrowBlue)" />
+  <line x1="260" y1="610" x2="300" y2="610" stroke="#3498db" stroke-width="2" marker-end="url(#arrowBlue)" />
+
+  <!-- Subservices Lines - Right (network_task) -->
+  <path d="M 990 310 L 990 670" fill="none" stroke="#2ecc71" stroke-width="2" />
+  <line x1="990" y1="390" x2="950" y2="390" stroke="#2ecc71" stroke-width="2" marker-end="url(#arrowGreen)" />
+  <line x1="990" y1="500" x2="950" y2="500" stroke="#2ecc71" stroke-width="2" marker-end="url(#arrowGreen)" />
+  <line x1="990" y1="610" x2="950" y2="610" stroke="#2ecc71" stroke-width="2" marker-end="url(#arrowGreen)" />
+
+  <!-- ==================== TOP LEVEL: PERIPHERALS ==================== -->
+  <g transform="translate(60, 90)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="1130" height="70" rx="10" fill="url(#periphGrad)" stroke="#00d2ff" stroke-width="2" filter="url(#glowCyan)" />
+    
+    <g font-family="&#39;Fira Code&#39;, monospace" font-size="13" font-weight="bold" text-anchor="middle">
+      <text x="140" y="40" fill="#38bdf8">LEDs (2..6)</text>
+      <text x="250" y="40" fill="#64748b">•</text>
+      <text x="430" y="40" fill="#38bdf8">Pulsadores (7..11, debounce PIO)</text>
+      <text x="620" y="40" fill="#64748b">•</text>
+      <text x="740" y="40" fill="#f39c12">Buzzer (16, PWM)</text>
+      <text x="850" y="40" fill="#64748b">•</text>
+      <text x="990" y="40" fill="#4ade80">SSD1306/SH1106 (14/15, I2C1)</text>
+    </g>
+  </g>
+
+  <!-- ==================== CORE TASKS & SHARED STATE ==================== -->
+
+  <!-- Left Task: game_task -->
+  <g transform="translate(70, 220)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="380" height="90" rx="10" fill="url(#gameGrad)" stroke="#3498db" stroke-width="2" filter="url(#glowBlue)" />
+    <text x="190" y="38" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="bold">PicoReflex</text>
+    <text x="190" y="62" text-anchor="middle" fill="#38bdf8" font-size="15" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">game_task (juego)</text>
+  </g>
+
+  <!-- Middle Component: estado compartido -->
+  <g transform="translate(520, 230)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="210" height="70" rx="8" fill="url(#ipcGrad)" stroke="#a855f7" stroke-width="2" filter="url(#glowPurple)" />
+    <text x="105" y="41" text-anchor="middle" fill="#c084fc" font-size="14" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">estado compartido</text>
+  </g>
+
+  <!-- Right Task: network_task -->
+  <g transform="translate(790, 220)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="400" height="90" rx="10" fill="url(#networkGrad)" stroke="#2ecc71" stroke-width="2" filter="url(#glowGreen)" />
+    <text x="200" y="38" text-anchor="middle" fill="#ffffff" font-size="16" font-weight="bold">Servicios de Red y UI</text>
+    <text x="200" y="62" text-anchor="middle" fill="#4ade80" font-size="15" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">network_task (red + display)</text>
+  </g>
+
+  <!-- ==================== SUBSERVICES - LEFT (GAME TASK) ==================== -->
+
+  <!-- Subservice 1: ADC0 -->
+  <g transform="translate(300, 355)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="310" height="70" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+    <text x="15" y="41" fill="#e2e8f0" font-size="13" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">
+      <tspan fill="#a855f7">ADC0 (GPIO26)</tspan> ──► divisor 10k/22k (batería)
+    </text>
+  </g>
+
+  <!-- Subservice 2: Watchdog -->
+  <g transform="translate(300, 465)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="310" height="70" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+    <text x="15" y="41" fill="#e2e8f0" font-size="13" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">
+      <tspan fill="#f39c12">Watchdog</tspan> hardware
+    </text>
+  </g>
+
+  <!-- Subservice 3: Flash -->
+  <g transform="translate(300, 575)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="310" height="70" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+    <text x="15" y="41" fill="#e2e8f0" font-size="13" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">
+      <tspan fill="#38bdf8">Flash</tspan> (récords/config + OTA A/B)
+    </text>
+  </g>
+
+  <!-- ==================== SUBSERVICES - RIGHT (NETWORK TASK) ==================== -->
+
+  <!-- Subservice 1: Stack Network -->
+  <g transform="translate(640, 355)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="310" height="70" rx="8" fill="#142e20" stroke="#2ecc71" stroke-width="1.5" />
+    <text x="295" y="41" text-anchor="end" fill="#e2e8f0" font-size="13" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">
+      <tspan fill="#4ade80">cyw43_arch + lwIP</tspan> (sys_freertos)
+    </text>
+  </g>
+
+  <!-- Subservice 2: Web / Captive Portal -->
+  <g transform="translate(640, 465)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="310" height="70" rx="8" fill="#142e20" stroke="#2ecc71" stroke-width="1.5" />
+    <text x="295" y="41" text-anchor="end" fill="#e2e8f0" font-size="13" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">
+      <tspan fill="#fbbf24">HTTP + DNS captive portal + mDNS</tspan>
+    </text>
+  </g>
+
+  <!-- Subservice 3: OTA -->
+  <g transform="translate(640, 575)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="310" height="70" rx="8" fill="#142e20" stroke="#2ecc71" stroke-width="1.5" />
+    <text x="295" y="41" text-anchor="end" fill="#e2e8f0" font-size="13" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">
+      <tspan fill="#c084fc">OTA</tspan> (bootloader A/B + staging)
+    </text>
+  </g>
+
+</svg>

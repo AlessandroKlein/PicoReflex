@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 880" width="100%" height="100%" style="background-color: #0d1117; font-family: -apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, &#39;Fira Code&#39;, Monaco, Consolas, sans-serif;">
+  <defs>
+    <!-- Filter effects -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+    <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#2ecc71" flood-opacity="0.4" />
+    </filter>
+    <filter id="glowBlue" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#3498db" flood-opacity="0.4" />
+    </filter>
+    <filter id="glowOrange" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#f39c12" flood-opacity="0.4" />
+    </filter>
+    <filter id="glowPurple" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#a855f7" flood-opacity="0.4" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="picoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#16382b" />
+      <stop offset="100%" stop-color="#0b1e17" />
+    </linearGradient>
+
+    <linearGradient id="core0Grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1b2a38" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <linearGradient id="core1Grad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1a3328" />
+      <stop offset="100%" stop-color="#0f2018" />
+    </linearGradient>
+
+    <linearGradient id="ipcGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2c1e38" />
+      <stop offset="100%" stop-color="#1a1124" />
+    </linearGradient>
+
+    <!-- Markers for Arrows -->
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#3498db" />
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#2ecc71" />
+    </marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f39c12" />
+    </marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#a855f7" />
+    </marker>
+  </defs>
+
+  <!-- Canvas Title -->
+  <text x="550" y="40" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="bold" letter-spacing="1">ARQUITECTURA DE SOFTWARE Y HARDWARE — PICOREFLEX</text>
+  <text x="550" y="65" text-anchor="middle" fill="#8b949e" font-size="13">Distribución Multinúcleo RP2040, Intercomunicación IPC y Asignación de GPIOs</text>
+
+  <!-- ==================== CONNECTIONS / BUSES (BEHIND COMPONENTS) ==================== -->
+  
+  <!-- Lines from Pico W to Core 0 & Core 1 -->
+  <path d="M 400 170 L 400 205 L 240 205 L 240 230" fill="none" stroke="#3498db" stroke-width="2.5" marker-end="url(#arrowBlue)" />
+  <path d="M 700 170 L 700 205 L 860 205 L 860 230" fill="none" stroke="#2ecc71" stroke-width="2.5" marker-end="url(#arrowGreen)" />
+
+  <!-- Core 0 Output Bus to Peripherals -->
+  <path d="M 240 520 L 240 575" fill="none" stroke="#3498db" stroke-width="2.5" />
+  <!-- Branching to LEDs (GPIO 2..6) -->
+  <path d="M 240 575 L 140 575 L 140 620" fill="none" stroke="#3498db" stroke-width="2" marker-end="url(#arrowBlue)" />
+  <!-- Branching to Pulsadores (GPIO 7..11) -->
+  <path d="M 240 575 L 340 575 L 340 620" fill="none" stroke="#3498db" stroke-width="2" marker-end="url(#arrowBlue)" />
+  <!-- Branching to Buzzer (GPIO 16) -->
+  <path d="M 240 575 L 540 575 L 540 620" fill="none" stroke="#f39c12" stroke-width="2" marker-end="url(#arrowOrange)" />
+
+  <!-- Core 1 Output Bus to Display (GPIO 14/15) -->
+  <path d="M 860 520 L 860 575 L 740 575 L 740 620" fill="none" stroke="#2ecc71" stroke-width="2.5" marker-end="url(#arrowGreen)" />
+
+  <!-- Battery ADC Monitor Connection to ADC0 (GPIO26) -->
+  <path d="M 880 770 L 980 770 L 980 500 L 960 500" fill="none" stroke="#a855f7" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrowPurple)" />
+
+  <!-- ==================== TOP LEVEL: RASPBERRY PI PICO W ==================== -->
+  <g transform="translate(300, 95)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="500" height="75" rx="10" fill="url(#picoGrad)" stroke="#2ecc71" stroke-width="2" filter="url(#glowGreen)" />
+    <text x="250" y="32" text-anchor="middle" fill="#ffffff" font-size="18" font-weight="bold" letter-spacing="0.5">Raspberry Pi Pico W</text>
+    <text x="250" y="54" text-anchor="middle" fill="#a3e635" font-size="13" font-family="&#39;Fira Code&#39;, monospace">(RP2040 + CYW43439)</text>
+  </g>
+
+  <!-- ==================== CORE 0 (JUEGO / MOTOR REAL-TIME) ==================== -->
+  <g transform="translate(50, 230)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="380" height="290" rx="10" fill="url(#core0Grad)" stroke="#3498db" stroke-width="2" filter="url(#glowBlue)" />
+    
+    <!-- Core 0 Header -->
+    <path d="M 0 10 A 10 10 0 0 1 10 0 L 370 0 A 10 10 0 0 1 380 10 L 380 42 L 0 42 Z" fill="#1d3557" />
+    <text x="190" y="27" text-anchor="middle" fill="#60a5fa" font-size="16" font-weight="bold">Core 0 (Juego / Real-Time)</text>
+
+    <!-- Submodules -->
+    <!-- game_logic -->
+    <g transform="translate(20, 58)">
+      <rect x="0" y="0" width="340" height="48" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1" />
+      <text x="15" y="29" fill="#38bdf8" font-size="14" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">game_logic</text>
+      <text x="325" y="29" text-anchor="end" fill="#94a3b8" font-size="13">(motor principal)</text>
+    </g>
+
+    <!-- audio -->
+    <g transform="translate(20, 118)">
+      <rect x="0" y="0" width="340" height="48" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1" />
+      <text x="15" y="29" fill="#38bdf8" font-size="14" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">audio</text>
+      <text x="325" y="29" text-anchor="end" fill="#94a3b8" font-size="13">(buzzer PWM / tonos)</text>
+    </g>
+
+    <!-- flash_storage -->
+    <g transform="translate(20, 178)">
+      <rect x="0" y="0" width="340" height="48" rx="6" fill="#1e293b" stroke="#475569" stroke-width="1" />
+      <text x="15" y="29" fill="#38bdf8" font-size="14" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">flash_storage</text>
+      <text x="325" y="29" text-anchor="end" fill="#94a3b8" font-size="13">(récords persistentes)</text>
+    </g>
+
+    <text x="190" y="260" text-anchor="middle" fill="#64748b" font-size="12" font-style="italic">Ejecución determinista de alta prioridad</text>
+  </g>
+
+  <!-- ==================== IPC (INTER-CORE COMMUNICATION) ==================== -->
+  <g transform="translate(460, 310)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="180" height="130" rx="10" fill="url(#ipcGrad)" stroke="#a855f7" stroke-width="2" filter="url(#glowPurple)" />
+    <text x="90" y="28" text-anchor="middle" fill="#c084fc" font-size="13" font-weight="bold">ESTADO COMPARTIDO</text>
+    
+    <line x1="15" y1="42" x2="165" y2="42" stroke="#581c87" stroke-width="1.5" />
+
+    <text x="90" y="68" text-anchor="middle" fill="#e9d5ff" font-size="12" font-family="&#39;Fira Code&#39;, monospace">critical_sect</text>
+    <text x="90" y="88" text-anchor="middle" fill="#a855f7" font-size="14" font-weight="bold">+</text>
+    <text x="90" y="108" text-anchor="middle" fill="#e9d5ff" font-size="12" font-family="&#39;Fira Code&#39;, monospace">queue (SIPC)</text>
+  </g>
+
+  <!-- IPC Connection Arrows -->
+  <line x1="430" y1="375" x2="460" y2="375" stroke="#a855f7" stroke-width="2" marker-start="url(#arrowPurple)" marker-end="url(#arrowPurple)" />
+  <line x1="640" y1="375" x2="670" y2="375" stroke="#a855f7" stroke-width="2" marker-start="url(#arrowPurple)" marker-end="url(#arrowPurple)" />
+
+  <!-- ==================== CORE 1 (RED / INTERFAZ DE USUARIO) ==================== -->
+  <g transform="translate(670, 230)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="380" height="290" rx="10" fill="url(#core1Grad)" stroke="#2ecc71" stroke-width="2" filter="url(#glowGreen)" />
+    
+    <!-- Core 1 Header -->
+    <path d="M 0 10 A 10 10 0 0 1 10 0 L 370 0 A 10 10 0 0 1 380 10 L 380 42 L 0 42 Z" fill="#143823" />
+    <text x="190" y="27" text-anchor="middle" fill="#4ade80" font-size="16" font-weight="bold">Core 1 (Red / Interfaz UI)</text>
+
+    <!-- Submodules List -->
+    <g transform="translate(15, 52)" font-family="&#39;Fira Code&#39;, monospace" font-size="11">
+      <!-- Item 1 -->
+      <rect x="0" y="0" width="350" height="32" rx="5" fill="#142e20" stroke="#275237" stroke-width="1" />
+      <text x="12" y="20" fill="#4ade80" font-weight="bold">web_server</text>
+      <text x="338" y="20" text-anchor="end" fill="#86efac" font-family="-apple-system, sans-serif">(backend REST / HTTP)</text>
+
+      <!-- Item 2 -->
+      <rect x="0" y="37" width="350" height="32" rx="5" fill="#142e20" stroke="#275237" stroke-width="1" />
+      <text x="12" y="57" fill="#4ade80" font-weight="bold">web_ui</text>
+      <text x="338" y="57" text-anchor="end" fill="#86efac" font-family="-apple-system, sans-serif">(frontend WebApp)</text>
+
+      <!-- Item 3 -->
+      <rect x="0" y="74" width="350" height="32" rx="5" fill="#142e20" stroke="#275237" stroke-width="1" />
+      <text x="12" y="94" fill="#4ade80" font-weight="bold">display_driver</text>
+      <text x="338" y="94" text-anchor="end" fill="#86efac" font-family="-apple-system, sans-serif">(OLED SSD1306 128x64)</text>
+
+      <!-- Item 4 -->
+      <rect x="0" y="111" width="350" height="32" rx="5" fill="#142e20" stroke="#275237" stroke-width="1" />
+      <text x="12" y="131" fill="#4ade80" font-weight="bold">battery_monitor</text>
+      <text x="338" y="131" text-anchor="end" fill="#86efac" font-family="-apple-system, sans-serif">(lectura ADC / Vbat)</text>
+
+      <!-- Item 5 -->
+      <rect x="0" y="148" width="350" height="32" rx="5" fill="#142e20" stroke="#275237" stroke-width="1" />
+      <text x="12" y="168" fill="#4ade80" font-weight="bold">cyw43_arch / lwIP</text>
+      <text x="338" y="168" text-anchor="end" fill="#86efac" font-family="-apple-system, sans-serif">(stack Wi-Fi TCP/IP)</text>
+
+      <!-- Item 6 -->
+      <rect x="0" y="185" width="350" height="32" rx="5" fill="#142e20" stroke="#275237" stroke-width="1" />
+      <text x="12" y="205" fill="#4ade80" font-weight="bold">captive_portal</text>
+      <text x="338" y="205" text-anchor="end" fill="#86efac" font-family="-apple-system, sans-serif">(DNS server auto-redirect)</text>
+    </g>
+  </g>
+
+  <!-- ==================== HARDWARE PERIPHERALS & GPIOS ==================== -->
+
+  <!-- 1. GPIO 2..6 (LEDs) -->
+  <g transform="translate(50, 620)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="180" height="90" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+    <text x="90" y="32" text-anchor="middle" fill="#38bdf8" font-size="15" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">GPIO 2..6</text>
+    <text x="90" y="56" text-anchor="middle" fill="#cbd5e1" font-size="14" font-weight="bold">(5x LEDs)</text>
+    <text x="90" y="75" text-anchor="middle" fill="#64748b" font-size="11">Salida Digital / PWM</text>
+  </g>
+
+  <!-- 2. GPIO 7..11 (Pulsadores) -->
+  <g transform="translate(250, 620)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="180" height="90" rx="8" fill="#1e293b" stroke="#38bdf8" stroke-width="1.5" />
+    <text x="90" y="32" text-anchor="middle" fill="#38bdf8" font-size="15" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">GPIO 7..11</text>
+    <text x="90" y="56" text-anchor="middle" fill="#cbd5e1" font-size="14" font-weight="bold">(5x Pulsadores)</text>
+    <text x="90" y="75" text-anchor="middle" fill="#64748b" font-size="11">Entrada / Pull-up int.</text>
+  </g>
+
+  <!-- 3. GPIO 16 (Buzzer) -->
+  <g transform="translate(450, 620)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="180" height="90" rx="8" fill="#1e293b" stroke="#f39c12" stroke-width="1.5" filter="url(#glowOrange)" />
+    <text x="90" y="32" text-anchor="middle" fill="#f39c12" font-size="15" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">GPIO 16</text>
+    <text x="90" y="56" text-anchor="middle" fill="#cbd5e1" font-size="14" font-weight="bold">(Buzzer)</text>
+    <text x="90" y="75" text-anchor="middle" fill="#64748b" font-size="11">Salida Audio PWM</text>
+  </g>
+
+  <!-- 4. GPIO 14/15 (Display I2C) -->
+  <g transform="translate(650, 620)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="180" height="90" rx="8" fill="#1e293b" stroke="#4ade80" stroke-width="1.5" />
+    <text x="90" y="32" text-anchor="middle" fill="#4ade80" font-size="15" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">GPIO 14/15</text>
+    <text x="90" y="56" text-anchor="middle" fill="#cbd5e1" font-size="14" font-weight="bold">(I2C1 SSD1306)</text>
+    <text x="90" y="75" text-anchor="middle" fill="#64748b" font-size="11">SDA (14) / SCL (15)</text>
+  </g>
+
+  <!-- ==================== BOTTOM LEVEL: BATTERY ADC MONITOR ==================== -->
+  <g transform="translate(200, 740)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="680" height="60" rx="8" fill="#18181b" stroke="#a855f7" stroke-width="1.5" />
+    <text x="340" y="35" text-anchor="middle" fill="#e9d5ff" font-size="14" font-weight="bold">
+      <tspan fill="#a855f7" font-family="&#39;Fira Code&#39;, monospace" font-size="15">ADC0 (GPIO26)</tspan> 
+      <tspan fill="#94a3b8"> ──► </tspan> 
+      Divisor de tensión externo 10kΩ / 22kΩ 
+      <tspan fill="#38bdf8">(Monitoreo Batería LiPo)</tspan>
+    </text>
+  </g>
+
+</svg>

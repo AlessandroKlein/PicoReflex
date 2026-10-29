@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 880" width="100%" height="100%" style="background-color: #0d1117; font-family: -apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, &#39;Fira Code&#39;, Monaco, Consolas, sans-serif;">
+  <defs>
+    <!-- Filter effects for sleek UI visual glow -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+    <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#2ecc71" flood-opacity="0.4" />
+    </filter>
+    <filter id="glowBlue" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#3498db" flood-opacity="0.4" />
+    </filter>
+    <filter id="glowOrange" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#f39c12" flood-opacity="0.4" />
+    </filter>
+    <filter id="glowPurple" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="5" flood-color="#a855f7" flood-opacity="0.4" />
+    </filter>
+
+    <!-- Gradients -->
+    <linearGradient id="initGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#0f172a" />
+    </linearGradient>
+
+    <linearGradient id="staGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1b382b" />
+      <stop offset="100%" stop-color="#0f2018" />
+    </linearGradient>
+
+    <linearGradient id="apGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#382a1b" />
+      <stop offset="100%" stop-color="#1f160e" />
+    </linearGradient>
+
+    <linearGradient id="serverGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#2c1e38" />
+      <stop offset="100%" stop-color="#1a1124" />
+    </linearGradient>
+
+    <!-- Markers for Arrows -->
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#3498db" />
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#2ecc71" />
+    </marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#f39c12" />
+    </marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#a855f7" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="550" y="40" text-anchor="middle" fill="#ffffff" font-size="22" font-weight="bold" letter-spacing="1">5. FLUJO DE RED (CORE 1) — PICOREFLEX</text>
+  <text x="550" y="65" text-anchor="middle" fill="#8b949e" font-size="13">Secuencia de Inicialización Wi-Fi (STA / AP Portal Cautivo), Servidor HTTP y Bucle Principal UI</text>
+
+  <!-- ==================== FLOW CONNECTIONS ==================== -->
+
+  <!-- cyw43_arch_init -> sta_mode -->
+  <path d="M 550 155 L 550 195" stroke="#3498db" stroke-width="2.5" fill="none" marker-end="url(#arrowBlue)" />
+
+  <!-- sta_mode -> decision -->
+  <path d="M 550 255 L 550 295" stroke="#3498db" stroke-width="2.5" fill="none" marker-end="url(#arrowBlue)" />
+
+  <!-- Decision -> STA Mode (SI) -->
+  <path d="M 450 335 L 260 335 L 260 380" stroke="#2ecc71" stroke-width="2.5" fill="none" marker-end="url(#arrowGreen)" />
+
+  <!-- Decision -> AP Mode (NO) -->
+  <path d="M 650 335 L 840 335 L 840 380" stroke="#f39c12" stroke-width="2.5" fill="none" marker-end="url(#arrowOrange)" />
+
+  <!-- STA Mode -> Join / http_server_init -->
+  <path d="M 260 480 L 260 560 L 450 560" stroke="#2ecc71" stroke-width="2.5" fill="none" marker-end="url(#arrowGreen)" />
+
+  <!-- AP Mode -> Join / http_server_init -->
+  <path d="M 840 520 L 840 560 L 650 560" stroke="#f39c12" stroke-width="2.5" fill="none" marker-end="url(#arrowOrange)" />
+
+  <!-- http_server_init -> main loop -->
+  <path d="M 550 600 L 550 650" stroke="#a855f7" stroke-width="2.5" fill="none" marker-end="url(#arrowPurple)" />
+
+  <!-- ==================== BLOCKS & NODES ==================== -->
+
+  <!-- 1. INITIALIZATION -->
+  <g transform="translate(370, 95)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="360" height="60" rx="8" fill="url(#initGrad)" stroke="#38bdf8" stroke-width="2" filter="url(#glowBlue)" />
+    <text x="180" y="36" text-anchor="middle" fill="#38bdf8" font-size="16" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">cyw43_arch_init()</text>
+  </g>
+
+  <!-- 2. STA TRY CONNECT -->
+  <g transform="translate(310, 195)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="480" height="60" rx="8" fill="url(#initGrad)" stroke="#475569" stroke-width="1.5" />
+    <text x="240" y="26" text-anchor="middle" fill="#f8fafc" font-size="13" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">cyw43_arch_enable_sta_mode()</text>
+    <text x="240" y="46" text-anchor="middle" fill="#94a3b8" font-size="12" font-family="&#39;Fira Code&#39;, monospace">cyw43_arch_wifi_connect_timeout_ms(10 s)</text>
+  </g>
+
+  <!-- 3. DECISION DIAMOND / NODE -->
+  <g transform="translate(450, 295)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="200" height="80" rx="10" fill="#1e293b" stroke="#38bdf8" stroke-width="2" />
+    <text x="100" y="46" text-anchor="middle" fill="#f8fafc" font-size="16" font-weight="bold">¿Conectado?</text>
+  </g>
+
+  <!-- Branch Decision Labels -->
+  <g font-family="&#39;Fira Code&#39;, monospace" font-size="12" font-weight="bold">
+    <text x="340" y="325" fill="#4ade80" text-anchor="middle">SÍ</text>
+    <text x="760" y="325" fill="#f87171" text-anchor="middle">NO (Fallback AP)</text>
+  </g>
+
+  <!-- 4A. STA MODE CONNECTED (GREEN BRANCH) -->
+  <g transform="translate(60, 380)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="400" height="100" rx="8" fill="url(#staGrad)" stroke="#2ecc71" stroke-width="2" filter="url(#glowGreen)" />
+    
+    <text x="200" y="32" text-anchor="middle" fill="#4ade80" font-size="15" font-weight="bold">Modo Estación (STA)</text>
+    
+    <line x1="20" y1="44" x2="380" y2="44" stroke="#275237" stroke-width="1" />
+
+    <text x="200" y="68" text-anchor="middle" fill="#cbd5e1" font-size="12" font-family="&#39;Fira Code&#39;, monospace">STA (LED fijo) + DHCP ──► IP Asignada</text>
+  </g>
+
+  <!-- 4B. AP MODE / CAPTIVE PORTAL (ORANGE BRANCH) -->
+  <g transform="translate(620, 380)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="440" height="140" rx="8" fill="url(#apGrad)" stroke="#f39c12" stroke-width="2" filter="url(#glowOrange)" />
+    
+    <text x="220" y="28" text-anchor="middle" fill="#fbbf24" font-size="14" font-weight="bold">Modo Punto de Acceso (AP) + Portal Cautivo</text>
+
+    <line x1="20" y1="38" x2="420" y2="38" stroke="#52391c" stroke-width="1" />
+
+    <g font-family="&#39;Fira Code&#39;, monospace" font-size="11" fill="#e2e8f0">
+      <text x="15" y="58" fill="#fde047">disable_sta + enable_ap_mode("PicoW-ReactionGame", WPA2)</text>
+      <text x="15" y="78" fill="#94a3b8">IP 192.168.4.1 (canal 1, LED parpadea)</text>
+      <text x="15" y="98" fill="#38bdf8">captive::init() ──► DNS puerto 53 ──► 192.168.4.1</text>
+      <text x="15" y="118" fill="#4ade80">ap_dhcp_start() ──► DHCP IPs 192.168.4.16..23</text>
+    </g>
+  </g>
+
+  <!-- 5. HTTP SERVER INITIALIZATION -->
+  <g transform="translate(330, 530)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="440" height="70" rx="8" fill="url(#serverGrad)" stroke="#a855f7" stroke-width="2" filter="url(#glowPurple)" />
+    <text x="220" y="32" text-anchor="middle" fill="#c084fc" font-size="16" font-weight="bold" font-family="&#39;Fira Code&#39;, monospace">http_server_init()</text>
+    <text x="220" y="52" text-anchor="middle" fill="#e9d5ff" font-size="12" font-family="&#39;Fira Code&#39;, monospace">(lwIP raw API, puerto 80)</text>
+  </g>
+
+  <!-- 6. MAIN LOOP / UI REFRESH -->
+  <g transform="translate(280, 650)" filter="url(#dropShadow)">
+    <rect x="0" y="0" width="540" height="90" rx="10" fill="#18181b" stroke="#38bdf8" stroke-width="2" filter="url(#glowBlue)" />
+    
+    <text x="270" y="35" text-anchor="middle" fill="#38bdf8" font-size="15" font-weight="bold">Bucle Principal de Ejecución (Core 1)</text>
+    
+    <line x1="30" y1="48" x2="510" y2="48" stroke="#27272a" stroke-width="1.5" />
+
+    <text x="270" y="70" text-anchor="middle" fill="#f1f5f9" font-size="13" font-family="&#39;Fira Code&#39;, monospace">bucle: refresca display + muestra batería (~1 Hz)</text>
+  </g>
+
+</svg>
