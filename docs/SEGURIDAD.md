@@ -2,7 +2,7 @@
 
 > **Alcance:** firmware C/C++ (Pico SDK 2.3.0) de un juego de reacción en Raspberry
 > Pi Pico W, con servidor web lwIP (HTTP + DNS captive portal) y conectividad
-> Wi-Fi STA/SoftAP. **Fecha:** 2026-10-21 · **Firmware auditado:** v0.7.0 (revisado)
+> Wi-Fi STA/SoftAP. **Fecha:** 2026-10-29 · **Firmware auditado:** v0.9.0 (revisado)
 >
 > **Modelo de amenaza:** el dispositivo opera en una red local (SoftAP propio o
 > Wi-Fi de confianza), no expuesto directamente a internet. Aun así se audita con
