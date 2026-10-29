@@ -520,7 +520,7 @@ void render_login(Builder& b) {
 
 // --- "/ota" (actualización de firmware por aire) -----------------------------
 #ifndef PICOREFLEX_VERSION
-#define PICOREFLEX_VERSION "0.9.4"
+#define PICOREFLEX_VERSION "0.9.7"
 #endif
 
 void render_ota(Builder& b) {

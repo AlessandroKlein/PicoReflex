@@ -79,8 +79,13 @@ add_executable(PicoReflex
 pico_generate_pio_header(PicoReflex ${CMAKE_CURRENT_LIST_DIR}/ws2812.pio)
 pico_generate_pio_header(PicoReflex ${CMAKE_CURRENT_LIST_DIR}/button_debounce.pio)
 
+# PICOREFLEX_VERSION es la ÚNICA fuente de verdad de la versión: subirla acá
+# actualiza a la vez los metadatos del .uf2 (pico_set_program_version) y la
+# versión en runtime (PICOREFLEX_VERSION compilada en el firmware).
+set(PICOREFLEX_VERSION "0.9.7")
+
 pico_set_program_name(PicoReflex "PicoReflex")
-pico_set_program_version(PicoReflex "0.9.6")
+pico_set_program_version(PicoReflex "${PICOREFLEX_VERSION}")
 
 # Salida de depuración (printf): USB (CDC) y UART0 (GPIO0=TX, GPIO1=RX, 115200).
 # El USB es el más cómodo (conectar la Pico y abrir el puerto COM a 115200).
@@ -96,11 +101,8 @@ pico_enable_stdio_usb(PicoReflex 1)
 target_compile_definitions(PicoReflex PRIVATE PICO_STDIO_USB_CONNECT_WAIT_TIMEOUT_MS=3000)
 
 # Versión en runtime (botón "Comprobar actualizaciones" de /ota).
-# Mantener sincronizado con pico_set_program_version() de arriba.
-target_compile_definitions(PicoReflex PRIVATE PICOREFLEX_VERSION="0.9.4")
-# Versión en runtime (botón "Comprobar actualizaciones" de /ota).
-# Mantener sincronizado con pico_set_program_version() de arriba.
-target_compile_definitions(PicoReflex PRIVATE PICOREFLEX_VERSION="0.9.4")
+# Se toma de la variable PICOREFLEX_VERSION definida arriba (única fuente de verdad).
+target_compile_definitions(PicoReflex PRIVATE PICOREFLEX_VERSION="${PICOREFLEX_VERSION}")
 
 # Directorios de includes del proyecto (include/ y la raíz para lwipopts.h).
 target_include_directories(PicoReflex PRIVATE
