@@ -1,0 +1,487 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1350 980" width="100%" height="100%" style="background-color: #0d1117; font-family: -apple-system, BlinkMacSystemFont, &#39;Segoe UI&#39;, Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="pcbGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#004d25" />
+      <stop offset="50%" stop-color="#00381b" />
+      <stop offset="100%" stop-color="#002210" />
+    </linearGradient>
+
+    <linearGradient id="metalSilver" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#e0e0e0" />
+      <stop offset="50%" stop-color="#cccccc" />
+      <stop offset="100%" stop-color="#999999" />
+    </linearGradient>
+
+    <linearGradient id="chipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2c2c2c" />
+      <stop offset="100%" stop-color="#121212" />
+    </linearGradient>
+
+    <linearGradient id="goldPad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#d4af37" />
+      <stop offset="50%" stop-color="#f3e5ab" />
+      <stop offset="100%" stop-color="#aa8c2c" />
+    </linearGradient>
+
+    <!-- Filters / Glows -->
+    <filter id="dropShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="5" flood-color="#000000" flood-opacity="0.6" />
+    </filter>
+
+    <filter id="glowRed" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#e74c3c" flood-opacity="0.8" />
+    </filter>
+    <filter id="glowOrange" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#e67e22" flood-opacity="0.8" />
+    </filter>
+    <filter id="glowYellow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#f1c40f" flood-opacity="0.8" />
+    </filter>
+    <filter id="glowGreen" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#2ecc71" flood-opacity="0.8" />
+    </filter>
+    <filter id="glowBlue" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="#3498db" flood-opacity="0.8" />
+    </filter>
+    <filter id="glowOled" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="8" flood-color="#00d2ff" flood-opacity="0.5" />
+    </filter>
+  </defs>
+
+  <!-- Title -->
+  <text x="675" y="40" text-anchor="middle" fill="#ffffff" font-size="24" font-weight="bold" letter-spacing="1">PICOREFLEX — ESQUEMA DE CONEXIONES Y DIAGRAMA HWD</text>
+  <text x="675" y="65" text-anchor="middle" fill="#8b949e" font-size="14">Raspberry Pi Pico W · 5 LEDs (R 330 Ω) · 5 Pulsadores (Pull-up) · Pantalla OLED I2C · Buzzer PWM · Divisor VBAT</text>
+
+  <!-- ==================== WIRING / TRACES (BEHIND COMPONENTS) ==================== -->
+  <g fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    
+    <!-- Power Buses -->
+    <!-- GND Bus (Bottom Line) -->
+    <path d="M 50 890 L 1300 890" stroke="#7f8c8d" stroke-width="3" />
+    <text x="60" y="880" fill="#95a5a6" font-size="12" font-weight="bold">LÍNEA COMÚN GND</text>
+
+    <!-- 3.3V Bus (For OLED and Pull-up) -->
+    <path d="M 580 340 L 760 340 L 760 840 L 1050 840" stroke="#e74c3c" stroke-width="2.5" stroke-dasharray="6,4" />
+    <text x="770" y="835" fill="#e74c3c" font-size="11" font-weight="bold">BUS 3.3V (VCC / PULL-UP)</text>
+
+    <!-- LED CONNECTIONS (GPIO2..GPIO6 -> Pins 4, 5, 6, 7, 9) -->
+    <!-- LED1 Red (GPIO02 - Pin 4) -->
+    <path d="M 580 180 L 110 180 L 110 470" stroke="#e74c3c" />
+    <!-- LED2 Orange (GPIO03 - Pin 5) -->
+    <path d="M 580 200 L 180 200 L 180 470" stroke="#e67e22" />
+    <!-- LED3 Yellow (GPIO04 - Pin 6) -->
+    <path d="M 580 220 L 250 220 L 250 470" stroke="#f1c40f" />
+    <!-- LED4 Green (GPIO05 - Pin 7) -->
+    <path d="M 580 240 L 320 240 L 320 470" stroke="#2ecc71" />
+    <!-- LED5 Blue (GPIO06 - Pin 9) -->
+    <path d="M 580 260 L 390 260 L 390 470" stroke="#3498db" />
+
+    <!-- LED Cathodes / Resistors to GND -->
+    <path d="M 110 670 L 110 890" stroke="#7f8c8d" />
+    <path d="M 180 670 L 180 890" stroke="#7f8c8d" />
+    <path d="M 250 670 L 250 890" stroke="#7f8c8d" />
+    <path d="M 320 670 L 320 890" stroke="#7f8c8d" />
+    <path d="M 390 670 L 390 890" stroke="#7f8c8d" />
+
+    <!-- BUZZER CONNECTION (GPIO16 - Pin 21) -->
+    <path d="M 580 430 L 460 430 L 460 520" stroke="#f39c12" />
+    <!-- Resistor 1k to Buzzer Base/Positive -->
+    <path d="M 460 600 L 460 670" stroke="#f39c12" />
+    <!-- Buzzer GND -->
+    <path d="M 460 770 L 460 890" stroke="#7f8c8d" />
+
+    <!-- VBAT ADC DIVIDER (GPIO26 - Pin 31) -->
+    <path d="M 770 280 L 870 280 L 870 510" stroke="#9b59b6" /> <!-- ADC Line -->
+    <!-- VBAT Input Line to R1 (10k) -->
+    <path d="M 870 420 L 870 450" stroke="#e74c3c" />
+    <text x="880" y="435" fill="#e74c3c" font-size="10" font-weight="bold">VBAT (LiPo 1S)</text>
+    <!-- R2 (22k) to GND -->
+    <path d="M 870 590 L 870 890" stroke="#7f8c8d" />
+
+    <!-- OLED I2C CONNECTIONS (GPIO14 - SDA / GPIO15 - SCL -> Pins 19, 20) -->
+    <!-- SDA (GPIO14 - Pin 19) -->
+    <path d="M 580 390 L 980 390 L 980 500" stroke="#00d2ff" />
+    <!-- Pull-up Resistor 4.7k from SDA to 3.3V -->
+    <path d="M 980 430 L 1050 430 L 1050 840" stroke="#e74c3c" stroke-dasharray="4,4" />
+    <!-- SCL (GPIO15 - Pin 20) -->
+    <path d="M 580 410 L 1020 410 L 1020 500" stroke="#1abc9c" />
+    <!-- OLED Power Pins -->
+    <path d="M 1060 500 L 1060 840" stroke="#e74c3c" /> <!-- VCC 3.3V -->
+    <path d="M 1100 500 L 1100 890" stroke="#7f8c8d" /> <!-- GND -->
+
+    <!-- PUSH BUTTONS CONNECTIONS (GPIO07..GPIO11 -> Pins 10, 11, 12, 14, 15) -->
+    <!-- P1 (GPIO07 - Pin 10) -->
+    <path d="M 770 180 L 1170 180 L 1170 280" stroke="#e74c3c" />
+    <!-- P2 (GPIO08 - Pin 11) -->
+    <path d="M 770 200 L 1200 200 L 1200 280" stroke="#e67e22" />
+    <!-- P3 (GPIO09 - Pin 12) -->
+    <path d="M 770 220 L 1230 220 L 1230 280" stroke="#f1c40f" />
+    <!-- P4 (GPIO10 - Pin 14) -->
+    <path d="M 770 240 L 1260 240 L 1260 280" stroke="#2ecc71" />
+    <!-- P5 (GPIO11 - Pin 15) -->
+    <path d="M 770 260 L 1290 260 L 1290 280" stroke="#3498db" />
+
+    <!-- Buttons Ground Connections (Active LOW) -->
+    <path d="M 1170 380 L 1170 890" stroke="#7f8c8d" />
+    <path d="M 1200 380 L 1200 890" stroke="#7f8c8d" />
+    <path d="M 1230 380 L 1230 890" stroke="#7f8c8d" />
+    <path d="M 1260 380 L 1260 890" stroke="#7f8c8d" />
+    <path d="M 1290 380 L 1290 890" stroke="#7f8c8d" />
+  </g>
+
+  <!-- Connection Nodes / Junction Dots -->
+  <g fill="#7f8c8d">
+    <circle cx="110" cy="890" r="4" />
+    <circle cx="180" cy="890" r="4" />
+    <circle cx="250" cy="890" r="4" />
+    <circle cx="320" cy="890" r="4" />
+    <circle cx="390" cy="890" r="4" />
+    <circle cx="460" cy="890" r="4" />
+    <circle cx="870" cy="890" r="4" />
+    <circle cx="1100" cy="890" r="4" />
+    <circle cx="1170" cy="890" r="4" />
+    <circle cx="1200" cy="890" r="4" />
+    <circle cx="1230" cy="890" r="4" />
+    <circle cx="1260" cy="890" r="4" />
+    <circle cx="1290" cy="890" r="4" />
+  </g>
+  <g fill="#e74c3c">
+    <circle cx="1050" cy="840" r="4" />
+    <circle cx="1060" cy="840" r="4" />
+  </g>
+
+  <!-- ==================== RASPBERRY PI PICO W ==================== -->
+  <g transform="translate(580, 100)" filter="url(#dropShadow)">
+    <!-- Board Base -->
+    <rect x="0" y="0" width="190" height="420" rx="10" fill="url(#pcbGrad)" stroke="#002b15" stroke-width="2" />
+    
+    <!-- Micro-USB -->
+    <rect x="65" y="-12" width="60" height="24" rx="3" fill="url(#metalSilver)" />
+    
+    <!-- RP2040 Microcontroller -->
+    <rect x="45" y="190" width="100" height="80" rx="4" fill="url(#chipGrad)" />
+    <text x="95" y="235" fill="#aaaaaa" font-size="12" font-weight="bold" text-anchor="middle">RP2040</text>
+    
+    <!-- CYW43439 Wi-Fi/BT Module -->
+    <rect x="50" y="290" width="90" height="80" rx="4" fill="url(#metalSilver)" />
+    <text x="95" y="335" fill="#555555" font-size="10" font-weight="bold" text-anchor="middle">CYW43439</text>
+
+    <text x="95" y="130" fill="#ffffff" font-size="15" font-weight="bold" text-anchor="middle" opacity="0.9">PICO W</text>
+
+    <!-- LEFT SIDE PINS -->
+    <!-- GP2 / Pin 4 -->
+    <rect x="-8" y="80" width="16" height="8" fill="url(#goldPad)" />
+    <text x="12" y="88" fill="#e74c3c" font-size="9" font-weight="bold">GPIO02 (LED1)</text>
+
+    <!-- GP3 / Pin 5 -->
+    <rect x="-8" y="100" width="16" height="8" fill="url(#goldPad)" />
+    <text x="12" y="108" fill="#e67e22" font-size="9" font-weight="bold">GPIO03 (LED2)</text>
+
+    <!-- GP4 / Pin 6 -->
+    <rect x="-8" y="120" width="16" height="8" fill="url(#goldPad)" />
+    <text x="12" y="128" fill="#f1c40f" font-size="9" font-weight="bold">GPIO04 (LED3)</text>
+
+    <!-- GP5 / Pin 7 -->
+    <rect x="-8" y="140" width="16" height="8" fill="url(#goldPad)" />
+    <text x="12" y="148" fill="#2ecc71" font-size="9" font-weight="bold">GPIO05 (LED4)</text>
+
+    <!-- GP6 / Pin 9 -->
+    <rect x="-8" y="160" width="16" height="8" fill="url(#goldPad)" />
+    <text x="12" y="168" fill="#3498db" font-size="9" font-weight="bold">GPIO06 (LED5)</text>
+
+    <!-- GP14 / Pin 19 -->
+    <rect x="-8" y="290" width="16" height="8" fill="url(#goldPad)" />
+    <text x="12" y="298" fill="#00d2ff" font-size="9" font-weight="bold">GPIO14 (SDA)</text>
+
+    <!-- GP15 / Pin 20 -->
+    <rect x="-8" y="310" width="16" height="8" fill="url(#goldPad)" />
+    <text x="12" y="318" fill="#1abc9c" font-size="9" font-weight="bold">GPIO15 (SCL)</text>
+
+    <!-- GP16 / Pin 21 -->
+    <rect x="-8" y="330" width="16" height="8" fill="url(#goldPad)" />
+    <text x="12" y="338" fill="#f39c12" font-size="9" font-weight="bold">GPIO16 (BUZZER)</text>
+
+
+    <!-- RIGHT SIDE PINS -->
+    <!-- GP7 / Pin 10 -->
+    <rect x="182" y="80" width="16" height="8" fill="url(#goldPad)" />
+    <text x="178" y="88" fill="#e74c3c" font-size="9" font-weight="bold" text-anchor="end">GPIO07 (P1)</text>
+
+    <!-- GP8 / Pin 11 -->
+    <rect x="182" y="100" width="16" height="8" fill="url(#goldPad)" />
+    <text x="178" y="108" fill="#e67e22" font-size="9" font-weight="bold" text-anchor="end">GPIO08 (P2)</text>
+
+    <!-- GP9 / Pin 12 -->
+    <rect x="182" y="120" width="16" height="8" fill="url(#goldPad)" />
+    <text x="178" y="128" fill="#f1c40f" font-size="9" font-weight="bold" text-anchor="end">GPIO09 (P3)</text>
+
+    <!-- GP10 / Pin 14 -->
+    <rect x="182" y="140" width="16" height="8" fill="url(#goldPad)" />
+    <text x="178" y="148" fill="#2ecc71" font-size="9" font-weight="bold" text-anchor="end">GPIO10 (P4)</text>
+
+    <!-- GP11 / Pin 15 -->
+    <rect x="182" y="160" width="16" height="8" fill="url(#goldPad)" />
+    <text x="178" y="168" fill="#3498db" font-size="9" font-weight="bold" text-anchor="end">GPIO11 (P5)</text>
+
+    <!-- GP26 / Pin 31 (ADC0) -->
+    <rect x="182" y="180" width="16" height="8" fill="url(#goldPad)" />
+    <text x="178" y="188" fill="#9b59b6" font-size="9" font-weight="bold" text-anchor="end">GPIO26 (VBAT)</text>
+
+    <!-- 3V3_OUT / Pin 36 -->
+    <rect x="182" y="240" width="16" height="8" fill="url(#goldPad)" />
+    <text x="178" y="248" fill="#e74c3c" font-size="9" font-weight="bold" text-anchor="end">3V3_OUT</text>
+
+    <!-- GND / Pin 38 -->
+    <rect x="182" y="260" width="16" height="8" fill="url(#goldPad)" />
+    <text x="178" y="268" fill="#aaaaaa" font-size="9" font-weight="bold" text-anchor="end">GND</text>
+  </g>
+
+  <!-- ==================== 5 LEDS & RESISTORS (330 Ω) ==================== -->
+  <g font-family="sans-serif">
+    <!-- LED 1 RED -->
+    <g transform="translate(90, 470)">
+      <path d="M 20 40 L 20 0 A 20 20 0 0 1 60 0 L 60 40 Z" fill="#e74c3c" filter="url(#glowRed)" />
+      <rect x="15" y="40" width="50" height="8" rx="2" fill="#c0392b" />
+      <line x1="20" y1="48" x2="20" y2="80" stroke="#ccc" stroke-width="3" />
+      <line x1="50" y1="48" x2="50" y2="80" stroke="#ccc" stroke-width="3" />
+      <text x="35" y="-15" fill="#e74c3c" font-size="11" font-weight="bold" text-anchor="middle">LED 1</text>
+
+      <g transform="translate(10, 120)">
+        <rect x="0" y="0" width="20" height="80" rx="5" fill="#d2b48c" stroke="#8b5a2b" />
+        <!-- 330 Ohm: Orange, Orange, Brown, Gold -->
+        <rect x="0" y="15" width="20" height="6" fill="#e67e22" />
+        <rect x="0" y="30" width="20" height="6" fill="#e67e22" />
+        <rect x="0" y="45" width="20" height="6" fill="#8b4513" />
+        <rect x="0" y="60" width="20" height="6" fill="#d4af37" />
+        <text x="-15" y="45" fill="#d2b48c" font-size="10" font-weight="bold" transform="rotate(-90 -15 45)" text-anchor="middle">330 Ω</text>
+      </g>
+      <line x1="20" y1="80" x2="20" y2="120" stroke="#ccc" stroke-width="2" />
+    </g>
+
+    <!-- LED 2 ORANGE -->
+    <g transform="translate(160, 470)">
+      <path d="M 20 40 L 20 0 A 20 20 0 0 1 60 0 L 60 40 Z" fill="#e67e22" filter="url(#glowOrange)" />
+      <rect x="15" y="40" width="50" height="8" rx="2" fill="#d35400" />
+      <line x1="20" y1="48" x2="20" y2="80" stroke="#ccc" stroke-width="3" />
+      <line x1="50" y1="48" x2="50" y2="80" stroke="#ccc" stroke-width="3" />
+      <text x="35" y="-15" fill="#e67e22" font-size="11" font-weight="bold" text-anchor="middle">LED 2</text>
+
+      <g transform="translate(10, 120)">
+        <rect x="0" y="0" width="20" height="80" rx="5" fill="#d2b48c" stroke="#8b5a2b" />
+        <rect x="0" y="15" width="20" height="6" fill="#e67e22" />
+        <rect x="0" y="30" width="20" height="6" fill="#e67e22" />
+        <rect x="0" y="45" width="20" height="6" fill="#8b4513" />
+        <rect x="0" y="60" width="20" height="6" fill="#d4af37" />
+        <text x="-15" y="45" fill="#d2b48c" font-size="10" font-weight="bold" transform="rotate(-90 -15 45)" text-anchor="middle">330 Ω</text>
+      </g>
+      <line x1="20" y1="80" x2="20" y2="120" stroke="#ccc" stroke-width="2" />
+    </g>
+
+    <!-- LED 3 YELLOW -->
+    <g transform="translate(230, 470)">
+      <path d="M 20 40 L 20 0 A 20 20 0 0 1 60 0 L 60 40 Z" fill="#f1c40f" filter="url(#glowYellow)" />
+      <rect x="15" y="40" width="50" height="8" rx="2" fill="#f39c12" />
+      <line x1="20" y1="48" x2="20" y2="80" stroke="#ccc" stroke-width="3" />
+      <line x1="50" y1="48" x2="50" y2="80" stroke="#ccc" stroke-width="3" />
+      <text x="35" y="-15" fill="#f1c40f" font-size="11" font-weight="bold" text-anchor="middle">LED 3</text>
+
+      <g transform="translate(10, 120)">
+        <rect x="0" y="0" width="20" height="80" rx="5" fill="#d2b48c" stroke="#8b5a2b" />
+        <rect x="0" y="15" width="20" height="6" fill="#e67e22" />
+        <rect x="0" y="30" width="20" height="6" fill="#e67e22" />
+        <rect x="0" y="45" width="20" height="6" fill="#8b4513" />
+        <rect x="0" y="60" width="20" height="6" fill="#d4af37" />
+        <text x="-15" y="45" fill="#d2b48c" font-size="10" font-weight="bold" transform="rotate(-90 -15 45)" text-anchor="middle">330 Ω</text>
+      </g>
+      <line x1="20" y1="80" x2="20" y2="120" stroke="#ccc" stroke-width="2" />
+    </g>
+
+    <!-- LED 4 GREEN -->
+    <g transform="translate(300, 470)">
+      <path d="M 20 40 L 20 0 A 20 20 0 0 1 60 0 L 60 40 Z" fill="#2ecc71" filter="url(#glowGreen)" />
+      <rect x="15" y="40" width="50" height="8" rx="2" fill="#27ae60" />
+      <line x1="20" y1="48" x2="20" y2="80" stroke="#ccc" stroke-width="3" />
+      <line x1="50" y1="48" x2="50" y2="80" stroke="#ccc" stroke-width="3" />
+      <text x="35" y="-15" fill="#2ecc71" font-size="11" font-weight="bold" text-anchor="middle">LED 4</text>
+
+      <g transform="translate(10, 120)">
+        <rect x="0" y="0" width="20" height="80" rx="5" fill="#d2b48c" stroke="#8b5a2b" />
+        <rect x="0" y="15" width="20" height="6" fill="#e67e22" />
+        <rect x="0" y="30" width="20" height="6" fill="#e67e22" />
+        <rect x="0" y="45" width="20" height="6" fill="#8b4513" />
+        <rect x="0" y="60" width="20" height="6" fill="#d4af37" />
+        <text x="-15" y="45" fill="#d2b48c" font-size="10" font-weight="bold" transform="rotate(-90 -15 45)" text-anchor="middle">330 Ω</text>
+      </g>
+      <line x1="20" y1="80" x2="20" y2="120" stroke="#ccc" stroke-width="2" />
+    </g>
+
+    <!-- LED 5 BLUE -->
+    <g transform="translate(370, 470)">
+      <path d="M 20 40 L 20 0 A 20 20 0 0 1 60 0 L 60 40 Z" fill="#3498db" filter="url(#glowBlue)" />
+      <rect x="15" y="40" width="50" height="8" rx="2" fill="#2980b9" />
+      <line x1="20" y1="48" x2="20" y2="80" stroke="#ccc" stroke-width="3" />
+      <line x1="50" y1="48" x2="50" y2="80" stroke="#ccc" stroke-width="3" />
+      <text x="35" y="-15" fill="#3498db" font-size="11" font-weight="bold" text-anchor="middle">LED 5</text>
+
+      <g transform="translate(10, 120)">
+        <rect x="0" y="0" width="20" height="80" rx="5" fill="#d2b48c" stroke="#8b5a2b" />
+        <rect x="0" y="15" width="20" height="6" fill="#e67e22" />
+        <rect x="0" y="30" width="20" height="6" fill="#e67e22" />
+        <rect x="0" y="45" width="20" height="6" fill="#8b4513" />
+        <rect x="0" y="60" width="20" height="6" fill="#d4af37" />
+        <text x="-15" y="45" fill="#d2b48c" font-size="10" font-weight="bold" transform="rotate(-90 -15 45)" text-anchor="middle">330 Ω</text>
+      </g>
+      <line x1="20" y1="80" x2="20" y2="120" stroke="#ccc" stroke-width="2" />
+    </g>
+  </g>
+
+  <!-- ==================== BUZZER & RESISTOR (1 kΩ) ==================== -->
+  <g transform="translate(430, 520)" filter="url(#dropShadow)" font-family="sans-serif">
+    <circle cx="30" cy="30" r="30" fill="#111111" stroke="#444" stroke-width="2" />
+    <circle cx="30" cy="30" r="8" fill="#222222" />
+    <text x="30" y="-10" fill="#f39c12" font-size="11" font-weight="bold" text-anchor="middle">BUZZER PWM</text>
+
+    <!-- Resistor 1k in series -->
+    <g transform="translate(20, 80)">
+      <rect x="0" y="0" width="20" height="70" rx="5" fill="#d2b48c" stroke="#8b5a2b" />
+      <!-- 1k Ohm: Brown, Black, Red, Gold -->
+      <rect x="0" y="12" width="20" height="5" fill="#8b4513" />
+      <rect x="0" y="25" width="20" height="5" fill="#000000" />
+      <rect x="0" y="38" width="20" height="5" fill="#e74c3c" />
+      <rect x="0" y="52" width="20" height="5" fill="#d4af37" />
+      <text x="-12" y="38" fill="#d2b48c" font-size="9" font-weight="bold" transform="rotate(-90 -12 38)" text-anchor="middle">1 kΩ</text>
+    </g>
+  </g>
+
+  <!-- ==================== VBAT VOLTAGE DIVIDER ==================== -->
+  <g transform="translate(840, 450)" font-family="sans-serif">
+    <text x="30" y="-10" fill="#9b59b6" font-size="11" font-weight="bold" text-anchor="middle">DIVISOR VBAT</text>
+
+    <!-- R1 (10 kΩ) -->
+    <g transform="translate(20, 0)">
+      <rect x="0" y="0" width="20" height="60" rx="4" fill="#d2b48c" stroke="#8b5a2b" />
+      <!-- 10k: Brown, Black, Orange, Gold -->
+      <rect x="0" y="10" width="20" height="5" fill="#8b4513" />
+      <rect x="0" y="22" width="20" height="5" fill="#000000" />
+      <rect x="0" y="34" width="20" height="5" fill="#e67e22" />
+      <rect x="0" y="46" width="20" height="5" fill="#d4af37" />
+      <text x="-12" y="30" fill="#d2b48c" font-size="9" font-weight="bold" transform="rotate(-90 -12 30)" text-anchor="middle">R1 10k</text>
+    </g>
+
+    <!-- R2 (22 kΩ) -->
+    <g transform="translate(20, 80)">
+      <rect x="0" y="0" width="20" height="60" rx="4" fill="#d2b48c" stroke="#8b5a2b" />
+      <!-- 22k: Red, Red, Orange, Gold -->
+      <rect x="0" y="10" width="20" height="5" fill="#e74c3c" />
+      <rect x="0" y="22" width="20" height="5" fill="#e74c3c" />
+      <rect x="0" y="34" width="20" height="5" fill="#e67e22" />
+      <rect x="0" y="46" width="20" height="5" fill="#d4af37" />
+      <text x="-12" y="30" fill="#d2b48c" font-size="9" font-weight="bold" transform="rotate(-90 -12 30)" text-anchor="middle">R2 22k</text>
+    </g>
+  </g>
+
+  <!-- ==================== OLED SSD1306 DISPLAY (128x64 I2C) ==================== -->
+  <g transform="translate(950, 500)" filter="url(#glowOled)" font-family="sans-serif">
+    <!-- Board Base -->
+    <rect x="0" y="0" width="170" height="130" rx="8" fill="#0f2b48" stroke="#1d5987" stroke-width="2" />
+    <!-- Screen Glass -->
+    <rect x="15" y="35" width="140" height="80" rx="4" fill="#000000" stroke="#00d2ff" stroke-width="1.5" />
+    
+    <!-- Screen Content Mock -->
+    <text x="85" y="60" fill="#00d2ff" font-size="11" font-weight="bold" text-anchor="middle">PicoReflex v1.0</text>
+    <text x="85" y="80" fill="#ffffff" font-size="10" text-anchor="middle">Ready... 185 ms</text>
+    <text x="85" y="100" fill="#00d2ff" font-size="9" text-anchor="middle">VBAT: 4.12V [100%]</text>
+
+    <!-- Header Pins -->
+    <circle cx="30" cy="15" r="4" fill="url(#goldPad)" /> <text x="30" y="28" fill="#00d2ff" font-size="8" text-anchor="middle">SDA</text>
+    <circle cx="70" cy="15" r="4" fill="url(#goldPad)" /> <text x="70" y="28" fill="#1abc9c" font-size="8" text-anchor="middle">SCL</text>
+    <circle cx="110" cy="15" r="4" fill="url(#goldPad)" /> <text x="110" y="28" fill="#e74c3c" font-size="8" text-anchor="middle">VCC</text>
+    <circle cx="150" cy="15" r="4" fill="url(#goldPad)" /> <text x="150" y="28" fill="#aaaaaa" font-size="8" text-anchor="middle">GND</text>
+
+    <text x="85" y="-10" fill="#00d2ff" font-size="12" font-weight="bold" text-anchor="middle">OLED SSD1306 (128x64)</text>
+  </g>
+
+  <!-- Pull-Up Resistor 4.7k for I2C -->
+  <g transform="translate(1040, 600)" font-family="sans-serif">
+    <rect x="0" y="0" width="20" height="60" rx="4" fill="#d2b48c" stroke="#8b5a2b" />
+    <!-- 4.7k: Yellow, Violet, Red, Gold -->
+    <rect x="0" y="10" width="20" height="5" fill="#f1c40f" />
+    <rect x="0" y="22" width="20" height="5" fill="#8e44ad" />
+    <rect x="0" y="34" width="20" height="5" fill="#e74c3c" />
+    <rect x="0" y="46" width="20" height="5" fill="#d4af37" />
+    <text x="25" y="35" fill="#d2b48c" font-size="9" font-weight="bold">Pull-up 4.7 kΩ</text>
+  </g>
+
+  <!-- ==================== 5 PUSH BUTTONS (P1..P5) ==================== -->
+  <g font-family="sans-serif">
+    <!-- P1 (Red) -->
+    <g transform="translate(1150, 280)" filter="url(#dropShadow)">
+      <rect x="0" y="0" width="40" height="100" rx="6" fill="#222222" stroke="#444" />
+      <circle cx="20" cy="50" r="14" fill="#e74c3c" filter="url(#glowRed)" />
+      <text x="20" y="-10" fill="#e74c3c" font-size="11" font-weight="bold" text-anchor="middle">P1</text>
+    </g>
+
+    <!-- P2 (Orange) -->
+    <g transform="translate(1180, 280)" filter="url(#dropShadow)">
+      <rect x="0" y="0" width="40" height="100" rx="6" fill="#222222" stroke="#444" />
+      <circle cx="20" cy="50" r="14" fill="#e67e22" filter="url(#glowOrange)" />
+      <text x="20" y="-10" fill="#e67e22" font-size="11" font-weight="bold" text-anchor="middle">P2</text>
+    </g>
+
+    <!-- P3 (Yellow) -->
+    <g transform="translate(1210, 280)" filter="url(#dropShadow)">
+      <rect x="0" y="0" width="40" height="100" rx="6" fill="#222222" stroke="#444" />
+      <circle cx="20" cy="50" r="14" fill="#f1c40f" filter="url(#glowYellow)" />
+      <text x="20" y="-10" fill="#f1c40f" font-size="11" font-weight="bold" text-anchor="middle">P3</text>
+    </g>
+
+    <!-- P4 (Green) -->
+    <g transform="translate(1240, 280)" filter="url(#dropShadow)">
+      <rect x="0" y="0" width="40" height="100" rx="6" fill="#222222" stroke="#444" />
+      <circle cx="20" cy="50" r="14" fill="#2ecc71" filter="url(#glowGreen)" />
+      <text x="20" y="-10" fill="#2ecc71" font-size="11" font-weight="bold" text-anchor="middle">P4</text>
+    </g>
+
+    <!-- P5 (Blue) -->
+    <g transform="translate(1270, 280)" filter="url(#dropShadow)">
+      <rect x="0" y="0" width="40" height="100" rx="6" fill="#222222" stroke="#444" />
+      <circle cx="20" cy="50" r="14" fill="#3498db" filter="url(#glowBlue)" />
+      <text x="20" y="-10" fill="#3498db" font-size="11" font-weight="bold" text-anchor="middle">P5</text>
+    </g>
+  </g>
+
+  <!-- ==================== SUMMARY TABLE LEGEND ==================== -->
+  <g transform="translate(480, 720)" font-size="11" font-family="sans-serif">
+    <rect x="0" y="0" width="460" height="150" rx="8" fill="#161b22" stroke="#30363d" stroke-width="1" />
+    <text x="230" y="22" fill="#ffffff" font-weight="bold" text-anchor="middle" font-size="12">MAPEO DE HARDWARE — PICOREFLEX</text>
+
+    <!-- Column 1 -->
+    <text x="20" y="48" fill="#e74c3c">● LED1 / P1 (Rojo):</text>
+    <text x="140" y="48" fill="#ffffff">GPIO02 / GPIO07</text>
+
+    <text x="20" y="68" fill="#e67e22">● LED2 / P2 (Naranja):</text>
+    <text x="140" y="68" fill="#ffffff">GPIO03 / GPIO08</text>
+
+    <text x="20" y="88" fill="#f1c40f">● LED3 / P3 (Amarillo):</text>
+    <text x="140" y="88" fill="#ffffff">GPIO04 / GPIO09</text>
+
+    <text x="20" y="108" fill="#2ecc71">● LED4 / P4 (Verde):</text>
+    <text x="140" y="108" fill="#ffffff">GPIO05 / GPIO10</text>
+
+    <text x="20" y="128" fill="#3498db">● LED5 / P5 (Azul):</text>
+    <text x="140" y="128" fill="#ffffff">GPIO06 / GPIO11</text>
+
+    <!-- Column 2 -->
+    <text x="250" y="48" fill="#00d2ff">● Pantalla OLED I2C:</text>
+    <text x="370" y="48" fill="#ffffff">GPIO14 (SDA) / GPIO15 (SCL)</text>
+
+    <text x="250" y="68" fill="#f39c12">● Buzzer Pasivo:</text>
+    <text x="370" y="68" fill="#ffffff">GPIO16 (PWM + R 1kΩ)</text>
+
+    <text x="250" y="88" fill="#9b59b6">● Medición Batería:</text>
+    <text x="370" y="88" fill="#ffffff">GPIO26 / ADC0 (R1 10k + R2 22k)</text>
+
+    <text x="250" y="118" fill="#8b949e" font-size="10">* Pulsadores: Activo en BAJO (Pull-up interno activado)</text>
+  </g>
+</svg>
