@@ -63,13 +63,13 @@ void refresh_display();
 // Credenciales del AP (modo respaldo cuando falla la conexión STA):
 //   SSID:     PicoW-ReactionGame
 //   IP:       192.168.4.1
-//   Seguridad: AP_OPEN 1 = abierto (sin clave); 0 = WPA2 con clave. La clave ya
-//     no tiene un valor por defecto conocido: se deriva del RUID de la Flash o se
-//     configura desde /wifi (persistida en Flash). Históricamente el AP "no
+//   Seguridad: AP_OPEN 1 = abierto (sin clave); 0 = WPA2 con clave. La clave por
+//     defecto es AP_PASSWORD_DEFAULT y se configura desde /wifi (persistida en
+//     Flash). Históricamente el AP "no
 //     conectaba" por falta de servidor DHCP (v0.2.9); con DHCP ya funciona WPA2.
 #define HTTP_PORT     80u
 #define AP_SSID       "PicoW-ReactionGame"
-#define AP_OPEN       0            // 0 = WPA2 (clave derivada del RUID o configurada), 1 = abierto.
+#define AP_OPEN       0            // 0 = WPA2 (clave por defecto o configurada), 1 = abierto.
 #define AP_CHANNEL    1            // Canal 2.4 GHz fijo (1, 6 u 11). Estable.
 #define AP_IP         "192.168.4.1"
 #define STA_TIMEOUT_MS 10000u      // Tiempo máximo intentando STA (10 s).
@@ -96,7 +96,7 @@ void refresh_display();
 // Estado de la conexión (solo lo usa este módulo, en el Core 1)
 // -----------------------------------------------------------------------------
 static bool g_is_ap = false;        ///< true si quedó en modo Access Point.
-static char g_ap_password[16] = ""; ///< Clave WPA2 efectiva del AP (RUID o configurada).
+static char g_ap_password[16] = ""; ///< Clave WPA2 efectiva del AP (por defecto o configurada).
 static volatile bool g_wifi_reconnect = false; ///< true si hay que re-conectar Wi-Fi.
 static volatile bool g_ota_reboot_pending = false; ///< true si hay que reiniciar tras OTA.
 
@@ -498,7 +498,7 @@ static void handle_config(const char* path, const char* query) {
         }
         changed = wifi_changed;
 
-        // Clave del AP de respaldo: vacío = volver a la derivada del RUID;
+        // Clave del AP de respaldo: vacío = clave por defecto (AP_PASSWORD_DEFAULT);
         // 8..15 caracteres = valor WPA2 válido. Longitudes 1..7 se ignoran.
         const char* ap_pass = find_param(query, "ap_pass");
         if (ap_pass) {

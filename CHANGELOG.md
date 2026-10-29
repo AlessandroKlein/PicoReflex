@@ -4,6 +4,15 @@ Todas las versiones notables de PicoReflex se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/) y el versionado
 sigue [Semantic Versioning](https://semver.org/) (SemVer).
 
+## [0.9.7] - 2026-10-29
+
+### Arreglado
+- **Versión reportada en runtime desactualizada (`0.9.4`)**: el firmware mostraba
+  una versión fija en la web porque el número estaba duplicado en `web_ui.cpp`.
+  Se introduce `PICOREFLEX_VERSION` como **única fuente de verdad** (definida en
+  `CMakeLists.txt` y compilada en el firmware), de modo que la versión mostrada en
+  el display/web coincide siempre con el tag de release.
+
 ## [0.9.6] - 2026-10-29
 
 ### Cambiado

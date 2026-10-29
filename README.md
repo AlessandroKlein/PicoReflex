@@ -36,7 +36,7 @@ Exponer y presentar el trabajo realizado ante la cátedra.
 
 ---
 
-## Estado del firmware (v0.9.6)
+## Estado del firmware (v0.9.7)
 
 > Documentación técnica completa en `docs/` (ver `docs/ARQUITECTURA.md`,
 > `docs/COMPILAR.md` y `docs/DECISIONES.md`). Historial completo de versiones en

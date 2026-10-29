@@ -145,7 +145,7 @@ struct GameConfig {
     char user_name[16] = "JUGADOR";
 
     // Retardo de cuenta regresiva (segundos) entre el disparador de inicio
-    // (dos botones simultáneos) y el comienzo real de la ronda.
+    // (cualquier botón) y el comienzo real de la ronda.
     uint32_t start_delay_s = 3;
 
     // Habilitar/deshabilitar el display OLED. Toda la información también se
@@ -167,9 +167,9 @@ struct GameConfig {
     char wifi_ssid[33]     = WIFI_SSID_DEFAULT;
     char wifi_password[65] = WIFI_PASSWORD_DEFAULT;
 
-    // Contraseña del Access Point de respaldo (modo AP). Vacía = se deriva del
-    // identificador único de la Flash (RUID), por lo que no hay clave por defecto
-    // conocida. Configurable desde /wifi y persistida en Flash (8..15 caracteres).
+    // Contraseña del Access Point de respaldo (modo AP). Vacía = clave por defecto
+    // (AP_PASSWORD_DEFAULT). Configurable desde /wifi y persistida en Flash
+    // (8..15 caracteres).
     char ap_password[16]   = "";
 
     // Calibración de la curva de descarga de batería (configurable desde /battery

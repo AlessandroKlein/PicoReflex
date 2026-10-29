@@ -267,7 +267,7 @@ void init() {
 
     // --- Pulsadores: entradas con pull-up; debounce por PIO. ---
     // Los pines siguen siendo entradas GPIO normales (gpio_get sigue funcionando
-    // para el disparador de dos botones y el trace DMA). La ruta de ENTRADA del PIO
+    // para el disparador de inicio (cualquier botón) y el trace DMA). La ruta de ENTRADA del PIO
     // lee el pad directamente sin tocar el mux GPIO, por lo que NO se llama
     // pio_gpio_init(): basta con gpio_init + pull-up + sm_config_set_in_pins().
     const float sm_div = (float)clock_get_hz(clk_sys) / (float)BUTTON_DEBOUNCE_SAMPLE_HZ;

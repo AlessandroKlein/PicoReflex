@@ -121,12 +121,12 @@ code_block(doc, """  LED 1 ──[330 Ω]── GPIO2          GPIO7  ──[P1]
 
 doc.add_paragraph()
 
-# Esquema circuital completo (PNG rasterizado a partir de docs/img/Schematic.svg).
+# Esquema circuital completo (PNG rasterizado a partir de docs/img/Esquemático.svg).
 doc.add_picture("docs/img/Schematic.png", width=Pt(450))
 doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
 cap = doc.add_paragraph()
 cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
-_cr = cap.add_run("Figura 1. Esquema circuital del PicoReflex (Schematic.svg).")
+_cr = cap.add_run("Figura 1. Esquema circuital del PicoReflex (Esquemático.svg).")
 _cr.italic = True
 _cr.font.size = Pt(9)
 
