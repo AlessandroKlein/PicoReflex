@@ -253,6 +253,20 @@ add_table(doc, ["Transición", "Línea", "Disparador"], [
     ("RUNNING → EVALUACIÓN", ":632-644 / :648-651", "pulsación (hit/miss/timeout) o timeout de tolerancia"),
     ("EVALUACIÓN → IDLE", ":693-695", "SUDDEN_DEATH + fallo → end_round() (:418-424); resto → bucle arriba"),
 ])
+
+add_table(doc, ["LED", "GPIO", "Pulsador", "GPIO"], [
+    ("1 (idx 0)", "GPIO2", "1 (idx 0)", "GPIO7"),
+    ("2 (idx 1)", "GPIO3", "2 (idx 1)", "GPIO8"),
+    ("3 (idx 2)", "GPIO4", "3 (idx 2)", "GPIO9"),
+    ("4 (idx 3)", "GPIO5", "4 (idx 3)", "GPIO10"),
+    ("5 (idx 4)", "GPIO6", "5 (idx 4)", "GPIO11"),
+])
+doc.add_paragraph(
+    "Correspondencia pulsador ↔ LED (mismo índice): el botón correcto es el del "
+    "MISMO índice que el LED objetivo (btn == expected, src/game_logic.cpp:489). "
+    "LED_PINS {2,3,4,5,6} / BUTTON_PINS {7,8,9,10,11} en include/pin_defs.hpp:36 y :43."
+)
+
 doc.add_paragraph(
     "Rama Simón Dice: start_round() inicia la secuencia con longitud 1 (:409-411); "
     "simon_show_sequence (:465-474) muestra toda la secuencia; simon_wait_input "

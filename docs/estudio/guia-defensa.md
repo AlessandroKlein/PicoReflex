@@ -192,6 +192,12 @@ cíclica **IDLE → COUNTDOWN → RUNNING → EVALUACIÓN → IDLE** y una rama 
 | RUNNING → EVALUACIÓN | `:632-644` / `:648-651` | pulsación (`hit`/`miss`/`timeout`) o timeout de tolerancia |
 | EVALUACIÓN → IDLE | `:693-695` | `SUDDEN_DEATH` + fallo → `end_round()` (`:418-424`); resto → bucle arriba |
 
+**Correspondencia pulsador ↔ LED (mismo índice):** en RUNNING se enciende un LED
+objetivo y el botón correcto es el del **mismo índice** (`btn == expected`,
+`src/game_logic.cpp:489`). LED 1↔P1 (GPIO2↔GPIO7), LED 2↔P2 (GPIO3↔GPIO8),
+LED 3↔P3 (GPIO4↔GPIO9), LED 4↔P4 (GPIO5↔GPIO10), LED 5↔P5 (GPIO6↔GPIO11) —
+`LED_PINS`/`BUTTON_PINS` en `include/pin_defs.hpp:36` y `:43`.
+
 **Rama Simón Dice:** `start_round()` inicia la secuencia con longitud 1
 (`:409-411`); `simon_show_sequence` (`:465-474`) muestra toda la secuencia;
 `simon_wait_input` (`:477-498`) valida elemento a elemento; al acertar todo crece

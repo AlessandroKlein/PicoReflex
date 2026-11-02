@@ -48,6 +48,11 @@ La fuente de verdad de los pines está en [`include/pin_defs.hpp`](https://githu
 | Medición de batería | GPIO26 = ADC0 | ADC (0..3.3 V) | Divisor R1=10 kΩ / R2=22 kΩ |
 | LED onboard (estado Wi-Fi) | Interno CYW43 | — | — (integrado en el módulo) |
 
+> **Correspondencia pulsador ↔ LED (mismo índice):** LED 1↔P1 (GPIO2↔GPIO7),
+> LED 2↔P2 (GPIO3↔GPIO8), LED 3↔P3 (GPIO4↔GPIO9), LED 4↔P4 (GPIO5↔GPIO10),
+> LED 5↔P5 (GPIO6↔GPIO11). `LED_PINS`/`BUTTON_PINS` en `include/pin_defs.hpp:36` y
+> `:43`; el motor valida `btn == expected` (`src/game_logic.cpp:489`).
+
 > **Alternativa WS2812 (NeoPixel):** en lugar de los 5 LEDs GPIO, se puede usar una
 > tira de LEDs direccionables **WS2812** en **GPIO28** (controlada por PIO). Se
 > habilita con la macro `PICOREFLEX_WS2812 1` en `include/config.hpp`. Permite color

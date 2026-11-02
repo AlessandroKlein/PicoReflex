@@ -169,6 +169,11 @@ Rutas HTTP:
 | Batería | 26 (ADC0) | Divisor externo 10 kΩ/22 kΩ |
 | LED onboard | CYW43 | Estado de red (fijo=STA, blink=AP) |
 
+> **Correspondencia pulsador ↔ LED (mismo índice):** LED 1↔P1 (GPIO2↔GPIO7),
+> LED 2↔P2 (GPIO3↔GPIO8), LED 3↔P3 (GPIO4↔GPIO9), LED 4↔P4 (GPIO5↔GPIO10),
+> LED 5↔P5 (GPIO6↔GPIO11). `LED_PINS`/`BUTTON_PINS` en `include/pin_defs.hpp:36` y
+> `:43`; el motor valida `btn == expected` (`src/game_logic.cpp:489`).
+
 > La batería se mide con un divisor externo en GPIO26; ver DECISIONES.md §9.
 >
 > **Referencia:** [Pinout oficial Raspberry Pi Pico W (A4, RP-008315-DS-1)](https://pip-assets.raspberrypi.com/categories/686-raspberry-pi-pico-w/documents/RP-008315-DS-1-PicoW-A4-Pinout.pdf)

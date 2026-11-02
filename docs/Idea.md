@@ -78,6 +78,11 @@ Para enriquecer la complejidad técnica requerida por la materia, se incorporan 
 | **Sensor Voltaje Batería (VSYS/ADC)** | GPIO 29 (ADC3) | Medición de nivel de batería |
 | **LED Onboard CYW43** | Pin Wi-Fi | Estado de conexión (Blink = AP / Fijo = STA) |
 
+> **Correspondencia pulsador ↔ LED (mismo índice):** LED 1↔P1 (GPIO2↔GPIO7),
+> LED 2↔P2 (GPIO3↔GPIO8), LED 3↔P3 (GPIO4↔GPIO9), LED 4↔P4 (GPIO5↔GPIO10),
+> LED 5↔P5 (GPIO6↔GPIO11). `LED_PINS` (`include/pin_defs.hpp:36`) y `BUTTON_PINS`
+> (`:43`); el motor valida `btn == expected` (`src/game_logic.cpp:489`).
+
 ---
 
 ## 5. Estructura de Software en C++ (`pico-sdk`)

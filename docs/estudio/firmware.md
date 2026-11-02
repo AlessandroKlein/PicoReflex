@@ -141,6 +141,13 @@ que **nunca retorna** (bloquea el Core 0). Los estados lógicos y sus transicion
 | EVALUACIÓN → IDLE | `:693-695` | en `SUDDEN_DEATH` si `!hit` → `end_round()` (`:418-424`); en los demás modos el bucle vuelve arriba |
 | IDLE (drenado de eventos web) | `:541-565` | `START_ROUND` → `start_with_countdown`; `STOP_ROUND` → `end_round`; `CONFIG_CHANGED` → persistir |
 
+**Correspondencia pulsador ↔ LED (mismo índice):** en RUNNING se enciende un LED
+objetivo (`target = next_range(LED_COUNT)`) y el botón correcto es el del **mismo
+índice**: `btn == expected` (`src/game_logic.cpp:489`). `g_led_pins[i] = LED_PINS`
+(GPIO 2..6) y `g_button_pins[i] = BUTTON_PINS` (GPIO 7..11) (`:62-63`,
+`include/pin_defs.hpp:36` y `:43`): LED 1↔P1 (GPIO2↔GPIO7), LED 2↔P2 (GPIO3↔GPIO8),
+LED 3↔P3 (GPIO4↔GPIO9), LED 4↔P4 (GPIO5↔GPIO10), LED 5↔P5 (GPIO6↔GPIO11).
+
 **Rama SIMÓN DICE** (`cfg.mode == SIMON_SAYS`, `:602-605` → `simon_says_round`):
 
 ```

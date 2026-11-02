@@ -28,6 +28,20 @@ lee las macros `LED_PINS`, `BUTTON_PINS`, `I2C_DISPLAY_*`, `BUZZER_PIN`, `VSYS_P
 | Batería (ADC0) | GPIO 26 | `VSYS_PIN 26u`, `VSYS_R1_OHM 10000`, `VSYS_R2_OHM 22000` | `include/pin_defs.hpp:87-90` |
 | LED onboard Wi-Fi | CYW43 | `CYW43_WL_GPIO_LED_PIN` | `include/pin_defs.hpp:98-100` |
 
+**Correspondencia pulsador ↔ LED (mismo índice):**
+
+| LED | GPIO | Pulsador | GPIO |
+|-----|------|----------|------|
+| 1 (idx 0) | GPIO2 | 1 (idx 0) | GPIO7 |
+| 2 (idx 1) | GPIO3 | 2 (idx 1) | GPIO8 |
+| 3 (idx 2) | GPIO4 | 3 (idx 2) | GPIO9 |
+| 4 (idx 3) | GPIO5 | 4 (idx 3) | GPIO10 |
+| 5 (idx 4) | GPIO6 | 5 (idx 4) | GPIO11 |
+
+- El botón correcto es el del **mismo índice** que el LED encendido:
+  `g_led_pins[i] = LED_PINS` y `g_button_pins[i] = BUTTON_PINS`
+  (`src/game_logic.cpp:62-63`), y el motor valida `btn == expected` (`:489`).
+
 - La velocidad I2C se fija a **400 kHz** (fast mode): `#define I2C_BAUDRATE 400u * 1000u` — `include/pin_defs.hpp:59`.
 - La dirección del OLED se define en 7 bits (`0x3C`/`0x3D`), con la aclaración de que
   los fabricantes la publican en 8 bits (`0x78`/`0x7A`): `include/pin_defs.hpp:61-66`.
