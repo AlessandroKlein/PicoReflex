@@ -6,6 +6,12 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
 
 > Versión v0.9.7 · Pico SDK 2.3.0 · FreeRTOS SMP. Énfasis (~50 %): mecanismo de
 > juego (estados + timing) y seed (xorshift32).
+>
+> **Diseño (Swiss Modernism 2.0):** paleta azul `#2563EB` + acento naranja
+> `#F97316`, tipografía Inter, cards blancas sobre fondo `#F8FAFC`. Diagramas
+> embebidos en las filminas **3** (diagrama de bloques), **4** (flujo del juego),
+> **10** (flujo de red) y **11** (esquemático); la filmina **5** usa una tabla con
+> cabecera coloreada.
 
 ---
 
