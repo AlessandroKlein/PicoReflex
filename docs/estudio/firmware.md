@@ -83,75 +83,318 @@ Secuencia de `main()` (`src/main.cpp:72-118`):
 
 ## 2. `game_task` / `game_logic` — Motor del juego
 
-### (a) Qué hace
-Motor de reacción en el Core 0: configura LEDs/pulsadores (debounce por PIO),
-mide la reacción en **microsegundos**, ejecuta la máquina de estados del juego
-(4 modos), genera la secuencia pseudoaleatoria y actualiza estadísticas/persistencia.
+Esta sección se divide en dos partes: **2.A** (la lógica de juego: máquina de
+estados y matemática del timing) y **2.B** (el algoritmo matemático del PRNG
+xorshift32 y el "seed", que es lo más importante del firmware). Ambas son
+exhaustivas y con referencias `archivo:línea` reales.
 
-### (b) Cómo funciona
-- **Modos** (`include/config.hpp:80-93`): `FREE_PLAY=0` (sin penalización),
-  `TIMED=1` (ronda de duración fija), `SUDDEN_DEATH=2` (un fallo termina),
-  `SIMON_SAYS=3` (secuencia de memoria creciente).
-- **Dificultad y tolerancia** (`include/config.hpp:98-103` + `:288-295`):
-  `EASY=1000 ms`, `NORMAL=500 ms`, `HARD=250 ms` — `difficulty_tolerance_ms()` es
-  un `switch` inline.
-- **PRNG `xorshift32`** (`include/game_logic.hpp:39-65`): estado de 32 bits;
-  `next()` hace `x ^= x<<13; x ^= x>>17; x ^= x<<5`; `next_range(n) = next() % n`.
-  `set_seed(0)` usa la constante `0x9E3779B9u` (el estado todo-cero dejaría el
-  generador atascado en 0).
-- **Máquina de estados** en `run()` (`src/game_logic.cpp:536-700`):
-  1. `watchdog_update()` cada vuelta (`:538`); drena eventos de control de la web
-     (`:541-565`).
-  2. **IDLE** (`:570-599`): cualquier pulsación (`g_button_pending`) dispara
-     `start_with_countdown()`; si no, evalúa dormir o `vTaskDelay(5 ms)`.
-  3. **SIMON_SAYS** (`:602-605` → `simon_says_round` `:501-531`).
-  4. **RUNNING (reacción)** (`:607-668`): apaga LEDs, espera un intervalo aleatorio
-     `delay_ms = stimulus_min_ms + g_rng.next_range(stimulus_max_ms - stimulus_min_ms + 1)`
-     (`:610-611`), enciende un LED aleatorio (`:618-619`), captura `t0 = time_us_32()`
-     y espera la pulsación o el timeout.
-  5. **Evaluación** (`:675-696`): `stats_record()`, feedback de audio, récord,
-     `SUDDEN_DEATH` termina la ronda.
-- **Tiempo de reacción**: el timestamp se captura **dentro de la IRQ del PIO**
-  (`src/game_logic.cpp:167-185`), con `time_us_32()` (resolución 1 µs); la reacción
-  es `reaction_us = g_button_ts_us - t0` (`:635`), resta sin signo segura ante el
-  *wrap* del contador de 32 bits (~71.6 min).
-- **Tolerancia**: `tolerance_us = UINT32_MAX` en FREE_PLAY (sin timeout) o
-  `difficulty_tolerance_ms * 1000` (`:623-626`).
-- **Siembra** (`start_round`, `:402-416`): `g_rng.set_seed(cfg.seed != 0 ? cfg.seed : get_rand_32())`;
-  en Simón inicializa `g_seq_length = 1` y `g_sequence[0] = g_rng.next_range(LED_COUNT)`.
-- **Simón Dice** (`:426-531`): `simon_show_sequence()` presenta cada LED con su tono
-  (escala pentatónica `:438-441`), la velocidad acelera con la longitud
-  (`simon_show_interval_ms` reduce −4 % por elemento con suelo al 40 %);
-  `simon_wait_input()` valida cada elemento con un timeout generoso
-  (`tolerancia*6 + 2000 ms`).
+---
 
-### (c) Por qué se eligió ese diseño
-- **`xorshift32` propio y no `rand()`/`pico_rand`**: `pico_rand` **no expone una
-  función para fijar la semilla** (se auto-siembra con entropía del hardware), y
-  para el modo "semilla determinista" hace falta una secuencia **idéntica en cada
-  reinicio** (`include/game_logic.hpp:35-37`, `docs/DECISIONES.md` §3).
+### 2.A Lógica de juego (máquina de estados + matemática de timing)
+
+#### (a) Qué hace
+Motor de reacción en el **Core 0** que ejecuta una máquina de estados cíclica
+(IDLE → COUNTDOWN → RUNNING → EVALUACIÓN → IDLE) y una rama especial para
+**Simón Dice**. Configura 5 LEDs (salidas GPIO2–6) y 5 pulsadores (entradas
+GPIO7–11 con debounce por PIO), mide la reacción en **microsegundos** con el
+temporizador hardware, y actualiza estadísticas/persistencia.
+
+#### (b) Cómo funciona — diagrama de estados
+
+El bucle principal es `game::run()` (`src/game_logic.cpp:536-700`), un `while(true)`
+que **nunca retorna** (bloquea el Core 0). Los estados lógicos y sus transiciones:
+
+```
+                        (fin de ronda: end_round :418-424
+                         o bucle de vuelta al IDLE)
+        ┌─────────────────────────────────────────────────┐
+        ▼                                                 │
+     ┌──────┐   cualquier botón      ┌───────────┐        │
+     │ IDLE │───────────────────────▶│ COUNTDOWN │        │
+     └──────┘   (:571-575)           └───────────┘        │
+        ▲  g_round_active=false      start_with_countdown  │
+        │                            (:386-397)           │
+        │                          ┌─► start_round (:402-416)
+        │                          │   g_round_active=true
+        │                          │
+        │                          ▼
+        │                     ┌─────────┐  hit/miss/timeout
+        │                     │ RUNNING │  (reacción :607-668)
+        │                     └─────────┘
+        │                          │
+        │                          ▼
+        │                     ┌────────────┐  stats_record + feedback
+        │                     │ EVALUACIÓN │  (:675-696)
+        │                     └────────────┘
+        │                          │
+        └──────────────────────────┘  SUDDEN_DEATH→end_round (:693-695)
+                                      resto→bucle (persist_if_dirty :699)
+```
+
+**Transiciones con línea exacta** (`src/game_logic.cpp`):
+
+| Transición | Línea | Qué dispara |
+|---|---|---|
+| IDLE → COUNTDOWN | `:570-575` | `!g_round_active` y `g_button_pending` → cualquier botón |
+| COUNTDOWN → RUNNING | `:386-397` | `start_with_countdown()` cuenta `start_delay_s` s y llama `start_round()` |
+| RUNNING → EVALUACIÓN | `:632-644` | pulsación (`hit`/`miss`/`timeout`) o timeout de tolerancia (`:648-651`) |
+| EVALUACIÓN → IDLE | `:693-695` | en `SUDDEN_DEATH` si `!hit` → `end_round()` (`:418-424`); en los demás modos el bucle vuelve arriba |
+| IDLE (drenado de eventos web) | `:541-565` | `START_ROUND` → `start_with_countdown`; `STOP_ROUND` → `end_round`; `CONFIG_CHANGED` → persistir |
+
+**Rama SIMÓN DICE** (`cfg.mode == SIMON_SAYS`, `:602-605` → `simon_says_round`):
+
+```
+start_round (:409-411): g_seq_length=1; g_sequence[0]=next_range(LED_COUNT)
+        │
+        ▼
+simon_says_round (:501-531)
+        │
+        ├─► simon_show_sequence (:465-474, llamado en :503): muestra TODA la secuencia
+        │        (enciende cada LED + tono, velocidad acelera con la longitud)
+        │
+        ├─► bucle de validación elemento a elemento (:506-509):
+        │        for i in 0..g_seq_length-1: ok = simon_wait_input(cfg, g_sequence[i])
+        │        simon_wait_input (:477-498): espera UNA pulsación y compara con expected
+        │
+        ├─► SI falla (botón equivocado o timeout, :511-519):
+        │        play_game_over + effect_lose + stats_record(miss)
+        │        g_seq_length=1; g_sequence[0]=next_range(5)  → end_round() → IDLE
+        │
+        └─► SI acierta TODO (:522-528):
+                 effect_win + stats_record(hit)
+                 si g_seq_length < SIMON_MAX_SEQ(64): agrega un elemento aleatorio y crece
+                 pausa 600 ms → vuelve a mostrar la secuencia (más larga)
+```
+
+#### (b) Cómo funciona — matemática del timing
+
+Todo el timing usa el contador **hardware** `time_us_32()` (resolución 1 µs,
+un contador de 32 bits que da la vuelta cada 2³² µs ≈ **71,58 min**). Referencias
+a `src/game_logic.cpp`:
+
+1. **Intervalo entre estímulos (uniforme en `[min, max]`)** (`:610-611`):
+   ```c
+   uint32_t span     = cfg.stimulus_max_ms - cfg.stimulus_min_ms + 1u; // :610
+   uint32_t delay_ms = cfg.stimulus_min_ms + g_rng.next_range(span);   // :611
+   ```
+   `next_range(span)` devuelve un valor uniforme en `[0, span-1]`; sumarle
+   `stimulus_min_ms` da un valor uniforme en `[stimulus_min_ms, stimulus_max_ms]`
+   (ambos extremos incluidos). El `+1u` es el clásico off-by-one de los rangos
+   `[a, b]` (hay `b−a+1` valores).
+
+2. **`t0` se captura al encender el LED** (`:620`):
+   ```c
+   led_on(target);          // :619 — enciende el LED objetivo
+   uint32_t t0 = time_us_32();  // :620 — instante de referencia
+   ```
+
+3. **`reaction_us = g_button_ts_us - t0`** (`:635`): **resta SIN signo**. Como ambos
+   operandos son `uint32_t`, la resta se evalúa **módulo 2³²** (aritmética modular).
+   Si el contador hizo *wrap* entre `t0` y `g_button_ts_us` (el contador pasó de
+   `0xFFFFFFFF` a `0`), el resultado numérico "parece negativo" pero **el valor sin
+   signo es exactamente el tiempo transcurrido módulo 2³²**. Como una reacción humana
+   es de decenas/cientos de ms (≪ 71,58 min), el resultado módulo 2³² **coincide con
+   el tiempo real** y **no hace falta ningún código especial** para detectar el wrap.
+   Es la misma propiedad `(a − b) mod 2³²` que usa cualquier `uint32_t` como
+   timestamp monótono.
+
+4. **Tolerancia (ventana para considerar el acierto)** (`:623-626`):
+   ```c
+   uint32_t tolerance_us =
+       (cfg.mode == GameMode::FREE_PLAY)
+           ? UINT32_MAX                                  // sin timeout ("infinito")
+           : difficulty_tolerance_ms(cfg.difficulty) * 1000u;
+   ```
+   `difficulty_tolerance_ms()` devuelve 1000/500/250 ms según la dificultad
+   (`include/config.hpp:288-295`). En FREE_PLAY la tolerancia es `UINT32_MAX`
+   (~71,58 min), es decir, **sin límite de tiempo** (el jugador puede tardar lo que
+   quiera).
+
+5. **Fin de ronda por tiempo en modo TIMED** (`:654-655`):
+   ```c
+   if (cfg.mode == GameMode::TIMED &&
+       (time_us_32() - g_round_start_us) > cfg.round_seconds * 1000000u) {
+       end_round();
+   ```
+   `g_round_start_us` se fija en `start_round()` (`:415`); `round_seconds * 1e6`
+   convierte segundos a microsegundos. La resta sin signo vuelve a absorber el wrap.
+
+6. **El timestamp se captura DENTRO de la IRQ del PIO**, no en el bucle
+   (`src/game_logic.cpp:167-185`): el handler `pio_button_irq()` hace
+   `uint32_t now = time_us_32();` (`:169`) **lo más cerca posible del flanco** y lo
+   guarda en `g_button_ts_us = now` (`:181`). Así la latencia entre el flanco físico
+   y la captura del timestamp es mínima (solo la latencia de la propia IRQ), y el
+   bucle de `run()` lee después `g_button_ts_us` sin añadir jitter de polling.
+
+#### (c) Por qué se eligió ese diseño
 - **Timestamp en la IRQ**: minimiza latencia/jitter de la medición
-  (`docs/DECISIONES.md` §4).
+  (`docs/DECISIONES.md` §4). Si se capturara en el bucle, el tiempo dependería de la
+  fase del `vTaskDelay(5 ms)` y de cuánto tardara el scheduler en despertar.
+- **Resta sin signo en vez de comparar `>=`**: elimina una rama de código y es
+  correcta por definición del C (`uint32_t` sin signo → aritmética módulo 2³²).
 - **Debounce por PIO**: cada botón tiene una state machine que filtra el rebote en
   hardware; la CPU solo captura el timestamp (`src/game_logic.cpp:153-158`).
 
-### (d) Bugs/trampas
-- **Wrap de `span = smax - smin + 1`** si `smin > smax` → el rango se desbordaba.
+#### (d) Bugs/trampas
+- **Wrap de `span = smax - smin + 1`** si `smin > smax`: el rango se desbordaba.
   Se acotó en `web_server.cpp` (v0.1.3, `CHANGELOG.md:542-543`).
 - **Disparador de inicio**: pasó de "dos botones simultáneos" (complejo y propenso a
   fallo) a **cualquier botón** (`docs/DECISIONES.md` §35, `src/game_logic.cpp:570-575`).
+- **Pulsaciones "tempranas"** durante el intervalo oscuro: se descartan con
+  `g_button_pending = false` (`:615`) justo antes de encender el LED, para que una
+  pulsación accidental durante la espera no cuente como reacción instantánea.
 
-### (e) Preguntas probables de defensa
-1. **¿Por qué no usar `rand()` o `pico_rand`?** `pico_rand` no permite fijar la
-   semilla; para una secuencia repetible implementamos `xorshift32` (Marsaglia 2003),
-   trivial y sin estado oculto.
-2. **¿Cómo se mide el tiempo de reacción sin jitter?** El contador `time_us_32()`
-   (TIMELR hardware, 1 µs) se lee dentro de la propia IRQ del flanco; la resta sin
-   signo absorbe el wrap de 32 bits.
-3. **¿Qué pasa si el jugador aprieta el botón equivocado?** `miss` → `stats_record`
-   con `hit=false`; en `SUDDEN_DEATH` además `end_round()`.
-4. **¿Cómo es determinista la secuencia de Simón?** Se siembra `xorshift32` con la
-   semilla de `GameConfig`; la misma semilla produce la misma secuencia.
+#### (e) Preguntas probables de defensa
+1. **¿Por qué la resta sin signo absorbe el wrap del contador?** Porque `uint32_t`
+   implementa aritmética módulo 2³²; `(g_button_ts_us − t0)` siempre da el tiempo
+   transcurrido módulo 2³², que es el tiempo real mientras la reacción sea < 71,58 min.
+2. **¿Qué pasa si el contador hace wrap justo en medio de una reacción?** Nada malo:
+   el resultado módulo 2³² sigue siendo correcto (p. ej. `t0=0xFFFF_FFF0`,
+   `ts=0x0000_0010` → `ts−t0 = 0x20 = 32 µs`, exacto).
+3. **¿Por qué capturar el timestamp en la IRQ y no en el bucle?** Para minimizar la
+   latencia entre el flanco y la lectura del contador; en el bucle habría jitter de
+   hasta un `vTaskDelay(5 ms)`.
+4. **¿Cómo se descartan las pulsaciones prematuras?** `g_button_pending = false`
+   (`:615`) justo antes de `led_on()`, así solo cuenta la pulsación posterior al
+   estímulo.
+
+---
+
+### 2.B Algoritmo matemático del PRNG (xorshift32, el "seed")
+
+#### (a) Qué hace
+Genera la secuencia pseudoaleatoria **determinista** que decide el orden de los
+LEDs en el modo reacción y la secuencia completa de **Simón Dice**. Es la pieza
+central del juego: **una misma semilla produce exactamente la misma secuencia**,
+lo que permite partidas reproducibles, récords comparables y pruebas.
+
+#### (b) Cómo funciona — la matemática
+
+1. **Definición exacta (Marsaglia 2003)** — `include/game_logic.hpp:48-55`:
+   ```c
+   uint32_t next() {
+       uint32_t x = state_;
+       x ^= x << 13u;   // :50
+       x ^= x >> 17u;   // :51
+       x ^= x << 5u;    // :52
+       state_ = x;
+       return x;
+   }
+   ```
+   Tres operaciones de *xor-shift* con la terna **(a, b, c) = (13, 17, 5)**.
+
+2. **Linealidad sobre GF(2)**: cada bit del estado es un elemento de GF(2) (el campo
+   de dos elementos {0,1} con XOR como suma y AND como producto). XOR es suma módulo 2,
+   y cada *shift* (`<<k`, `>>k`) es un mapa **lineal** (una matriz de 32×32 que
+   desplaza los bits). Por tanto `x ^= x << k` es la aplicación del operador
+   `I + Lᵏ` (donde `L` es la matriz de *shift* izquierda y `I` la identidad). La
+   transición completa es un único mapa lineal:
+   ```
+   x' = T·x,  con  T = (I + L⁵)(I + R¹⁷)(I + L¹³)
+   ```
+   donde `L`/`R` son las matrices de *shift* izquierda/derecha (el orden del producto
+   sigue el orden de ejecución del código: primero `(I+L¹³)`, luego `(I+R¹⁷)`, luego
+   `(I+L⁵)`).
+
+3. **Invertibilidad**: cada factor `(I + Lᵏ)` es **invertible** porque `Lᵏ` es
+   **nilpotente** (aplicar el *shift* izquierdo 32 veces aniquila cualquier vector:
+   `L³² = 0`, luego `(Lᵏ)ᵐ = Lᵏᵐ = 0` para `km ≥ 32`). La inversa de `(I+Lᵏ)` es la
+   serie geométrica **finita** `I + Lᵏ + L²ᵏ + … + Lᵏ⁽ᵐ⁻¹⁾` (se anula por telescopaje,
+   y en GF(2) los términos intermedios se cancelan de a pares porque `2=0`). Lo mismo
+   vale para `(I+Rᵏ)`. Como `T` es producto de matrices invertibles, **`T` es
+   invertible** → es una **permutación (biyección)** de los 2³² estados.
+
+4. **Periodo**: con la terna (13, 17, 5) el periodo es **2³² − 1**, el máximo posible
+   para un estado de 32 bits no nulo. Todos los estados no nulos forman **un único
+   ciclo** de longitud 2³² − 1 = 4 294 967 295 (el estado 0 queda fuera, ver punto 5).
+
+5. **Estado cero = punto fijo** (`0 << k = 0` y `0 ^ 0 = 0`): si el estado fuera 0,
+   `next()` devolvería 0 para siempre (el generador queda "atascado"). Por eso la
+   semilla **DEBE ser no nula**: `set_seed(0)` sustituye por la constante
+   `0x9E3779B9u` (`include/game_logic.hpp:45`):
+   ```c
+   void set_seed(uint32_t s) { state_ = (s != 0u) ? s : 0x9E3779B9u; }
+   ```
+
+6. **`0x9E3779B9` = 2 654 435 769 = ⌊2³²/φ⌋**, con `φ = (1+√5)/2 ≈ 1,6180339887`
+   (la **razón áurea**): 2³²/φ ≈ 2 654 435 769,497 → la parte entera es `0x9E3779B9`.
+   Es una constante "nothing-up-my-sleeve" (derivada de una constante matemática, no
+   elegida arbitrariamente) con **buen mezclado de bits**, estándar en *seeding* de
+   hashes y PRNG (aparece en el *golden-ratio hash*).
+
+7. **`next_range(n) = next() % n`** (`include/game_logic.hpp:58-61`): el **sesgo del
+   módulo**. Si la salida fuera uniforme en `[0, 2³²)`, el residuo `2³² mod n`
+   aparecería una vez más. Aquí hay un matiz importante: **xorshift32 nunca emite 0**
+   (el estado 0 es un punto fijo excluido del ciclo), así que su salida en un periodo
+   completo es exactamente el conjunto `{1, 2, …, 2³²−1}` (2³²−1 valores). Para
+   `n = 5` (= `LED_COUNT`): `2³² − 1 = 5 · 858 993 459`, **divisible exacto** → en el
+   ciclo completo **no hay sesgo**. Aun en el peor caso (si se considerara el dominio
+   `[0, 2³²)`), el sesgo sería de 1 aparición extra sobre 2³², un sesgo relativo
+   `≈ 1/2³² ≈ 2,3·10⁻¹⁰`, **despreciable**. Por eso para `n` pequeño **no hace falta
+   *rejection sampling*** (rechazar y resortear), que sí sería necesario para rangos
+   grandes cercanos a 2³².
+
+8. **Determinismo**: misma semilla → misma secuencia. Como `T` es determinista y
+   `set_seed` fija exactamente el estado inicial, dos ejecuciones con la misma semilla
+   producen **la misma secuencia de Simón** (mismos LEDs en el mismo orden) y **el
+   mismo orden de estímulos** en el modo reacción. Esto es lo que hace reproducibles
+   las partidas.
+
+9. **Siembra real** (`src/game_logic.cpp:406`):
+   ```c
+   g_rng.set_seed(cfg.seed != 0u ? cfg.seed : get_rand_32());
+   ```
+   Si `cfg.seed != 0` se usa la **semilla fija configurada** (reproducible); si es 0
+   se usa **entropía hardware** `get_rand_32()` de `pico_rand` (aleatorio real). Es
+   decir: `seed=0` significa "aleatorio", y cualquier otro valor "determinista".
+
+10. **Persistencia de la semilla** (`src/game_logic.cpp:404`):
+    ```c
+    g_persist.last_seed = cfg.seed;
+    ```
+    La última semilla usada se guarda en Flash (`last_seed` dentro de `PersistentData`),
+    junto al resto de la configuración persistida.
+
+#### (c) Por qué se eligió ese diseño
+- **`xorshift32` propio y no `rand()`/`pico_rand`**: `pico_rand` **no expone una
+  función para fijar la semilla** (se auto-siembra con entropía), y para el modo
+  "semilla determinista" hace falta una secuencia **idéntica en cada reinicio**
+  (`include/game_logic.hpp:35-37`, `docs/DECISIONES.md` §3). `xorshift32` es trivial
+  (3 líneas), sin estado oculto, y su matemática es **demostrable** (permutación,
+  periodo máximo).
+- **Terna (13, 17, 5)**: es una de las ternas publicadas por Marsaglia que cumple las
+  condiciones de *periodo máximo* (el polinomio característico de `T` es primitivo en
+  GF(2)). No es un número mágico arbitrario: fue elegido y verificado para maximizar
+  el periodo y el mezclado.
+
+#### (d) Bugs/trampas
+- **Semilla 0**: es el error clásico. Un estado todo-cero es punto fijo y produce
+  ceros infinitos; por eso `set_seed(0)` lo reemplaza por `0x9E3779B9`
+  (`include/game_logic.hpp:45`).
+- **Sesgo del módulo**: despreciable para `n=5`, pero si algún día se usara
+  `next_range` con un `n` grande (cercano a 2³²) habría que pasar a *rejection
+  sampling* (o a un `uint64_t`). El comentario del propio código lo advierte
+  (`include/game_logic.hpp:59`).
+- **"Reproducible" ≠ "seguro"**: xorshift32 es **predecible** (lineal) y por tanto NO
+  sirve para criptografía ni para secretos; solo para jugabilidad. No confundir con un
+  CSPRNG.
+
+#### (e) Preguntas probables de defensa
+1. **¿Por qué 13, 17 y 5?** Es una terna publicada por Marsaglia (2003) que da
+   **periodo máximo 2³²−1**: el polinomio característico de `T` es primitivo en
+   GF(2), así que todos los estados no nulos forman un único ciclo.
+2. **¿Cuál es el periodo y por qué?** `2³² − 1`. Porque `T` es una permutación
+   (invertible) sin más punto fijo que el 0, y el ciclo de los estados no nulos tiene
+   longitud máxima.
+3. **¿Qué pasa si la semilla es 0?** El generador quedaría atascado en 0 para siempre
+   (0 es punto fijo). Por eso `set_seed(0)` usa `0x9E3779B9` = ⌊2³²/φ⌋.
+4. **¿Por qué el módulo no introduce sesgo relevante?** Para `n=5`, `next() % 5`
+   mapea los 2³²−1 valores no nulos (divisibles por 5) de forma exacta; y aun en el
+   peor caso el sesgo sería 1/2³² ≈ 2,3·10⁻¹⁰, despreciable.
+5. **¿Cómo se garantiza que dos partidas con la misma semilla sean idénticas?**
+   Porque `set_seed(cfg.seed)` fija exactamente el estado inicial y `T` es
+   determinista: la misma semilla produce la misma secuencia de `next()` y por tanto
+   la misma secuencia de LEDs/Simón.
 
 ---
 

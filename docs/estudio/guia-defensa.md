@@ -165,7 +165,8 @@ siempre en el Core 0, donde `configTICK_CORE=0` deja el SysTick; en el Core 1 el
 - **Motor del juego (`game_logic.cpp`)** — máquina de estados con 4 modos
   (`FREE_PLAY`/`TIMED`/`SUDDEN_DEATH`/`SIMON_SAYS`), PRNG **`xorshift32`** (semilla
   determinista), y **medición de reacción en µs**: `time_us_32()` se lee **dentro
-  de la IRQ del PIO**, no en el bucle.
+  de la IRQ del PIO**, no en el bucle. Detalle completo en los apartados
+  **§3.1.1** (lógica de juego) y **§3.1.2** (el "seed").
 - **Estado compartido (`shared_state.cpp`)** — `critical_section` (datos) +
   `queue_t` (eventos). Se eligió spinlock en vez de mutex por la brevedad de las
   secciones críticas.
@@ -176,6 +177,84 @@ siempre en el Core 0, donde `configTICK_CORE=0` deja el SysTick; en el Core 1 el
   (`watchdog_update()`); diagnóstico de causa antes de re-habilitar.
 - **Bootloader (`bootloader.c`)** — salto tipo-reset (`VTOR`, MSP, `cpsie i`) y
   OTA A/B con staging + commit atómico + rollback.
+
+#### 3.1.1 Lógica de juego — máquina de estados y matemática del timing
+
+Motor de reacción en el **Core 0**: el bucle `game::run()`
+(`src/game_logic.cpp:536-700`) **nunca retorna**, ejecutando una máquina de estados
+cíclica **IDLE → COUNTDOWN → RUNNING → EVALUACIÓN → IDLE** y una rama especial para
+**Simón Dice** (`:602-605` → `simon_says_round` `:501-531`).
+
+| Transición | Línea | Disparador |
+|---|---|---|
+| IDLE → COUNTDOWN | `:570-575` | cualquier botón (`g_button_pending`) |
+| COUNTDOWN → RUNNING | `:386-397` | `start_with_countdown()` cuenta `start_delay_s` s y llama `start_round()` |
+| RUNNING → EVALUACIÓN | `:632-644` / `:648-651` | pulsación (`hit`/`miss`/`timeout`) o timeout de tolerancia |
+| EVALUACIÓN → IDLE | `:693-695` | `SUDDEN_DEATH` + fallo → `end_round()` (`:418-424`); resto → bucle arriba |
+
+**Rama Simón Dice:** `start_round()` inicia la secuencia con longitud 1
+(`:409-411`); `simon_show_sequence` (`:465-474`) muestra toda la secuencia;
+`simon_wait_input` (`:477-498`) valida elemento a elemento; al acertar todo crece
+hasta `SIMON_MAX_SEQ 64` (`:522-528`); al fallar → `game_over` + reinicio a
+longitud 1 (`:511-519`).
+
+**Matemática del timing** (todo sobre `time_us_32()`, contador hardware de 1 µs que
+da la vuelta cada 2³² µs ≈ **71,58 min**):
+
+- **Intervalo entre estímulos uniforme** (`:610-611`):
+  `delay_ms = stimulus_min_ms + next_range(stimulus_max_ms − stimulus_min_ms + 1)`.
+  El `+1` es el clásico off-by-one de un rango `[min, max]` (hay `max−min+1` valores).
+- **`t0` se captura al encender el LED** (`:620`); **`reaction_us = g_button_ts_us − t0`**
+  (`:635`) es una **resta SIN signo** → aritmética **módulo 2³²** que **absorbe el
+  *wrap*** del contador sin ningún código especial (la reacción humana ≪ 71,58 min).
+- **Tolerancia** (`:623-626`): `difficulty_tolerance_ms()·1000` = 1000/500/250 ms;
+  en `FREE_PLAY` es `UINT32_MAX` (sin límite de tiempo).
+- **Fin por tiempo en `TIMED`** (`:654-655`): `(time_us_32() − g_round_start_us) > round_seconds·1e6`.
+- **El timestamp se captura DENTRO de la IRQ del PIO** (`:167-185`), no en el bucle,
+  para minimizar latencia/jitter (`g_button_ts_us` se lee después sin polling).
+
+#### 3.1.2 El "seed" — algoritmo matemático del PRNG `xorshift32`
+
+Genera la secuencia pseudoaleatoria **determinista** que decide el orden de los LEDs
+y la secuencia de Simón: **una misma semilla produce exactamente la misma secuencia**
+(partidas reproducibles, récords comparables). Definición (`include/game_logic.hpp:48-55`):
+
+```c
+uint32_t next() {
+    uint32_t x = state_;
+    x ^= x << 13u;   // :50
+    x ^= x >> 17u;   // :51
+    x ^= x << 5u;    // :52
+    state_ = x;
+    return x;
+}
+```
+
+- **Terna (13, 17, 5)**: publicada por Marsaglia (2003); da **periodo máximo
+  2³²−1** (el polinomio característico de la transición es primitivo en GF(2)).
+- **Linealidad sobre GF(2)**: XOR = suma módulo 2, y cada *shift* es una matriz
+  32×32. La transición completa es un único mapa lineal `x' = T·x` con
+  `T = (I+L⁵)(I+R¹⁷)(I+L¹³)` (orden = orden de ejecución).
+- **Invertibilidad → permutación**: cada factor `(I+Lᵏ)` es invertible porque `Lᵏ`
+  es **nilpotente** (`L³²=0`, luego `(Lᵏ)ᵐ=0` para `km≥32`); `T` es una **biyección**
+  de los 2³² estados.
+- **Periodo 2³²−1**: todos los estados no nulos forman **un único ciclo** de
+  longitud 4 294 967 295.
+- **Estado 0 = punto fijo** (`0<<k=0`, `0^0=0`): `set_seed(0)` lo sustituye por
+  **`0x9E3779B9 = ⌊2³²/φ⌋`**, con φ=(1+√5)/2 ≈ 1.618 (razón áurea): constante
+  "nothing-up-my-sleeve" con buen mezclado de bits (`include/game_logic.hpp:45`).
+- **Sesgo del módulo** (`next_range(n) = next() % n`, `:58-61`): xorshift32 **nunca
+  emite 0**, así que en un periodo completo su salida es `{1,…,2³²−1}` (2³²−1
+  valores). Para `n=5` (`LED_COUNT`), `2³²−1 = 5·858 993 459` → **sesgo exacto 0**.
+  Aun en el peor caso sería 1/2³² ≈ 2,3·10⁻¹⁰, despreciable (no hace falta
+  *rejection sampling* para `n` pequeño).
+- **Siembra** (`src/game_logic.cpp:406`):
+  `g_rng.set_seed(cfg.seed != 0 ? cfg.seed : get_rand_32())` — `seed=0` =
+  **aleatorio** (entropía hardware `pico_rand`), cualquier otro valor =
+  **determinista**.
+- **Persistencia** (`:404`): `g_persist.last_seed = cfg.seed` se guarda en Flash.
+- **No es criptográfico**: xorshift32 es lineal y **predecible**; sirve solo para
+  jugabilidad, no para secretos (no confundir con un CSPRNG).
 
 ### 3.2 Red y web
 
@@ -337,6 +416,27 @@ siempre en el Core 0, donde `configTICK_CORE=0` deja el SysTick; en el Core 1 el
     IRQ; la CPU solo captura `time_us_32()`. El timestamp se toma en el **primer**
     flanco (`wait 0 pin 0` → `irq set 0`), conservando la resolución de 1 µs.
 
+21. **¿Por qué la terna 13, 17 y 5 en el xorshift32?**
+    Es una de las ternas publicadas por Marsaglia (2003) que da **periodo máximo
+    2³²−1**: el polinomio característico de `T` es primitivo en GF(2), así que todos
+    los estados no nulos forman un único ciclo. No es un número mágico arbitrario.
+
+22. **¿Qué periodo tiene el xorshift32 y por qué?**
+    `2³²−1` = 4 294 967 295. Porque `T` es una **permutación** (invertible) cuyo
+    único punto fijo es el 0, de modo que el ciclo de los estados no nulos tiene la
+    longitud máxima posible para 32 bits.
+
+23. **¿Qué pasa si la semilla es 0?**
+    El estado 0 es **punto fijo** (`0<<k=0`, `0^0=0`), y `next()` devolvería 0 para
+    siempre (generador "atascado"). Por eso `set_seed(0)` la reemplaza por
+    `0x9E3779B9 = ⌊2³²/φ⌋` (`include/game_logic.hpp:45`).
+
+24. **¿Cómo se garantiza que dos partidas con la misma semilla sean idénticas?**
+    `set_seed(cfg.seed)` fija exactamente el estado inicial y `T` es determinista:
+    la misma semilla produce la misma secuencia de `next()` → la misma secuencia de
+    LEDs/Simón. En PicoReflex `seed=0` significa "aleatorio" (`get_rand_32()`, entropía
+    hardware) y cualquier otro valor "determinista/reproducible" (`src/game_logic.cpp:406`).
+
 ---
 
 ## 5. Glosario técnico
@@ -367,8 +467,18 @@ siempre en el Core 0, donde `configTICK_CORE=0` deja el SysTick; en el Core 1 el
   I/O determinista.
 - **Flash / XIP** — memoria no volátil; XIP = ejecutar código directamente desde ella.
 - **CRC32** — *Cyclic Redundancy Check* de 32 bits para detectar corrupción.
-- **xorshift** — familia de PRNG rápidos basados en XOR y desplazamientos
-  (`xorshift32` de Marsaglia).
+- **xorshift32** — PRNG de Marsaglia (2003): tres xor-shift (`x ^= x<<13; x ^= x>>17;
+  x ^= x<<5`), periodo máximo 2³²−1, lineal sobre GF(2). La semilla 0 se reemplaza
+  por `0x9E3779B9`.
+- **GF(2)** — el campo de dos elementos {0,1} con XOR como suma y AND como producto;
+  es el espacio donde viven los PRNG lineales bit a bit.
+- **razón áurea (`0x9E3779B9`)** — `⌊2³²/φ⌋` con `φ=(1+√5)/2 ≈ 1.618`: constante
+  "nothing-up-my-sleeve" usada para sembrar (estado inicial no nulo con buen mezclado
+  de bits).
+- **periodo (de un PRNG)** — cantidad de estados distintos antes de repetirse;
+  xorshift32 con la terna (13,17,5) alcanza el máximo 2³²−1.
+- **siembra determinista** — fijar la semilla para que la secuencia sea reproducible;
+  en PicoReflex `seed=0` = aleatorio (`get_rand_32()`), `seed≠0` = determinista.
 - **critical_section** — región protegida por spinlock para acceso exclusivo corto.
 - **queue** — cola de mensajes para comunicación entre tareas/núcleos.
 - **semáforo** — primitiva de sincronización (aquí, `g_game_init_sem` ordena el

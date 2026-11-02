@@ -233,12 +233,74 @@ doc.add_paragraph(
 )
 add_table(doc, ["Módulo", "Esencial"], [
     ("Arranque y tareas (main.cpp)", "game_task/network_task con afinidad fija; cyw43_arch_init() dentro de network_task (patrón oficial pico_w/wifi/freertos)."),
-    ("Motor del juego (game_logic.cpp)", "4 modos (FREE_PLAY/TIMED/SUDDEN_DEATH/SIMON_SAYS), PRNG xorshift32 (semilla determinista), medición de reacción en µs: time_us_32() leído dentro de la IRQ del PIO."),
+    ("Motor del juego (game_logic.cpp)", "4 modos (FREE_PLAY/TIMED/SUDDEN_DEATH/SIMON_SAYS), PRNG xorshift32 (semilla determinista), medición de reacción en µs: time_us_32() leído dentro de la IRQ del PIO. Ver 3.1.1 (lógica) y 3.1.2 (el seed)."),
     ("Estado compartido (shared_state.cpp)", "critical_section (datos) + queue_t (eventos); spinlock en vez de mutex por la brevedad de las secciones."),
     ("Persistencia (flash_storage.cpp)", "Último sector 0x1FF000, magic 0x5245464C + PERSISTENT_VERSION 7 + checksum; flash_safe_execute serializa el borrado/programación."),
     ("Watchdog (hardware)", "watchdog_enable(8000 ms); ambos núcleos refrescan; diagnóstico de causa antes de re-habilitar."),
     ("Bootloader (bootloader.c)", "Salto tipo-reset (VTOR, MSP, cpsie i) + OTA A/B con staging + commit atómico + rollback."),
 ])
+
+doc.add_heading("3.1.1 Lógica de juego — máquina de estados y timing", level=3)
+doc.add_paragraph(
+    "Motor de reacción en el Core 0: el bucle game::run() (src/game_logic.cpp:536-700) "
+    "nunca retorna, ejecutando una máquina de estados cíclica "
+    "IDLE → COUNTDOWN → RUNNING → EVALUACIÓN → IDLE y una rama especial para Simón "
+    "Dice (:602-605 → simon_says_round :501-531)."
+)
+add_table(doc, ["Transición", "Línea", "Disparador"], [
+    ("IDLE → COUNTDOWN", ":570-575", "cualquier botón (g_button_pending)"),
+    ("COUNTDOWN → RUNNING", ":386-397", "start_with_countdown() cuenta start_delay_s s y llama start_round()"),
+    ("RUNNING → EVALUACIÓN", ":632-644 / :648-651", "pulsación (hit/miss/timeout) o timeout de tolerancia"),
+    ("EVALUACIÓN → IDLE", ":693-695", "SUDDEN_DEATH + fallo → end_round() (:418-424); resto → bucle arriba"),
+])
+doc.add_paragraph(
+    "Rama Simón Dice: start_round() inicia la secuencia con longitud 1 (:409-411); "
+    "simon_show_sequence (:465-474) muestra toda la secuencia; simon_wait_input "
+    "(:477-498) valida elemento a elemento; al acertar todo crece hasta SIMON_MAX_SEQ 64 "
+    "(:522-528); al fallar → game_over + reinicio a longitud 1 (:511-519)."
+)
+doc.add_paragraph(
+    "Matemática del timing (todo sobre time_us_32(), contador hardware de 1 µs que da "
+    "la vuelta cada 2³² µs ≈ 71,58 min):"
+)
+add_table(doc, ["Paso", "Código", "Detalle"], [
+    ("Intervalo entre estímulos", ":610-611", "delay_ms = stimulus_min_ms + next_range(stimulus_max_ms - stimulus_min_ms + 1); el +1 es el off-by-one de [min,max]."),
+    ("t0 al encender el LED", ":620", "instante de referencia."),
+    ("reaction_us", ":635", "g_button_ts_us - t0 es una resta SIN signo → módulo 2³² → absorbe el wrap del contador sin código especial."),
+    ("Tolerancia", ":623-626", "difficulty_tolerance_ms()·1000 = 1000/500/250 ms; FREE_PLAY = UINT32_MAX (sin límite)."),
+    ("Fin por tiempo (TIMED)", ":654-655", "(time_us_32() - g_round_start_us) > round_seconds·1e6."),
+    ("Timestamp en IRQ", ":167-185", "se captura dentro de la IRQ del PIO (g_button_ts_us), no en el bucle, para minimizar jitter."),
+], widths=[2.0, 1.2, 3.8])
+
+doc.add_heading("3.1.2 El 'seed' — algoritmo matemático del PRNG xorshift32", level=3)
+doc.add_paragraph(
+    "Genera la secuencia pseudoaleatoria determinista que decide el orden de los LEDs y "
+    "la secuencia de Simón: una misma semilla produce exactamente la misma secuencia "
+    "(partidas reproducibles, récords comparables)."
+)
+code_block(doc,
+    "uint32_t next() {\n"
+    "    uint32_t x = state_;\n"
+    "    x ^= x << 13u;   // :50\n"
+    "    x ^= x >> 17u;   // :51\n"
+    "    x ^= x << 5u;    // :52\n"
+    "    state_ = x;\n"
+    "    return x;\n"
+    "}"
+)
+for txt in [
+    "Terna (13, 17, 5): publicada por Marsaglia (2003); da periodo máximo 2³²−1 (el polinomio característico de la transición es primitivo en GF(2)).",
+    "Linealidad sobre GF(2): XOR = suma módulo 2; cada shift es una matriz 32×32. La transición es un único mapa lineal x' = T·x con T = (I+L⁵)(I+R¹⁷)(I+L¹³).",
+    "Invertibilidad → permutación: cada factor (I+Lᵏ) es invertible porque Lᵏ es nilpotente (L³²=0); T es una biyección de los 2³² estados.",
+    "Periodo 2³²−1: todos los estados no nulos forman un único ciclo de 4 294 967 295.",
+    "Estado 0 = punto fijo (0<<k=0, 0^0=0): set_seed(0) lo sustituye por 0x9E3779B9 = ⌊2³²/φ⌋ (razón áurea φ≈1.618, constante nothing-up-my-sleeve) — include/game_logic.hpp:45.",
+    "Sesgo del módulo (next_range(n) = next() % n, :58-61): xorshift32 nunca emite 0, así que en un periodo su salida es {1,…,2³²−1}; para n=5, 2³²−1 = 5·858 993 459 → sesgo exacto 0. Peor caso: 1/2³² ≈ 2,3·10⁻¹⁰.",
+    "Siembra (src/game_logic.cpp:406): g_rng.set_seed(cfg.seed != 0 ? cfg.seed : get_rand_32()) — seed=0 = aleatorio (entropía hardware), seed≠0 = determinista.",
+    "Persistencia (:404): g_persist.last_seed = cfg.seed se guarda en Flash.",
+    "No es criptográfico: xorshift32 es lineal y predecible; sirve solo para jugabilidad, no para secretos.",
+]:
+    p = doc.add_paragraph()
+    p.add_run("• " + txt)
 
 doc.add_heading("3.2 Red y web", level=2)
 doc.add_paragraph("(Detalle completo en docs/estudio/red.md.)")
@@ -277,7 +339,7 @@ add_table(doc, ["Medida", "Esencial"], [
 ])
 
 # ===================== f. FAQ ===============================================
-doc.add_heading("4. FAQ de defensa (20 preguntas)", level=1)
+doc.add_heading("4. FAQ de defensa (24 preguntas)", level=1)
 faq = [
     ("¿Por qué la tarea de red tiene más stack y más prioridad que la de juego?",
      "Porque aloja lwIP + HTTP + display (necesita ~4 KB de stack y no puede demorarse); el juego es de tiempo real pero simple (2048 B le alcanza)."),
@@ -319,6 +381,14 @@ faq = [
      "El ACK de I2C no distingue SSD1306 de SH1106. 0x8D,0x14 enciende el charge-pump del SSD1306 y 0xAD,0x8B el DC-DC del SH1106; mandando ambos, el chip presente usa el suyo y el otro es no-op → init robusto ante selección errónea."),
     ("¿Por qué debounce por PIO y no por software en la IRQ?",
      "El PIO filtra en hardware de forma determinista, sin consumir CPU ni latencia de IRQ; la CPU solo captura time_us_32(). El timestamp se toma en el primer flanco (wait 0 pin 0 → irq set 0), conservando la resolución de 1 µs."),
+    ("¿Por qué la terna 13, 17 y 5 en el xorshift32?",
+     "Es una de las ternas publicadas por Marsaglia (2003) que da periodo máximo 2³²−1: el polinomio característico de T es primitivo en GF(2), así que todos los estados no nulos forman un único ciclo. No es un número mágico arbitrario."),
+    ("¿Qué periodo tiene el xorshift32 y por qué?",
+     "2³²−1 = 4 294 967 295. Porque T es una permutación (invertible) cuyo único punto fijo es el 0, de modo que el ciclo de los estados no nulos tiene la longitud máxima posible para 32 bits."),
+    ("¿Qué pasa si la semilla es 0?",
+     "El estado 0 es punto fijo (0<<k=0, 0^0=0) y next() devolvería 0 para siempre (generador atascado). Por eso set_seed(0) la reemplaza por 0x9E3779B9 = ⌊2³²/φ⌋ (include/game_logic.hpp:45)."),
+    ("¿Cómo se garantiza que dos partidas con la misma semilla sean idénticas?",
+     "set_seed(cfg.seed) fija exactamente el estado inicial y T es determinista: la misma semilla produce la misma secuencia de next() → la misma secuencia de LEDs/Simón. En PicoReflex seed=0 = aleatorio (get_rand_32()) y seed≠0 = determinista/reproducible (src/game_logic.cpp:406)."),
 ]
 for i, (q, a) in enumerate(faq, 1):
     p = doc.add_paragraph()
@@ -349,7 +419,11 @@ glosario = [
     ("PIO", "Programmable I/O: co-procesador del RP2040 con state machines para I/O determinista."),
     ("Flash / XIP", "Memoria no volátil; XIP = ejecutar código directamente desde ella."),
     ("CRC32", "Cyclic Redundancy Check de 32 bits para detectar corrupción."),
-    ("xorshift", "Familia de PRNG basados en XOR y desplazamientos (xorshift32 de Marsaglia)."),
+    ("xorshift32", "PRNG de Marsaglia (2003): tres xor-shift (x ^= x<<13; x ^= x>>17; x ^= x<<5), periodo máximo 2³²−1, lineal sobre GF(2). La semilla 0 se reemplaza por 0x9E3779B9."),
+    ("GF(2)", "El campo de dos elementos {0,1} con XOR como suma y AND como producto; espacio donde viven los PRNG lineales bit a bit."),
+    ("razón áurea (0x9E3779B9)", "⌊2³²/φ⌋ con φ=(1+√5)/2 ≈ 1.618: constante nothing-up-my-sleeve usada para sembrar (estado inicial no nulo con buen mezclado de bits)."),
+    ("periodo (de un PRNG)", "Cantidad de estados distintos antes de repetirse; xorshift32 con la terna (13,17,5) alcanza el máximo 2³²−1."),
+    ("siembra determinista", "Fijar la semilla para que la secuencia sea reproducible; en PicoReflex seed=0 = aleatorio (get_rand_32()), seed≠0 = determinista."),
     ("critical_section", "Región protegida por spinlock para acceso exclusivo corto."),
     ("queue", "Cola de mensajes para comunicación entre tareas/núcleos."),
     ("semáforo", "Primitiva de sincronización (g_game_init_sem ordena el arranque)."),
