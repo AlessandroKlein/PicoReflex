@@ -9,9 +9,9 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
 >
 > **Diseño (Swiss Modernism 2.0):** paleta azul `#2563EB` + acento naranja
 > `#F97316`, tipografía Inter, cards blancas sobre fondo `#F8FAFC`. Diagramas
-> embebidos en las filminas **3** (diagrama de bloques), **4** (flujo del juego),
-> **10** (flujo de red) y **11** (esquemático); la filmina **5** usa una tabla con
-> cabecera coloreada.
+> embebidos en las filminas **3** (diagrama de bloques), **5** (flujo del juego),
+> **11** (flujo de red) y **12** (esquemático); la filmina **6** usa una tabla con
+> cabecera coloreada y la **4** el árbol de archivos (monospace, claves en naranja).
 
 ---
 
@@ -45,7 +45,20 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
 - Arranque: watchdog → `shared_state_init()` → `game::init()` → `xTaskCreate` ×2 →
   `vTaskStartScheduler()`.
 
-## 4. Mecanismo de juego — máquina de estados
+## 4. Estructura de archivos
+
+- Árbol **espejo verbatim** de `docs/es/picoreflex/Arquitectura.md` §3 (aprobado).
+- Raíz: `CMakeLists.txt` (build, `PICO_BOARD=pico_w`) + `lwipopts.h` (NO_SYS=0) +
+  integración FreeRTOS + 2 programas PIO (`button_debounce.pio`, `ws2812.pio`).
+- `include/` (14 headers) → `src/` (14 fuentes) → `docs/`.
+- **En naranja (clave de la defensa):** `game_logic.cpp/.hpp` (motor + seed),
+  `config.hpp` (estado compartido), `flash_storage.cpp/.hpp` (persistencia),
+  `main.cpp` (arranque), `web_server.cpp` (red/OTA).
+- `linker/pico_flash_region.ld` = mapa Flash OTA A/B; `bootloader.c` + `ota.c`
+  cierran la OTA; `web_ui.cpp` tiene el frontend HTML/CSS embebido.
+- **Qué decir:** recorrer de arriba hacia abajo y detenerse en los naranja.
+
+## 5. Mecanismo de juego — máquina de estados
 
 - `game::run()` (`src/game_logic.cpp:536-700`) **nunca retorna**.
 - Estados: **IDLE → COUNTDOWN → RUNNING → EVALUACIÓN → IDLE** + rama SIMON_SAYS.
@@ -56,7 +69,7 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
   - EVALUACIÓN → IDLE `:693-695` (muerte súbita + fallo → `end_round`).
   - Drenado de eventos web `:541-565` (START/STOP/CONFIG).
 
-## 5. Mecanismo de juego — matemática del timing
+## 6. Mecanismo de juego — matemática del timing
 
 - `delay_ms` **uniforme** en `[min, max]` (`:610-611`):
   `min + next_range(max − min + 1)` (el `+1` es el off-by-one del rango).
@@ -69,7 +82,7 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
 - Timestamp capturado en la **IRQ del PIO** (`:167-185`), no en el bucle → jitter
   mínimo.
 
-## 6. Seed — xorshift32 (el algoritmo)
+## 7. Seed — xorshift32 (el algoritmo)
 
 - Marsaglia (2003), `src/game_logic.cpp:48-55`:
   ```c
@@ -82,7 +95,7 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
 - **Periodo máximo 2³²−1** (polinomio característico primitivo en GF(2)).
 - No es criptográfico (lineal y predecible): sirve para jugabilidad, no para secretos.
 
-## 7. Seed — propiedades matemáticas
+## 8. Seed — propiedades matemáticas
 
 - **Estado 0 = punto fijo** (`0<<k=0`, `0^0=0`): `set_seed(0)` lo reemplaza por
   `0x9E3779B9 = ⌊2³²/φ⌋` (razón áurea φ≈1.618, constante *nothing-up-my-sleeve*)
@@ -94,7 +107,7 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
 - **Siembra** (`src/game_logic.cpp:406`): `seed=0` → `get_rand_32()` (aleatorio);
   `seed≠0` → determinista. Persistida en Flash (`:404`).
 
-## 8. Simón Dice
+## 9. Simón Dice
 
 - `start_round()` inicia con longitud 1 (`:409-411`).
 - `simon_show_sequence` (`:465-474`) muestra **toda** la secuencia (LED + tono,
@@ -104,7 +117,7 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
 - Fallar → `game_over` + reinicio a longitud 1 (`:511-519`).
 - La secuencia es **determinista según la semilla** (misma semilla → misma secuencia).
 
-## 9. Precisión y timing (por qué µs)
+## 10. Precisión y timing (por qué µs)
 
 - `time_us_32()`: contador hardware de 1 µs, da la vuelta cada 2³² µs ≈ **71,58 min**.
 - Timestamp tomado en la **IRQ del PIO** (no en el bucle) → jitter mínimo.
@@ -112,7 +125,7 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
 - **Debounce por PIO**: una state machine por botón, lockout ~5 ms, sin CPU ni
   latencia de IRQ.
 
-## 10. Red + OTA
+## 11. Red + OTA
 
 - Servidor web **raw lwIP** (`request[1024]`, `g_body[8192]`, `html_escape`).
 - Wi-Fi **STA** + respaldo **AP**: reconexión en caliente (`STA_MAX_RETRIES 3`,
@@ -124,7 +137,7 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
 - **OTA A/B**: bootloader `0x10000000` + app `0x10010000` + staging + CRC32 +
   rollback automático.
 
-## 11. Hardware
+## 12. Hardware
 
 - **Display OLED SSD1306/SH1106** (I2C1, 0x3C/0x3D, selección runtime persistida).
 - **Debounce por PIO** (`button_debounce.pio`, 26 instrucciones, una SM por botón).
@@ -132,7 +145,7 @@ Presentación: `Presentacion_Defensa_PicoReflex.pptx` (generada con
 - **Batería ADC** (GPIO26/ADC0, divisor 10 kΩ/22 kΩ, curva 4200/3700/3000 mV).
 - **Watchdog hardware** 8000 ms (ambos núcleos refrescan).
 
-## 12. Cierre — qué van a preguntar
+## 13. Cierre — qué van a preguntar
 
 - ¿Por qué resta sin signo? → módulo 2³² absorbe el wrap del contador.
 - ¿Por qué 13/17/5? → periodo máximo (polinomio primitivo en GF(2)).

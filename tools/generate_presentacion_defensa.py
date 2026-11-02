@@ -201,6 +201,76 @@ def slide_table(prs, title, headers, rows, col_w, note=None):
     return s
 
 
+# Árbol de archivos — espejo verbatim de Docs.git Arquitectura.md §3 (aprobado).
+# Cada línea: (ruta, comentario, es_clave). Los archivos "clave" se resaltan en naranja.
+TREE_LINES = [
+    ("PicoReflex/", "", False),
+    ("├── CMakeLists.txt", "Build (Pico SDK 2.3.0, PICO_BOARD=pico_w)", False),
+    ("├── lwipopts.h", "lwIP: NO_SYS=0, LWIP_MDNS_RESPONDER, LWIP_IGMP", False),
+    ("├── FreeRTOS_Kernel_import.cmake", "Integración FreeRTOS SMP", False),
+    ("├── ws2812.pio", "PIO: tira NeoPixel (GPIO28)", False),
+    ("├── button_debounce.pio", "PIO: debounce por hardware (una SM por botón)", False),
+    ("├── linker/", "", False),
+    ("│   └── pico_flash_region.ld", "Mapa de Flash para OTA A/B (bootloader+app+staging)", False),
+    ("├── include/", "", False),
+    ("│   ├── pin_defs.hpp", "Mapa de pines (ver docs/Idea.md §4)", False),
+    ("│   ├── config.hpp", "Config/estadísticas + API de estado compartido", True),
+    ("│   ├── game_logic.hpp", "Motor del juego + PRNG (xorshift)", True),
+    ("│   ├── audio.hpp", "Buzzer PWM", False),
+    ("│   ├── display_driver.hpp", "OLED SSD1306/SH1106 (I2C1)", False),
+    ("│   ├── battery_monitor.hpp", "ADC batería + calibración (BatteryCalibration)", False),
+    ("│   ├── flash_storage.hpp", "Persistencia en Flash + metadatos OTA", True),
+    ("│   ├── web_server.hpp", "Servidor HTTP + Wi-Fi (network_task)", False),
+    ("│   ├── captive_portal.hpp", "DNS 53 → 192.168.4.1 (modo AP)", False),
+    ("│   ├── led_driver.hpp", "LEDs GPIO o WS2812 (PIO)", False),
+    ("│   ├── ota.h", "Metadatos OTA (CRC32, slots A/B)", False),
+    ("│   └── font5x7.hpp", "Fuente 5x7 (generada por tools/gen_font.py)", False),
+    ("├── src/", "", False),
+    ("│   ├── main.cpp", "Arranque FreeRTOS + watchdog + lanzar tareas", True),
+    ("│   ├── shared_state.cpp", "critical_section + queue (estado compartido)", False),
+    ("│   ├── game_logic.cpp", "Motor del juego (game_task)", True),
+    ("│   ├── audio.cpp", "Buzzer", False),
+    ("│   ├── display_driver.cpp", "OLED SSD1306/SH1106", False),
+    ("│   ├── battery_monitor.cpp", "ADC + curva de descarga", False),
+    ("│   ├── flash_storage.cpp", "Flash (récords, config, OTA, clave AP)", True),
+    ("│   ├── web_server.cpp", "HTTP + Wi-Fi + display + mDNS + OTA (network_task)", True),
+    ("│   ├── web_ui.cpp", "Frontend HTML/CSS embebido", False),
+    ("│   ├── captive_portal.cpp", "DNS captive portal", False),
+    ("│   ├── dhcpserver.c", "DHCP del AP", False),
+    ("│   ├── led_driver.cpp", "GPIO o WS2812 (PIO)", False),
+    ("│   ├── ota.c", "CRC32 + metadatos (compartido con bootloader)", False),
+    ("│   └── bootloader.c", "Bootloader de segundo nivel (OTA A/B)", False),
+    ("└── docs/", "Documentación técnica (este sitio la refleja)", False),
+]
+
+
+def slide_filetree(prs):
+    """Filmina 'Estructura de archivos': árbol monospace en card con header azul."""
+    s = prs.slides.add_slide(prs.slide_layouts[6])
+    _set_bg(s, BG)
+    _title(s, "Estructura de archivos")
+    # card blanca + header azul
+    _card(s, MARGIN, Inches(1.5), Inches(11.93), Inches(5.9))
+    _rect(s, MARGIN, Inches(1.5), Inches(11.93), Inches(0.42), PRIMARY)
+    hb, htf = _textbox(s, Inches(0.95), Inches(1.55), Inches(11.4), Inches(0.32))
+    _run(htf.paragraphs[0],
+         "PicoReflex/  —  naranja = archivos clave de la defensa (motor, seed, persistencia)",
+         15, WHITE, bold=True)
+    # árbol monospace (sin wrap para conservar la alineación)
+    tb = s.shapes.add_textbox(Inches(0.95), Inches(2.02), Inches(11.4), Inches(5.3))
+    tf = tb.text_frame
+    tf.word_wrap = False
+    for i, (path, comment, key) in enumerate(TREE_LINES):
+        p = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        p.space_after = Pt(0)
+        p.space_before = Pt(0)
+        p.line_spacing = 1.0
+        _run(p, path, 9.5, ACCENT if key else TEXT, bold=key, mono=True)
+        if comment:
+            _run(p, "  # " + comment, 9.5, MUTED, mono=True)
+    return s
+
+
 def build():
     prs = Presentation()
     _set_16x9(prs)
@@ -226,6 +296,9 @@ def build():
         ("Comunicación: critical_section + queue_t.", 0, False),
         ("Boot: watchdog → shared_state_init() → xTaskCreate ×2 → vTaskStartScheduler().", 0, False),
     ], img="Diagrama de bloques.png")
+
+    # 3b. Estructura de archivos (insertada entre Arquitectura y Mecanismo)
+    slide_filetree(prs)
 
     # 4. Máquina de estados + flujo del juego
     slide_bullets(prs, "Mecanismo de juego — máquina de estados", [

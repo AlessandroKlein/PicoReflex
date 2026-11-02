@@ -1,14 +1,14 @@
 # Discurso oral de defensa — PicoReflex
 
 > Guión hablado completo para defender el proyecto frente al tribunal.
-> Una sección por filmina, alineada a las 12 de
+> Una sección por filmina, alineada a las 13 de
 > `Presentacion_Defensa_PicoReflex.pptx`. No es un resumen: es **lo que se dice en
 > voz alta**, en primera persona.
 >
 > Tono: defensa académica — materia **Microprocesadores · Tecnicatura en
 > Desarrollo de Software**. Firmware v0.9.7 · Pico SDK 2.3.0 · FreeRTOS SMP.
 >
-> **Énfasis (~50 % del tiempo):** filminas 4 a 9 — mecanismo del juego (máquina de
+> **Énfasis (~50 % del tiempo):** filminas 5 a 10 — mecanismo del juego (máquina de
 > estados + matemática del timing) y seed (xorshift32). Ahí hay que detenerse y
 > explicar en dos niveles: primero con palabras simples, después con la matemática.
 
@@ -128,7 +128,46 @@ congele la medición del juego, y al revés. Lo documenté en
 
 ---
 
-## 4. Mecanismo de juego — máquina de estados
+## 4. Estructura de archivos
+
+### Guión hablado
+
+Ahora les muestro cómo está organizado el código, sin mostrar una sola línea de
+código. Este árbol es el mismo que está publicado en la documentación. Arranco
+por la raíz: `CMakeLists.txt` define el build con el SDK oficial y la placa
+`pico_w`; `lwipopts.h` configura lwIP para el Wi-Fi; y abajo hay dos programas
+PIO, uno para los LEDs direccionables y otro para el debounce de los botones.
+
+Después vienen las dos carpetas que importan: `include/` con los catorce headers y
+`src/` con las catorce fuentes. Y fíjense que algunos archivos están en **naranja**:
+son los que sostienen la defensa de hoy. El motor del juego y el generador de la
+semilla viven en `game_logic`; la configuración y el estado compartido, en
+`config.hpp`; la persistencia de récords y la clave del AP, en `flash_storage`;
+el arranque de las dos tareas, en `main.cpp`; y todo lo que es red y OTA, en
+`web_server.cpp`. Si me preguntan "¿dónde está tal cosa?", la respuesta siempre
+está en uno de esos naranja.
+
+### Qué ampliar si preguntan
+
+- `linker/pico_flash_region.ld` dibuja el mapa de Flash para la OTA A/B:
+  bootloader + aplicación + staging; `bootloader.c` y `ota.c` la completan.
+- `web_ui.cpp` tiene el frontend HTML/CSS embebido (no hay archivos web sueltos).
+- `font5x7.hpp` se genera con `tools/gen_font.py` (no lo escribí a mano).
+- La separación `.hpp` (declaración/contrato) vs `.cpp` (implementación) es
+  deliberada y es lo que me permitió auditar cada módulo por separado.
+
+### Pregunta probable + respuesta
+
+**P:** De todos estos archivos, ¿cuáles son los tres que hay que leer para
+entender el corazón del trabajo?
+**R:** `game_logic.cpp` (la máquina de estados, el timing y el xorshift32),
+`config.hpp` (la configuración y el estado compartido entre los dos núcleos) y
+`flash_storage.cpp` (cómo persisto récords, semilla y clave sin pisar el firmware).
+Con esos tres y `main.cpp` para ver el arranque, tenés el mapa completo.
+
+---
+
+## 5. Mecanismo de juego — máquina de estados
 
 > **Filmina con diagrama:** el "Flujo del juego (Core 0)". Recorrerlo siguiendo
 > las flechas de la máquina de estados: IDLE → COUNTDOWN → RUNNING → EVALUACIÓN →
@@ -170,7 +209,7 @@ curso nunca se corrompe.
 
 ---
 
-## 5. Mecanismo de juego — matemática del timing
+## 6. Mecanismo de juego — matemática del timing
 
 ### Guión hablado
 
@@ -207,7 +246,7 @@ de cuándo el scheduler me deje correr.
 
 ---
 
-## 6. Seed — xorshift32 (el algoritmo)
+## 7. Seed — xorshift32 (el algoritmo)
 
 ### Guión hablado
 
@@ -247,7 +286,7 @@ por número lo hacen ideal para un microcontrolador.
 
 ---
 
-## 7. Seed — propiedades matemáticas
+## 8. Seed — propiedades matemáticas
 
 ### Guión hablado
 
@@ -293,7 +332,7 @@ sustituye por `0x9E3779B9`. O sea: en mi diseño, **semilla 0 significa
 
 ---
 
-## 8. Simón Dice
+## 9. Simón Dice
 
 ### Guión hablado
 
@@ -329,7 +368,7 @@ misma dificultad exacta.
 
 ---
 
-## 9. Precisión y timing (por qué µs)
+## 10. Precisión y timing (por qué µs)
 
 ### Guión hablado
 
@@ -363,7 +402,7 @@ lo que importa para comparar reacciones.
 
 ---
 
-## 10. Red + OTA
+## 11. Red + OTA
 
 > **Filmina con diagrama:** el "Flujo de red (Core 1)". Recorrerlo por capas:
 > abajo el chip CYW43/Wi-Fi, encima lwIP (TCP/UDP), y sobre eso los servicios
@@ -404,7 +443,7 @@ detecta el fallo y hace **rollback** a la anterior. Es el patrón A/B clásico.
 
 ---
 
-## 11. Hardware
+## 12. Hardware
 
 > **Filmina con diagrama:** el "Esquemático". Recorrerlo por bloques: alimentación
 > (batería → divisor → ADC), entradas (botones → PIO), salidas (LEDs, buzzer PWM,
@@ -440,7 +479,7 @@ hasta 4,2 V dentro del rango del ADC.
 
 ---
 
-## 12. Cierre — qué van a preguntar
+## 13. Cierre — qué van a preguntar
 
 ### Guión hablado
 
